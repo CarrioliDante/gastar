@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  amount    Decimal
+  category  String
+  date      DateTime @default(now())
+  note      String?
+  blockId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  block Block? @relation(fields: [blockId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([blockId])
+}
+
+model Block {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  icon       String
+  budget     Decimal
+  goal       String?
+  color      String    @default("#111111")
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+model Installment {
+  id                String    @id @default(cuid())
+  userId            String
+  name              String
+  totalAmount       Decimal
+  monthlyAmount     Decimal
+  totalInstallments Int
+  paidInstallments  Int       @default(0)
+  nextDueDate       DateTime
+  startedAt         DateTime
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, nextDueDate])
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0)
+  deadline      DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// Gastos recurrentes sin fin (suscripciones, servicios, alquiler)
+model RecurringExpense {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  amount      Decimal
+  category    String
+  frequency   String    // "monthly" | "weekly" | "bimonthly" | "yearly"
+  dayOfMonth  Int?      // día fijo de débito (1-31), solo relevante cuando frequency = "monthly"
+  nextDueDate DateTime
+  blockId     String?
+  note        String?
+  pausedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, nextDueDate])
+}

@@ -1,0 +1,29 @@
+"use server";
+
+import { revalidateTag } from "next/cache";
+import { db } from "@/lib/db";
+import { requireUser } from "@/lib/dal";
+
+export async function createTransaction(formData: FormData) {
+  const user = await requireUser();
+
+  const name     = (formData.get("name") as string) || "Expense";
+  const amount   = parseFloat(formData.get("amount") as string);
+  const category = formData.get("category") as string;
+  const note     = (formData.get("note") as string) || null;
+  const blockId  = (formData.get("blockId") as string) || null;
+
+  if (isNaN(amount) || !category) return;
+
+  await db.transaction.create({
+    data: { userId: user.id, name, amount, category, note, blockId: blockId || null },
+  });
+
+  revalidateTag(`user:${user.id}`, "default");
+}
+
+export async function deleteTransaction(id: string) {
+  const user = await requireUser();
+  await db.transaction.deleteMany({ where: { id, userId: user.id } });
+  revalidateTag(`user:${user.id}`, "default");
+}
