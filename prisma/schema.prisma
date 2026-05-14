@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions  Transaction[]
+  blocks        Block[]
+  installments  Installment[]
+  savingsGoals  SavingsGoal[]
+}
+
+model Transaction {
+  id         String   @id @default(cuid())
+  name       String
+  amount     Decimal
+  category   String
+  date       DateTime @default(now())
+  note       String?
+  blockId    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  block  Block? @relation(fields: [blockId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([blockId])
+}
+
+model Block {
+  id          String   @id @default(cuid())
+  name        String
+  icon        String
+  budget      Decimal
+  goal        String?
+  color       String   @default("#111111")
+  archivedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+model Installment {
+  id                  String    @id @default(cuid())
+  name                String
+  totalAmount         Decimal
+  monthlyAmount       Decimal
+  totalInstallments   Int
+  paidInstallments    Int       @default(0)
+  nextDueDate         DateTime
+  startedAt           DateTime
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextDueDate])
+}
+
+model SavingsGoal {
+  id          String    @id @default(cuid())
+  name        String
+  targetAmount Decimal
+  currentAmount Decimal @default(0)
+  deadline    DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
