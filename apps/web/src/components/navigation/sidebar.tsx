@@ -4,35 +4,36 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/(auth)/actions";
 import { useTheme } from "@/components/providers/theme-provider";
+import { useUIStore } from "@/stores/ui";
 
 const NAV = [
   {
     label: null,
     items: [
-      { href: "/",             id: "dashboard",    label: "Inicio" },
-      { href: "/transactions", id: "transactions", label: "Movimientos" },
-      { href: "/blocks",       id: "blocks",       label: "Bloques" },
+      { href: "/",             id: "dashboard",    label: "Inicio",      kbd: "g d" },
+      { href: "/transactions", id: "transactions", label: "Movimientos", kbd: "g m" },
+      { href: "/blocks",       id: "blocks",       label: "Bloques",     kbd: "g b" },
     ],
   },
   {
     label: "Compromisos",
     items: [
-      { href: "/installments", id: "installments", label: "Cuotas" },
-      { href: "/recurring",    id: "recurring",    label: "Recurrentes" },
-      { href: "/calendar",     id: "calendar",     label: "Calendario" },
+      { href: "/installments", id: "installments", label: "Cuotas",      kbd: "g c" },
+      { href: "/recurring",    id: "recurring",    label: "Recurrentes", kbd: "g r" },
+      { href: "/calendar",     id: "calendar",     label: "Calendario",  kbd: "g v" },
     ],
   },
   {
     label: "Crecimiento",
     items: [
-      { href: "/goals",        id: "goals",        label: "Ahorro" },
-      { href: "/insights",     id: "insights",     label: "Lectura" },
+      { href: "/goals",        id: "goals",        label: "Ahorro",      kbd: "g a" },
+      { href: "/insights",     id: "insights",     label: "Lectura",     kbd: "g l" },
     ],
   },
   {
     label: null,
     items: [
-      { href: "/settings",     id: "settings",     label: "Ajustes" },
+      { href: "/settings",     id: "settings",     label: "Ajustes",     kbd: "g s" },
     ],
   },
 ];
@@ -118,6 +119,7 @@ function NavIcon({ id, active }: { id: string; active: boolean }) {
 export function Sidebar() {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
+  const { openPalette, openCapture } = useUIStore();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -132,7 +134,7 @@ export function Sidebar() {
       transition: "background 400ms ease, border-color 400ms ease",
     }}>
       {/* Workspace identity */}
-      <div style={{ padding: "6px 14px 18px" }}>
+      <div style={{ padding: "6px 14px 12px" }}>
         <div style={{
           width: "100%", padding: "8px 10px", borderRadius: 8,
           display: "flex", alignItems: "center", gap: 10,
@@ -153,6 +155,23 @@ export function Sidebar() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Search / command palette */}
+      <div style={{ padding: "0 14px 12px" }}>
+        <button onClick={openPalette} style={{
+          width: "100%", padding: "7px 10px", borderRadius: 8,
+          background: "var(--bg)", border: "1px solid var(--hairline)", cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 8,
+          fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+        }}>
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+            <circle cx="6.2" cy="6.2" r="4.5" stroke="var(--mute)" strokeWidth="1.3"/>
+            <line x1="9.6" y1="9.6" x2="12.5" y2="12.5" stroke="var(--mute)" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          <span style={{ flex: 1, textAlign: "left" }}>Buscar</span>
+          <span className="kbd">⌘K</span>
+        </button>
       </div>
 
       {/* Navigation */}
@@ -183,7 +202,7 @@ export function Sidebar() {
                     transition: "all 160ms ease",
                   }}>
                   <NavIcon id={item.id} active={active} />
-                  <span>{item.label}</span>
+                  <span style={{ flex: 1 }}>{item.label}</span>
                 </Link>
               );
             })}
@@ -191,25 +210,39 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer: theme toggle + logout */}
+      {/* Footer: + Anotar + theme toggle + logout */}
       <div style={{ padding: "10px 12px 14px", borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 6 }}>
-        <button onClick={toggle} title={theme === "dark" ? "Modo día" : "Modo noche"}
+        <button onClick={() => openCapture("expense")} title="Anotar gasto (⌘N)"
           style={{
             flex: 1, padding: "8px 10px", borderRadius: 7, border: "none",
             background: "transparent", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 8,
-            color: "var(--faint)", fontSize: 12, fontFamily: "inherit",
+            color: "var(--mute)", fontSize: 12, fontFamily: "inherit",
+          }}
+          className="row-hover">
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          <span>Anotar</span>
+          <span className="kbd">⌘N</span>
+        </button>
+
+        <button onClick={toggle} title={theme === "dark" ? "Modo día" : "Modo noche"}
+          style={{
+            width: 32, height: 32, borderRadius: 7, border: "none",
+            background: "transparent", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--faint)",
           }}
           className="row-hover">
           <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
             {theme === "dark" ? (
-              <circle cx="9" cy="9" r="4" stroke="currentColor" strokeWidth="1.3"
-                style={{ fill: "none" }}/>
+              <circle cx="9" cy="9" r="4" stroke="currentColor" strokeWidth="1.3"/>
             ) : (
               <path d="M13 9.5A5 5 0 0 1 8 4a5 5 0 1 0 5 5.5z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round"/>
             )}
           </svg>
-          <span>{theme === "dark" ? "Modo día" : "Modo noche"}</span>
         </button>
 
         <form action={logout}>

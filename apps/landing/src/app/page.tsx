@@ -1,235 +1,1106 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, type Variants } from "motion/react";
+import { AnimatedNumber, fadeUp, scaleIn, staggerContainer } from "@/components/animations";
 
-const FEATURES = [
-  { glyph: "square",  title: "Bloques de vida",     body: "Organizá tus gastos por proyecto — el apartamento, el auto, el viaje. Cada bloque tiene su presupuesto y su progreso." },
-  { glyph: "ring",    title: "Cuotas inteligentes",  body: "Control total sobre tus cuotas. Visualizá el impacto mensual, los vencimientos y el avance de cada compromiso." },
-  { glyph: "arc",     title: "Metas de ahorro",      body: "Creá objetivos con fecha límite y aportes incrementales. Cada aporte queda registrado como movimiento." },
-  { glyph: "dot",     title: "Recurrentes",          body: "Suscripciones, servicios, alquiler. Registralos una vez y marcalos como pagados cuando vencen." },
-  { glyph: "line",    title: "Sin fricción",         body: "⌘N para anotar. Seleccioná categoría, ingresá el monto, listo. Menos de 3 segundos." },
-  { glyph: "cross",   title: "Modo noche + tipografía", body: "Sans, serif o mono. Día o noche. La interfaz que se adapta a cómo querés leer tu dinero." },
-];
+const staggerSlow: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.08 } },
+};
 
-function Glyph({ kind, size = 16 }: { kind: string; size?: number }) {
-  const s = size, w = 1.2;
-  const c = "currentColor";
-  const paths: Record<string, React.ReactNode> = {
-    square:  <rect x={w} y={w} width={s-w*2} height={s-w*2} rx={2} fill="none" stroke={c} strokeWidth={w} />,
-    ring:    <g><circle cx={s/2} cy={s/2} r={s/2-w*1.5} fill="none" stroke={c} strokeWidth={w}/><circle cx={s/2} cy={s/2} r={1.3} fill={c}/></g>,
-    arc:     <path d={`M${w} ${s-w} A ${s-w*2} ${s-w*2} 0 0 1 ${s-w} ${w}`} fill="none" stroke={c} strokeWidth={w} strokeLinecap="round"/>,
-    dot:     <circle cx={s/2} cy={s/2} r={s/3} fill={c}/>,
-    line:    <line x1={w} y1={s/2} x2={s-w} y2={s/2} stroke={c} strokeWidth={w} strokeLinecap="round"/>,
-    cross:   <g><line x1={s/2} y1={w} x2={s/2} y2={s-w} stroke={c} strokeWidth={w} strokeLinecap="round"/><line x1={w} y1={s/2} x2={s-w} y2={s/2} stroke={c} strokeWidth={w} strokeLinecap="round"/></g>,
-  };
-  return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{ display: "block" }}>{paths[kind] ?? paths.dot}</svg>;
-}
+const ease = [0.16, 1, 0.3, 1] as const;
 
-export default function LandingPage() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+// ═══════════════════════════════════════════════════════════════
+// Top Bar
+// ═══════════════════════════════════════════════════════════════
+
+function TopBar({
+  scrolled,
+  theme,
+  toggleTheme,
+}: {
+  scrolled: boolean;
+  theme: "light" | "dark";
+  toggleTheme: () => void;
+}) {
+  const navItems = [
+    { href: "#principios", label: "Principios" },
+    { href: "#producto", label: "Producto" },
+    { href: "#precios", label: "Precios" },
+    { href: "#preguntas", label: "Preguntas" },
+    { href: "#", label: "Workspace ↗" },
+    { href: "#", label: "iPhone ↗" },
+  ];
 
   return (
-    <div style={{ background: "#F5F5F2", color: "#111111", minHeight: "100vh", fontFamily: "'Inter', -apple-system, sans-serif" }}>
-      {/* Nav */}
-      <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "18px 48px",
-        background: "rgba(245,245,242,0.82)", backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 22, height: 22, borderRadius: 6,
-            background: "#111111", color: "#FAFAF8",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Inter Tight', sans-serif", fontWeight: 600, fontSize: 11,
-          }}>G</div>
-          <span style={{ fontFamily: "'Inter Tight', sans-serif", fontSize: 14, fontWeight: 500, letterSpacing: "-0.01em" }}>gast.ar</span>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <a href="http://localhost:3000/login" style={{
-            padding: "8px 16px", borderRadius: 8,
-            background: "rgba(0,0,0,0.05)", color: "#111111",
-            textDecoration: "none", fontSize: 13, fontWeight: 500,
-          }}>Entrar</a>
-          <a href="http://localhost:3000/signup" style={{
-            padding: "8px 16px", borderRadius: 8,
-            background: "#111111", color: "#FAFAF8",
-            textDecoration: "none", fontSize: 13, fontWeight: 500,
-          }}>Empezar</a>
-        </div>
-      </nav>
+    <motion.header
+      className={`topbar${scrolled ? " scrolled" : ""}`}
+      id="topbar"
+      initial={{ y: -28, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.65, ease, delay: 0.05 }}
+    >
+      <div className="wrap row">
+        <motion.a
+          className="brand"
+          href="#top"
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.22, duration: 0.4, ease }}
+        >
+          <motion.span
+            className="dot"
+            animate={{ scale: [1, 1.25, 1] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          />
+          <span>gast.ar</span>
+          <span className="v">v0.2 · beta</span>
+        </motion.a>
 
-      {/* Hero */}
-      <section style={{
-        maxWidth: 1100, margin: "0 auto", padding: "160px 48px 80px",
-        animation: mounted ? "fade-in 0.7s ease both" : "none",
-      }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "rgba(0,0,0,0.35)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 28 }}>
-          Finanzas personales · Argentina
-        </div>
+        <nav className="nav">
+          {navItems.map((item, i) => (
+            <motion.a
+              key={item.label}
+              href={item.href}
+              initial={{ y: -14, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.22 + i * 0.05, duration: 0.4, ease }}
+            >
+              {item.label}
+            </motion.a>
+          ))}
+        </nav>
 
-        <h1 style={{
-          fontFamily: "'Inter Tight', sans-serif",
-          fontSize: "clamp(42px, 7vw, 80px)",
-          fontWeight: 500, letterSpacing: "-0.04em", lineHeight: 1.05,
-          color: "#111111", margin: "0 0 32px", maxWidth: 720,
-        }}>
-          A calmer way<br />to manage money.
-        </h1>
-
-        <p style={{
-          fontSize: 18, color: "rgba(0,0,0,0.5)", lineHeight: 1.6,
-          maxWidth: 480, margin: "0 0 48px",
-        }}>
-          Un sistema de finanzas personales minimalista. Zen por diseño. Hecho para Argentina — con cuotas, metas y recurrentes.
-        </p>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <a href="http://localhost:3000/signup" style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "14px 28px", borderRadius: 10,
-            background: "#111111", color: "#FAFAF8",
-            textDecoration: "none", fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em",
-          }}>
-            Empezar gratis
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2.5 6H9.5M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+        <motion.div
+          className="top-cta"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.55, duration: 0.4 }}
+        >
+          <motion.button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title="Modo"
+            animate={{ rotate: theme === "dark" ? 180 : 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.2" />
+              <line x1="7" y1="1" x2="7" y2="2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="7" y1="11.5" x2="7" y2="13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="1" y1="7" x2="2.5" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="11.5" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
-          </a>
-          <a href="http://localhost:3000/login" style={{
-            display: "inline-flex", alignItems: "center",
-            padding: "14px 28px", borderRadius: 10,
-            background: "rgba(0,0,0,0.05)", color: "#111111",
-            textDecoration: "none", fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em",
-          }}>
-            Ya tengo cuenta
-          </a>
-        </div>
-      </section>
-
-      {/* Divider */}
-      <div style={{ maxWidth: 1100, margin: "0 auto 80px", padding: "0 48px" }}>
-        <div style={{ height: 1, background: "rgba(0,0,0,0.07)" }} />
+          </motion.button>
+          <motion.a
+            className="btn"
+            href="#precios"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <span>Empezar</span>
+            <motion.span
+              className="arrow"
+              animate={{ x: [0, 3, 0] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              →
+            </motion.span>
+          </motion.a>
+        </motion.div>
       </div>
+    </motion.header>
+  );
+}
 
-      {/* Features */}
-      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px 100px" }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "rgba(0,0,0,0.35)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 48 }}>
-          Features
-        </div>
-        <div style={{
-          display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
-          borderTop: "1px solid rgba(0,0,0,0.07)",
-          borderLeft: "1px solid rgba(0,0,0,0.07)",
-        }}>
-          {FEATURES.map((f, i) => (
-            <div key={i} style={{
-              padding: "32px 32px 28px",
-              borderRight: "1px solid rgba(0,0,0,0.07)",
-              borderBottom: "1px solid rgba(0,0,0,0.07)",
-            }}>
-              <div style={{ color: "#111111", marginBottom: 20 }}>
-                <Glyph kind={f.glyph} size={18} />
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 500, letterSpacing: "-0.01em", color: "#111111", marginBottom: 10 }}>
-                {f.title}
-              </div>
-              <div style={{ fontSize: 13, color: "rgba(0,0,0,0.5)", lineHeight: 1.6, letterSpacing: "-0.005em" }}>
-                {f.body}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+// ═══════════════════════════════════════════════════════════════
+// Hero
+// ═══════════════════════════════════════════════════════════════
 
-      {/* Philosophy */}
-      <section style={{
-        maxWidth: 1100, margin: "0 auto", padding: "0 48px 120px",
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center",
-      }}>
-        <div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "rgba(0,0,0,0.35)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 24 }}>
-            Filosofía
-          </div>
-          <h2 style={{ fontFamily: "'Inter Tight', sans-serif", fontSize: 36, fontWeight: 500, letterSpacing: "-0.035em", color: "#111111", margin: "0 0 24px", lineHeight: 1.1 }}>
-            Información como tipografía, no como cajitas.
-          </h2>
-          <p style={{ fontSize: 15, color: "rgba(0,0,0,0.5)", lineHeight: 1.7, margin: 0 }}>
-            La mayoría de las apps de finanzas te muestran dashboards llenos de cards, gradientes y colores. Gastar hace lo opuesto: espacio, jerarquía tipográfica, y hairlines en lugar de sombras.
-          </p>
+function HeroSection() {
+  return (
+    <section className="hero">
+      <div className="wrap">
+        <div className="hero-grid">
+          {/* ── Copy ── */}
+          <motion.div
+            className="copy"
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+          >
+            <motion.span className="eyebrow" variants={fadeUp}>
+              <motion.span
+                className="dot"
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+              />
+              Cuaderno calmo de finanzas · Buenos Aires
+            </motion.span>
+
+            <motion.h1 variants={fadeUp}>
+              Finanzas<br />en <em>silencio</em>.
+            </motion.h1>
+
+            <motion.p className="lede" variants={fadeUp}>
+              gast.ar es un cuaderno calmo para tu dinero. Sin notificaciones urgentes,
+              sin colores estridentes, sin gamificación que te empuje a gastar más.
+              Solo claridad — escrita como un editorial, no como un tablero.
+            </motion.p>
+
+            <motion.div className="ctas" variants={fadeUp}>
+              <motion.a
+                className="btn"
+                href="#"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <span>Abrir workspace</span>
+                <motion.span
+                  className="arrow"
+                  animate={{ x: [0, 3, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  →
+                </motion.span>
+              </motion.a>
+              <motion.a
+                className="btn ghost"
+                href="#"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <span>Ver app móvil</span>
+              </motion.a>
+              <span className="meta">sin tarjeta · 30 días</span>
+            </motion.div>
+          </motion.div>
+
+          {/* ── iPhone mockup ── */}
+          <motion.div
+            className="iphone"
+            aria-label="gast.ar en iPhone"
+            initial={{ opacity: 0, scale: 0.86, y: 40 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.95, delay: 0.5, ease }}
+          >
+            <motion.div
+              style={{ width: "100%", height: "100%" }}
+              animate={{ y: [0, -5, 0] }}
+              transition={{
+                y: { duration: 4.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 1.6 },
+              }}
+            >
+              <div className="vol-extras"><i /><i /></div>
+              <div className="screen">
+                <div className="island" />
+                <div className="status">
+                  <span>9:41</span>
+                  <span className="right">
+                    <svg width="14" height="9" viewBox="0 0 14 9" fill="currentColor">
+                      <rect x="0" y="5.5" width="2.4" height="3.5" rx="0.5" />
+                      <rect x="3.6" y="3.7" width="2.4" height="5.3" rx="0.5" />
+                      <rect x="7.2" y="1.8" width="2.4" height="7.2" rx="0.5" />
+                      <rect x="10.8" y="0" width="2.4" height="9" rx="0.5" />
+                    </svg>
+                    <svg width="20" height="9" viewBox="0 0 20 9" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <rect x="0.5" y="0.5" width="17" height="8" rx="2" />
+                      <rect x="2" y="2" width="14" height="5" rx="0.8" fill="currentColor" stroke="none" />
+                      <path d="M18.5 3v3" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                </div>
+                <div className="content">
+                  <div className="lab">Jue · 14 Mayo</div>
+                  <div className="greeting">Buen día, Tomás</div>
+
+                  <div style={{ height: "12px" }} />
+                  <div className="lab">Balance · 3 cuentas</div>
+                  <div className="big">
+                    <span className="c">AR$</span>
+                    <span>1,284,640<span className="frac">.50</span></span>
+                  </div>
+
+                  <div className="hr" />
+
+                  <div className="stats">
+                    <div>
+                      <div className="v">482,300</div>
+                      <div className="l">Gastado · mayo</div>
+                    </div>
+                    <div>
+                      <div className="v">78<span style={{ fontSize: "11px", color: "var(--faint)" }}>/100</span></div>
+                      <div className="l">Pulso · tranquilo</div>
+                    </div>
+                  </div>
+
+                  <div style={{ height: "12px" }} />
+
+                  <div className="blocks-row">
+                    <div className="blk">
+                      <div className="top">
+                        <svg width="11" height="11" viewBox="0 0 11 11"><rect x="1.5" y="1.5" width="8" height="8" stroke="currentColor" strokeWidth="1.1" fill="none" /></svg>
+                        <span className="pct">77%</span>
+                      </div>
+                      <div className="name">Casa</div>
+                      <div className="bar"><i style={{ width: "77%" }} /></div>
+                    </div>
+                    <div className="blk">
+                      <div className="top">
+                        <svg width="11" height="11" viewBox="0 0 11 11"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.1" fill="none" /></svg>
+                        <span className="pct">63%</span>
+                      </div>
+                      <div className="name">Auto</div>
+                      <div className="bar"><i style={{ width: "63%" }} /></div>
+                    </div>
+                    <div className="blk">
+                      <div className="top">
+                        <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1.5 10 A 5.5 5.5 0 0 1 9.5 10" stroke="currentColor" strokeWidth="1.1" fill="none" /></svg>
+                        <span className="pct">18%</span>
+                      </div>
+                      <div className="name">Japón</div>
+                      <div className="bar"><i style={{ width: "18%" }} /></div>
+                    </div>
+                  </div>
+
+                  <div className="section-head">
+                    <span className="lab">Hoy · 4 mov</span>
+                    <span className="link">Todo →</span>
+                  </div>
+                  <div className="tx">
+                    <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" strokeWidth="1.1" fill="none" /></svg>
+                    <div className="n">Mercadolibre <small>APARTAMENTO · 14:22</small></div>
+                    <div className="a">−8.4k</div>
+                  </div>
+                  <div className="tx">
+                    <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.1" fill="none" /></svg>
+                    <div className="n">Café Lattente <small>COMIDA · 09:48</small></div>
+                    <div className="a">−3.2k</div>
+                  </div>
+                  <div className="tx">
+                    <svg width="12" height="12" viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" /></svg>
+                    <div className="n">Subte SUBE <small>TRANSPORTE · 08:12</small></div>
+                    <div className="a">−1.1k</div>
+                  </div>
+
+                  <div className="upcoming">
+                    <div className="dot" />
+                    <div className="up-text">
+                      <div className="up-title">Edenor · próximo viernes</div>
+                      <div className="up-sub">RECURRENTE · APARTAMENTO</div>
+                    </div>
+                    <div className="up-amt">−16.8k</div>
+                  </div>
+
+                  <div className="tabbar">
+                    <button className="active">
+                      <svg width="14" height="14" viewBox="0 0 14 14">
+                        <rect x="2" y="2" width="4" height="4" fill="currentColor" />
+                        <rect x="8" y="2" width="4" height="4" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="2" y="8" width="4" height="4" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="8" y="8" width="4" height="4" stroke="currentColor" strokeWidth="1" fill="none" />
+                      </svg>
+                    </button>
+                    <button>
+                      <svg width="14" height="14" viewBox="0 0 14 14">
+                        <line x1="3" y1="5" x2="11" y2="5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        <line x1="3" y1="8" x2="11" y2="8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        <line x1="3" y1="11" x2="8" y2="11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    <div className="fab-pair">
+                      <div className="fab">
+                        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+                      </div>
+                      <div className="fab alt">
+                        <svg width="10" height="10" viewBox="0 0 10 10">
+                          <line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                          <line x1="5" y1="2" x2="5" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                    </div>
+                    <button>
+                      <svg width="14" height="14" viewBox="0 0 14 14">
+                        <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="1.1" fill="none" />
+                        <rect x="7.5" y="2" width="4" height="4" stroke="currentColor" strokeWidth="1.1" fill="none" />
+                        <path d="M2 12l2-3.4L6 12" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round" />
+                        <circle cx="9.7" cy="9.7" r="2" stroke="currentColor" strokeWidth="1.1" fill="none" />
+                      </svg>
+                    </button>
+                    <button>
+                      <svg width="14" height="14" viewBox="0 0 14 14">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.1" fill="none" />
+                        <path d="M7 7 L7 2.5 A 4.5 4.5 0 0 1 11 9 Z" fill="currentColor" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="home-bar" />
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
-        <div style={{
-          background: "#FAFAF8", borderRadius: 20,
-          border: "1px solid rgba(0,0,0,0.07)",
-          padding: 32,
-          boxShadow: "0 2px 40px rgba(0,0,0,0.06)",
-        }}>
+
+        {/* ── Stats bar ── */}
+        <motion.div
+          className="hero-marquee"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-40px" }}
+          variants={staggerContainer}
+        >
           {[
-            { label: "Balance total", value: "$1.284.640", sub: "3 cuentas · sincronizadas" },
-            { label: "Gastado este mes", value: "$482.300", sub: "80% del presupuesto" },
-            { label: "Ahorro",  value: "$312.000", sub: "Tasa 24% · en meta" },
-          ].map((row, i) => (
-            <div key={i} style={{ padding: "18px 0", borderBottom: i < 2 ? "1px solid rgba(0,0,0,0.06)" : "none" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "rgba(0,0,0,0.35)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-                {row.label}
+            { k: "3 seg", l: "Anotar un gasto" },
+            { k: "0 ads", l: "Cero publicidad" },
+            { k: "100%", l: "Local primero" },
+            { k: "AR$ · USD", l: "Multimoneda" },
+          ].map((s) => (
+            <motion.div key={s.l} variants={fadeUp}>
+              <div className="k tnum">{s.k}</div>
+              <div className="l">{s.l}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Principles
+// ═══════════════════════════════════════════════════════════════
+
+function PrinciplesSection() {
+  return (
+    <section id="principios">
+      <div className="wrap">
+        <motion.div
+          className="sec-head"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp}>
+            <span className="eyebrow">
+              <motion.span
+                className="dot"
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              01 · Principios
+            </span>
+          </motion.div>
+          <motion.h2 className="sec-title" variants={fadeUp}>
+            Tres ideas que <em>no negociamos</em>.
+          </motion.h2>
+        </motion.div>
+
+        <motion.div
+          className="principles"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={staggerSlow}
+        >
+          {[
+            {
+              n: "P / 01",
+              title: <>Editorial,<br />no <em>dashboard</em>.</>,
+              text: "Tu dinero no es un panel de control de avión. Mostramos la información como una página de revista: jerarquía, tipografía, blanco. Sin carteles que parpadean, sin íconos de colores que compiten por tu atención.",
+            },
+            {
+              n: "P / 02",
+              title: <>Local <em>primero</em>.</>,
+              text: "Todo se guarda primero en tu dispositivo. Sincronizar es opcional y cifrado. No vendemos tus datos, no los analizamos para anunciantes, no entrenamos modelos con ellos. Cifrado de extremo a extremo cuando elegís compartir.",
+            },
+            {
+              n: "P / 03",
+              title: <>Sin <em>slot machines</em>.</>,
+              text: "Nada de notificaciones rojas, rachas de días o medallas. El éxito en gast.ar es ahorrar y dormir tranquilo, no abrir la app. Por eso reemplazamos métricas vacías por un solo número: el Pulso.",
+            },
+          ].map((p) => (
+            <motion.div key={p.n} variants={fadeUp}>
+              <span className="n">{p.n}</span>
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Product / Showcase
+// ═══════════════════════════════════════════════════════════════
+
+function ProductSection() {
+  return (
+    <section id="producto">
+      <div className="wrap">
+        <motion.div
+          className="sec-head"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp}>
+            <span className="eyebrow">
+              <motion.span
+                className="dot"
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              02 · Producto
+            </span>
+          </motion.div>
+          <motion.h2 className="sec-title" variants={fadeUp}>
+            Una mirada <em>silenciosa</em><br />a todo lo que se mueve.
+          </motion.h2>
+        </motion.div>
+
+        <motion.div
+          className="showcase-stage"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={scaleIn}
+        >
+          <div className="frame">
+            <div className="titlebar">
+              <div className="traffic">
+                <motion.span
+                  animate={{ opacity: [0.4, 0.9, 0.4] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                />
+                <motion.span
+                  animate={{ opacity: [0.4, 0.9, 0.4] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.3 }}
+                />
+                <motion.span
+                  animate={{ opacity: [0.4, 0.9, 0.4] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.6 }}
+                />
               </div>
-              <div style={{ fontFamily: "'Inter Tight', sans-serif", fontSize: 26, fontWeight: 500, letterSpacing: "-0.04em", color: "#111111", marginBottom: 4 }}>
-                {row.value}
+              <div className="url">gast.ar / workspace / inicio</div>
+              <div style={{ width: "36px" }} />
+            </div>
+            <div className="preview">
+              <div className="top">
+                <div>
+                  <div className="eyebrow">Jueves · 14 mayo 2026</div>
+                  <h4>Buen día, Tomás</h4>
+                </div>
+                <div className="eyebrow">Sincronizado · hace 2 min</div>
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "rgba(0,0,0,0.3)", letterSpacing: "0.06em" }}>
-                {row.sub}
+
+              <div className="eyebrow">Balance total · 3 cuentas</div>
+              <div className="balance" style={{ marginTop: "12px" }}>
+                <span className="code">AR$</span>
+                <span>
+                  <AnimatedNumber value={1284640} className="tnum" />
+                  <span className="frac">.50</span>
+                </span>
               </div>
+
+              <div className="hr" />
+
+              <div className="row">
+                <div className="stat">
+                  <div className="v"><AnimatedNumber value={482300} /></div>
+                  <div className="l">Gastado</div>
+                </div>
+                <div className="stat">
+                  <div className="v"><AnimatedNumber value={117700} /></div>
+                  <div className="l">Disponible</div>
+                </div>
+                <div className="stat">
+                  <div className="v">
+                    <AnimatedNumber value={78} />
+                    <span style={{ fontSize: "13px", color: "var(--faint)" }}>/100</span>
+                  </div>
+                  <div className="l">Pulso · tranquilo</div>
+                </div>
+              </div>
+
+              <div className="blocks" style={{ marginTop: "26px" }}>
+                <div className="blk">
+                  <div className="h">
+                    <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" stroke="currentColor" strokeWidth="1.2" fill="none" /></svg>
+                    <span className="mono" style={{ fontSize: "9px", color: "var(--faint)", letterSpacing: "0.06em" }}>77%</span>
+                  </div>
+                  <div className="t">Apartamento</div>
+                  <div className="bar"><motion.i
+                    initial={{ width: "0%" }}
+                    whileInView={{ width: "77%" }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, delay: 0.6, ease }}
+                  /></div>
+                  <div className="m">184k / 240k</div>
+                </div>
+                <div className="blk">
+                  <div className="h">
+                    <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" fill="none" /></svg>
+                    <span className="mono" style={{ fontSize: "9px", color: "var(--faint)", letterSpacing: "0.06em" }}>63%</span>
+                  </div>
+                  <div className="t">Auto</div>
+                  <div className="bar"><motion.i
+                    initial={{ width: "0%" }}
+                    whileInView={{ width: "63%" }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, delay: 0.75, ease }}
+                  /></div>
+                  <div className="m">56.4k / 90k</div>
+                </div>
+                <div className="blk">
+                  <div className="h">
+                    <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 14 A 8 8 0 0 1 14 14" stroke="currentColor" strokeWidth="1.2" fill="none" /></svg>
+                    <span className="mono" style={{ fontSize: "9px", color: "var(--faint)", letterSpacing: "0.06em" }}>18%</span>
+                  </div>
+                  <div className="t">Viaje Japón</div>
+                  <div className="bar"><motion.i
+                    initial={{ width: "0%" }}
+                    whileInView={{ width: "18%" }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, delay: 0.9, ease }}
+                  /></div>
+                  <div className="m">320k / 1.8M</div>
+                </div>
+              </div>
+
+              <div className="hr" style={{ marginTop: "22px" }} />
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div className="eyebrow">Tendencia · mayo</div>
+                <span className="mono" style={{ fontSize: "9px", color: "var(--faint)", letterSpacing: "0.06em" }}>−7.5% vs mes anterior</span>
+              </div>
+              <svg className="spark" viewBox="0 0 300 40" preserveAspectRatio="none" style={{ marginTop: "10px" }}>
+                <motion.polyline
+                  points="0,28 16,24 32,26 48,20 64,24 80,18 96,16 112,18 128,14 144,16 160,12 176,14 192,11 208,9 224,12 240,8 256,10 272,6 288,8 300,5"
+                  fill="none" stroke="currentColor" strokeWidth="1.2"
+                  initial={{ pathLength: 0 }}
+                  whileInView={{ pathLength: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.4, delay: 1, ease: "easeInOut" }}
+                />
+              </svg>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Features
+// ═══════════════════════════════════════════════════════════════
+
+function FeaturesSection() {
+  const articles = [
+    {
+      num: "F / 01",
+      title: <>Bloques de <em>vida</em>.</>,
+      text: "Agrupá tus gastos por proyectos que sí importan: el apartamento, el auto, el viaje a Japón, el setup freelance. Cada bloque tiene su presupuesto, su tendencia y su propio Pulso.",
+      demo: (
+        <div className="demo-blocks">
+          {[
+            { icon: "rect", pct: "77%", t: "Apartamento", w: "77%", m: "184k / 240k" },
+            { icon: "circle", pct: "63%", t: "Auto", w: "63%", m: "56.4k / 90k" },
+            { icon: "arch", pct: "18%", t: "Viaje Japón", w: "18%", m: "320k / 1.8M" },
+            { icon: "diamond", pct: "78%", t: "Freelance", w: "78%", m: "218k / 280k" },
+          ].map((b, i) => (
+            <div className="b" key={b.t}>
+              <div className="g">
+                {b.icon === "rect" && <svg width="18" height="18" viewBox="0 0 18 18"><rect x="2.5" y="2.5" width="13" height="13" stroke="currentColor" strokeWidth="1.3" fill="none" /></svg>}
+                {b.icon === "circle" && <svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.3" fill="none" /></svg>}
+                {b.icon === "arch" && <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 16 A 8 8 0 0 1 16 16" stroke="currentColor" strokeWidth="1.3" fill="none" /></svg>}
+                {b.icon === "diamond" && <svg width="18" height="18" viewBox="0 0 18 18"><rect x="3" y="3" width="12" height="12" transform="rotate(45 9 9)" stroke="currentColor" strokeWidth="1.3" fill="none" /></svg>}
+                <span className="mono" style={{ fontSize: "9px", color: "var(--faint)", letterSpacing: "0.06em" }}>{b.pct}</span>
+              </div>
+              <div className="t">{b.t}</div>
+              <div className="bar"><motion.i
+                initial={{ width: "0%" }}
+                whileInView={{ width: b.w }}
+                viewport={{ once: true }}
+                transition={{ duration: 1, delay: 0.4 + i * 0.15, ease }}
+              /></div>
+              <div className="m">{b.m}</div>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* CTA */}
-      <section style={{
-        borderTop: "1px solid rgba(0,0,0,0.07)",
-        padding: "80px 48px",
-        textAlign: "center",
-      }}>
-        <h2 style={{ fontFamily: "'Inter Tight', sans-serif", fontSize: 40, fontWeight: 500, letterSpacing: "-0.04em", color: "#111111", margin: "0 0 16px" }}>
-          Empezá hoy.
-        </h2>
-        <p style={{ fontSize: 15, color: "rgba(0,0,0,0.45)", margin: "0 0 36px" }}>
-          Gratis. Sin tarjeta de crédito. Sin límites de transacciones.
-        </p>
-        <a href="http://localhost:3000/signup" style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "14px 32px", borderRadius: 10,
-          background: "#111111", color: "#FAFAF8",
-          textDecoration: "none", fontSize: 14, fontWeight: 500,
-        }}>
-          Crear cuenta gratis
-        </a>
-      </section>
-
-      {/* Footer */}
-      <footer style={{
-        borderTop: "1px solid rgba(0,0,0,0.07)",
-        padding: "28px 48px",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-      }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "rgba(0,0,0,0.3)", letterSpacing: "0.1em" }}>
-          GASTAR · {new Date().getFullYear()}
+      ),
+    },
+    {
+      num: "F / 02",
+      title: <>Captura en <em>3 segundos</em>.</>,
+      text: "Anotá un gasto sin pensar. Widget en la pantalla principal, atajo en la pantalla de bloqueo, comando ⌘N en escritorio. Categoría sugerida automáticamente.",
+      demo: (
+        <div className="demo-capture">
+          <div className="line">
+            <span className="l">Monto</span>
+            <span className="v amount">−AR$ 3,200</span>
+            <span className="kbd">⌘↵</span>
+          </div>
+          <div className="line">
+            <span className="l">Qué</span>
+            <span className="v">Café Lattente</span>
+          </div>
+          <div className="line">
+            <span className="l">Bloque</span>
+            <span className="v" style={{ color: "var(--mute)" }}>Comida · sugerido</span>
+            <span className="kbd">↹</span>
+          </div>
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "rgba(0,0,0,0.25)", letterSpacing: "0.1em" }}>
-          HECHO EN ARGENTINA
+      ),
+    },
+    {
+      num: "F / 03",
+      title: <>Pulso <em>financiero</em>.</>,
+      text: "Un solo número del 0 al 100 que resume tu mes. Sube cuando ahorrás, seguís tu plan y registrás a diario. Reemplaza dashboards llenos de KPIs por algo que sí podés sentir.",
+      demo: (
+        <div className="demo-pulso">
+          <div className="num">78<small>/100</small></div>
+          <div className="breakdown">
+            {[
+              { lbl: "Ahorro", w: "82%", v: "82" },
+              { lbl: "Adherencia", w: "71%", v: "71" },
+              { lbl: "Consistencia", w: "88%", v: "88" },
+              { lbl: "Cuotas", w: "65%", v: "65" },
+            ].map((r, i) => (
+              <div className="row" key={r.lbl}>
+                <span className="lbl">{r.lbl}</span>
+                <span className="bar"><motion.i
+                  initial={{ width: "0%" }}
+                  whileInView={{ width: r.w }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.5 + i * 0.12, ease }}
+                /></span>
+                <span className="v">{r.v}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </footer>
+      ),
+    },
+    {
+      num: "F / 04",
+      title: <>Lectura del <em>mes</em>.</>,
+      text: "Cada lunes te llega tu semana en una página. Cada fin de mes, un editorial: patrones, tendencias, lo que cambió. Calmo, breve, sin alertas.",
+      demo: (
+        <div className="demo-reading">
+          <div className="stat-row">
+            <div>
+              <div className="v">−7.5%</div>
+              <div className="l">vs mes anterior</div>
+            </div>
+            <div>
+              <div className="v">Mié</div>
+              <div className="l">día de más gasto</div>
+            </div>
+            <div>
+              <div className="v">13</div>
+              <div className="l">días sin ocio</div>
+            </div>
+          </div>
+          <svg className="spark" viewBox="0 0 300 40" preserveAspectRatio="none">
+            <motion.polyline
+              points="0,20 30,18 60,22 90,15 120,17 150,11 180,14 210,9 240,11 270,6 300,8"
+              fill="none" stroke="currentColor" strokeWidth="1.2"
+              initial={{ pathLength: 0 }}
+              whileInView={{ pathLength: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.2, delay: 0.6, ease: "easeInOut" }}
+            />
+          </svg>
+        </div>
+      ),
+    },
+  ];
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Inter+Tight:wght@500;600&family=JetBrains+Mono:wght@400&display=swap');
-        @keyframes fade-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        a { transition: opacity 150ms ease; }
-        a:hover { opacity: 0.75; }
-      `}</style>
-    </div>
+  return (
+    <section id="features" style={{ paddingTop: "32px" }}>
+      <div className="wrap">
+        <motion.div
+          className="features"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={staggerContainer}
+        >
+          {articles.map((a, i) => (
+            <motion.article
+              key={a.num}
+              variants={fadeUp}
+              transition={{ duration: 0.6, delay: i * 0.1, ease }}
+            >
+              <span className="num">{a.num}</span>
+              <h3>{a.title}</h3>
+              <p>{a.text}</p>
+              <div className="demo">{a.demo}</div>
+            </motion.article>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Quote
+// ═══════════════════════════════════════════════════════════════
+
+function QuoteSection() {
+  return (
+    <section className="quote">
+      <div className="wrap">
+        <motion.blockquote
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.8, ease }}
+        >
+          "La mejor app de finanzas es la que no necesitás abrir todos los días.
+          gast.ar entendió eso antes que el resto."
+        </motion.blockquote>
+        <motion.cite
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.5, delay: 0.35, ease }}
+        >
+          Lucía Mendez · diseñadora · Buenos Aires
+        </motion.cite>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Pricing
+// ═══════════════════════════════════════════════════════════════
+
+function PricingSection() {
+  const plans = [
+    {
+      name: "Plan / 01 · Apunte",
+      tier: "Apunte",
+      cost: "AR$ 0",
+      period: "· para siempre",
+      desc: "Lo básico para arrancar a anotar tus gastos. Sin cuentas conectadas, hasta 2 bloques.",
+      features: [
+        "Captura manual ilimitada",
+        "2 bloques de vida",
+        "Lectura mensual",
+      ],
+      crossed: [
+        "Cuentas conectadas",
+        "Sincronización entre dispositivos",
+        "Pulso completo",
+      ],
+      cta: "Empezar gratis",
+      ghost: true,
+    },
+    {
+      name: "Plan / 02 · Tranquilo",
+      tier: <><em>Tranquilo</em></>,
+      cost: "AR$ 3.900",
+      period: "· por mes",
+      desc: "El plan para quien quiere ver su dinero entero. Bloques sin límite, Pulso, calendario, todo.",
+      features: [
+        "Captura manual + atajos",
+        "Bloques ilimitados",
+        "Pulso financiero completo",
+        "Cuentas conectadas (MP · bancos · Wise)",
+        "Sincronización móvil + escritorio",
+        "Exportar a CSV / AFIP",
+      ],
+      crossed: [],
+      cta: "Probar 30 días",
+      ghost: false,
+      featured: true,
+    },
+    {
+      name: "Plan / 03 · Acompañado",
+      tier: "Acompañado",
+      cost: "AR$ 5.900",
+      period: "· por mes",
+      desc: "Compartido entre dos, con bloques propios y compartidos. Para parejas y convivientes.",
+      features: [
+        "Todo lo del plan Tranquilo",
+        "2 usuarios + 1 workspace compartido",
+        "Bloques privados y compartidos",
+        "División justa automática",
+        "Lectura conjunta del mes",
+        "Soporte prioritario",
+      ],
+      crossed: [],
+      cta: "Probar 30 días",
+      ghost: true,
+    },
+  ];
+
+  return (
+    <section id="precios">
+      <div className="wrap">
+        <motion.div
+          className="sec-head"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp}>
+            <span className="eyebrow">
+              <motion.span
+                className="dot"
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              03 · Precios
+            </span>
+          </motion.div>
+          <motion.h2 className="sec-title" variants={fadeUp}>
+            Pagás una vez por <em>mes</em>.<br />Nada más.
+          </motion.h2>
+        </motion.div>
+
+        <motion.div
+          className="prices"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={staggerSlow}
+        >
+          {plans.map((p) => (
+            <motion.div
+              key={p.name}
+              className={p.featured ? "featured" : ""}
+              variants={p.featured ? scaleIn : fadeUp}
+            >
+              <div className="name">{p.name}</div>
+              <div className="tier">{p.tier}</div>
+              <div className="cost"><span>{p.cost}</span><small>{p.period}</small></div>
+              <p className="desc">{p.desc}</p>
+              <ul>
+                {p.features.map((f) => <li key={f}>{f}</li>)}
+                {p.crossed.map((f) => <li key={f} className="x">{f}</li>)}
+              </ul>
+              <motion.a
+                className={`btn${p.ghost ? " ghost" : ""}`}
+                href="#"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                {p.cta}
+              </motion.a>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FAQ
+// ═══════════════════════════════════════════════════════════════
+
+function FAQSection() {
+  const items = [
+    {
+      q: "¿Mis datos están seguros? ¿Quién los ve?",
+      a: "Cero personas en gast.ar ve tus movimientos. Local-first significa que los datos se guardan primero en tu dispositivo. Si activás sincronización, viajan cifrados extremo a extremo: nuestro servidor solo guarda blobs encriptados que ni nosotros podemos leer. No vendemos datos, no entrenamos modelos con ellos, no hay publicidad.",
+    },
+    {
+      q: "¿Funciona si no tengo internet?",
+      a: "Sí. La app entera funciona sin conexión, incluyendo capturas, búsqueda y reportes. La sincronización con cuentas bancarias (opcional) sí necesita internet, pero el resto vive 100% offline.",
+    },
+    {
+      q: "¿Conecta con mi banco o con Mercado Pago?",
+      a: "Hoy soportamos Mercado Pago, Galicia, Santander, BBVA, Brubank, Wise y Belo. Las conexiones son de solo lectura — gast.ar nunca puede mover plata. También podés importar resúmenes en PDF o CSV de cualquier banco.",
+    },
+    {
+      q: "¿Hay app móvil además del workspace web?",
+      a: "Sí — el workspace para escritorio (con teclado y comandos) y la app móvil para iPhone y Android. Ambas comparten datos y diseño. El móvil está optimizado para captura rápida y consultas; el escritorio, para entender y planificar.",
+    },
+    {
+      q: "¿Por qué no hay notificaciones agresivas?",
+      a: "Porque el éxito de gast.ar no se mide en cuántas veces lo abrís. Mandamos una sola notificación por semana — los lunes a la mañana, con tu resumen de los últimos 7 días. Si querés alertas adicionales (presupuesto excedido, cuotas próximas), las activás vos desde Ajustes.",
+    },
+    {
+      q: "¿Puedo cancelar cuando quiera?",
+      a: "Cuando quieras, sin penalidades. Si cancelás, mantenés acceso al plan Apunte gratis para siempre y podés exportar todos tus datos a CSV en cualquier momento. Sin retenciones, sin formularios oscuros.",
+    },
+  ];
+
+  return (
+    <section id="preguntas">
+      <div className="wrap">
+        <motion.div
+          className="sec-head"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp}>
+            <span className="eyebrow">
+              <motion.span
+                className="dot"
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              04 · Preguntas
+            </span>
+          </motion.div>
+          <motion.h2 className="sec-title" variants={fadeUp}>
+            Lo que <em>nos preguntan</em><br />antes de empezar.
+          </motion.h2>
+        </motion.div>
+
+        <motion.div
+          className="faq"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-40px" }}
+          variants={staggerSlow}
+        >
+          {items.map((item) => (
+            <motion.details key={item.q} variants={fadeUp}>
+              <summary>
+                <span>{item.q}</span>
+                <span className="plus" />
+              </summary>
+              <div className="answer">{item.a}</div>
+            </motion.details>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Footer
+// ═══════════════════════════════════════════════════════════════
+
+function FooterSection() {
+  const links = {
+    Producto: ["Workspace", "App móvil", "Precios", "Preguntas"],
+    Empresa: ["Manifiesto", "Notas", "Trabajá con nosotros", "Prensa"],
+    Legal: ["Privacidad", "Términos", "Seguridad", "Cookies"],
+  };
+
+  return (
+    <footer>
+      <div className="wrap">
+        <motion.div
+          className="foot-top"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp}>
+            <span className="eyebrow">
+              <motion.span
+                className="dot"
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              gast.ar · Buenos Aires
+            </span>
+            <p className="pitch" style={{ marginTop: "18px" }}>
+              Una herramienta calma para tu dinero. Local primero, cifrada, sin notificaciones urgentes.
+              Hecha en Buenos Aires por dos personas que querían dejar de mirar dashboards.
+            </p>
+          </motion.div>
+
+          {Object.entries(links).map(([title, items]) => (
+            <motion.div key={title} variants={fadeUp}>
+              <h5>{title}</h5>
+              <ul>
+                {items.map((label) => (
+                  <li key={label}>
+                    <motion.a
+                      href="#"
+                      whileHover={{ x: 3 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {label}
+                    </motion.a>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.h2
+          className="foot-wordmark"
+          initial={{ opacity: 0, scale: 0.88, y: 32 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.9, ease }}
+        >
+          gast<em>.ar</em>
+        </motion.h2>
+
+        <motion.div
+          className="foot-bottom"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <span>© 2026 · gast.ar SAS · hecho con calma</span>
+          <span>v0.2 · MAY 2026</span>
+        </motion.div>
+      </div>
+    </footer>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Main Page
+// ═══════════════════════════════════════════════════════════════
+
+export default function LandingPage() {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    document.body.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  return (
+    <>
+      <TopBar scrolled={scrolled} theme={theme} toggleTheme={toggleTheme} />
+      <main id="top">
+        <HeroSection />
+        <PrinciplesSection />
+        <ProductSection />
+        <FeaturesSection />
+        <QuoteSection />
+        <PricingSection />
+        <FAQSection />
+        <FooterSection />
+      </main>
+    </>
   );
 }

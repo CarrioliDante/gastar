@@ -1,5 +1,15 @@
 <!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+# Next.js Rules
+
+This repo uses Next.js 16.
+
+- Check `node_modules/next/dist/docs/` before changing framework APIs, routing, caching, metadata, server actions, or config.
+- Prefer current docs over training-data assumptions.
 <!-- END:nextjs-agent-rules -->
+
+# Repo Rules
+
+- Keep edits small and reuse existing patterns before adding abstractions or dependencies.
+- `apps/web` and `apps/landing` are web surfaces; `apps/mobile` is Expo/React Native.
+- Keep shared contracts in `packages/shared`.

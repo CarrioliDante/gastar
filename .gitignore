@@ -45,4 +45,4 @@ yarn-error.log*
 
 # Claude Code
 .claude/
-CLAUDE.MD
+CLAUDE.md

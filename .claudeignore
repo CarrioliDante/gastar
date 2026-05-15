@@ -1,0 +1,31 @@
+# Dependencies
+
+\*\*/node_modules/
+
+# Build outputs
+
+**/.next/
+**/out/
+**/dist/
+**/build/
+
+# Expo / React Native
+
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+
+# Generated code
+
+apps/web/src/generated/
+apps/web/prisma/migrations/
+
+# Lockfiles
+
+pnpm-lock.yaml
+
+# Misc
+
+**/.DS_Store
+**/_.tsbuildinfo
+\*\*/_.pem
