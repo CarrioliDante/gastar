@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useTransition, useOptimistic } from "react";
-import { createInstallment, payInstallment, deleteInstallment } from "@/app/actions/installments";
+import { useState } from "react";
+import { useInstallments } from "@/hooks/queries";
+import { useCreateInstallment, usePayInstallment, useDeleteInstallment } from "@/hooks/mutations";
+import { useCurrency } from "@/hooks/use-currency";
+import { AmountInput } from "@/components/ui/amount-input";
+import type { InstallmentRow } from "@/hooks/queries";
 
-type InstRow = {
-  id: string; name: string; total: number; paid: number;
-  remaining: number; total_installments: number; monthly: number; next_due: string;
-  pending?: boolean;
-};
+type InstRow = InstallmentRow;
 
 const fieldStyle: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: 8,
@@ -21,76 +21,27 @@ const labelStyle: React.CSSProperties = {
   textTransform: "uppercase", marginBottom: 6,
 };
 
-type Action =
-  | { type: "add"; item: InstRow }
-  | { type: "pay"; id: string }
-  | { type: "remove"; id: string };
-
-function reducer(state: InstRow[], action: Action): InstRow[] {
-  switch (action.type) {
-    case "add":
-      return [...state, action.item];
-    case "pay":
-      return state.map(i => {
-        if (i.id !== action.id) return i;
-        const newRemaining = Math.max(0, i.remaining - 1);
-        const paidCount = i.total_installments - newRemaining;
-        const nextMonth = new Date();
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        return {
-          ...i,
-          remaining: newRemaining,
-          paid: paidCount * i.monthly,
-          next_due: nextMonth.toLocaleDateString("es-AR", { month: "short", day: "numeric" }),
-          pending: true,
-        };
-      });
-    case "remove":
-      return state.filter(i => i.id !== action.id);
-  }
-}
-
-function AddForm({
-  onDone,
-  onAdd,
-}: {
-  onDone: () => void;
-  onAdd: (item: InstRow, fd: FormData) => void;
-}) {
+function AddForm({ onDone }: { onDone: () => void }) {
   const [total, setTotal] = useState("");
   const [n, setN] = useState("12");
   const [paid, setPaid] = useState("0");
+  const { format } = useCurrency();
+  const createInst = useCreateInstallment();
 
   const paidN = Math.max(0, parseInt(paid) || 0);
   const totalN = Math.max(1, parseInt(n) || 1);
   const remaining = Math.max(0, totalN - paidN);
-  const monthly = total && n ? (parseFloat(total) / totalN).toFixed(2) : "";
+  const monthlyAmt = total ? parseFloat(total) / totalN : 0;
+  const monthly = monthlyAmt > 0 ? format(monthlyAmt) : "";
 
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const monthlyAmt = parseFloat(total) / totalN;
+    const monthlyAmt = parseFloat(total) / totalN || 0;
     fd.set("monthlyAmount", monthlyAmt.toString());
     fd.set("paidInstallments", String(paidN));
 
-    const nextDueDateRaw = fd.get("nextDueDate") as string;
-    const nextDue = nextDueDateRaw
-      ? new Date(nextDueDateRaw).toLocaleDateString("es-AR", { month: "short", day: "numeric" })
-      : new Date().toLocaleDateString("es-AR", { month: "short", day: "numeric" });
-
-    const optimisticItem: InstRow = {
-      id: `opt-${Date.now()}`,
-      name: fd.get("name") as string,
-      total: parseFloat(total) || 0,
-      paid: paidN * monthlyAmt,
-      remaining,
-      total_installments: totalN,
-      monthly: monthlyAmt,
-      next_due: nextDue,
-      pending: true,
-    };
-
-    onAdd(optimisticItem, fd);
+    createInst.mutate(fd);
     onDone();
   };
 
@@ -103,9 +54,9 @@ function AddForm({
         </div>
         <div>
           <div className="mono" style={labelStyle}>Total</div>
-          <input
-            name="totalAmount" type="number" required
-            value={total} onChange={e => setTotal(e.target.value)}
+          <AmountInput
+            name="totalAmount" required
+            value={total} onChange={setTotal}
             placeholder="0" style={fieldStyle}
           />
         </div>
@@ -127,7 +78,11 @@ function AddForm({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "flex-end" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, alignItems: "flex-end" }}>
+        <div>
+          <div className="mono" style={labelStyle}>Fecha inicio</div>
+          <input name="startedAt" type="date" style={fieldStyle} />
+        </div>
         <div>
           <div className="mono" style={labelStyle}>Próximo venc.</div>
           <input name="nextDueDate" type="date" style={fieldStyle} />
@@ -147,9 +102,10 @@ function AddForm({
           padding: "9px 14px", borderRadius: 8, border: "none", cursor: "pointer",
           background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
         }}>Cancelar</button>
-        <button type="submit" style={{
+        <button type="submit" disabled={createInst.isPending} style={{
           padding: "9px 18px", borderRadius: 8, border: "none", cursor: "pointer",
-          background: "var(--ink)", color: "var(--inverse)",
+          background: createInst.isPending ? "var(--surface)" : "var(--ink)",
+          color: createInst.isPending ? "var(--faint)" : "var(--inverse)",
           fontFamily: "inherit", fontSize: 12, fontWeight: 500,
         }}>Agregar cuota</button>
       </div>
@@ -157,24 +113,22 @@ function AddForm({
   );
 }
 
-function InstRowItem({
-  item,
-  onPay,
-  onDelete,
-}: {
-  item: InstRow;
-  onPay: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
+function InstRowItem({ item }: { item: InstRow }) {
+  const { format } = useCurrency();
+  const pay = usePayInstallment();
+  const del = useDeleteInstallment();
+
   const paidCount = item.total_installments - item.remaining;
   const pct = paidCount / item.total_installments;
   const r = 18, c = 2 * Math.PI * r;
+  const isOpt = item.id.startsWith("opt-");
+  const isDone = item.remaining === 0;
 
   return (
     <div className="row-hover" style={{
       display: "flex", alignItems: "center", gap: 16,
       padding: "18px 0", borderBottom: "1px solid var(--hairline)",
-      opacity: item.pending ? 0.55 : 1,
+      opacity: isOpt ? 0.55 : 1,
       transition: "opacity 200ms",
     }}>
       {/* Radial mini */}
@@ -207,61 +161,41 @@ function InstRowItem({
       {/* Amounts */}
       <div style={{ textAlign: "right", flexShrink: 0 }}>
         <div className="display tnum" style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.025em" }}>
-          ${item.monthly.toLocaleString("en-US")}
+          {format(item.monthly)}
         </div>
         <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>/ mes</div>
       </div>
 
       {/* Actions */}
       <button
-        onClick={() => !item.pending && item.remaining > 0 && onPay(item.id)}
-        disabled={!!item.pending || item.remaining === 0}
+        onClick={() => !isOpt && !isDone && pay.mutate(item.id)}
+        disabled={isOpt || isDone || pay.isPending}
         style={{
           padding: "7px 14px", borderRadius: 7, border: "none",
-          cursor: item.pending || item.remaining === 0 ? "default" : "pointer",
+          cursor: isOpt || isDone || pay.isPending ? "default" : "pointer",
           background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
-          color: item.remaining > 0 && !item.pending ? "var(--mute)" : "var(--faint)",
+          color: isDone || pay.isPending ? "var(--faint)" : "var(--mute)",
           boxShadow: "inset 0 0 0 1px var(--hairline)", flexShrink: 0,
         }}>
-        {item.remaining === 0 ? "Completo" : "Pagar cuota"}
+        {isDone ? "Completo" : "Pagar cuota"}
       </button>
 
       <button
-        onClick={() => !item.pending && onDelete(item.id)}
-        disabled={!!item.pending}
+        onClick={() => !isOpt && del.mutate(item.id)}
+        disabled={isOpt || del.isPending}
         className="del-btn">×</button>
     </div>
   );
 }
 
-export function InstallmentsClient({ items }: { items: InstRow[] }) {
+export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }) {
   const [adding, setAdding] = useState(false);
-  const [, start] = useTransition();
-  const [optimisticItems, dispatch] = useOptimistic(items, reducer);
+  const { data: items } = useInstallments(initialItems);
+  const { format } = useCurrency();
 
-  const totalMonthly = optimisticItems.reduce((s, i) => s + i.monthly, 0);
-  const totalRemaining = optimisticItems.reduce((s, i) => s + i.remaining * i.monthly, 0);
-
-  const handleAdd = (item: InstRow, fd: FormData) => {
-    start(async () => {
-      dispatch({ type: "add", item });
-      await createInstallment(fd);
-    });
-  };
-
-  const handlePay = (id: string) => {
-    start(async () => {
-      dispatch({ type: "pay", id });
-      await payInstallment(id);
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    start(async () => {
-      dispatch({ type: "remove", id });
-      await deleteInstallment(id);
-    });
-  };
+  const list = items ?? [];
+  const totalMonthly = list.reduce((s, i) => s + i.monthly, 0);
+  const totalRemaining = list.reduce((s, i) => s + i.remaining * i.monthly, 0);
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
@@ -277,18 +211,18 @@ export function InstallmentsClient({ items }: { items: InstRow[] }) {
         {totalMonthly > 0 && (
           <div style={{ textAlign: "right" }}>
             <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.04em" }}>
-              ${totalMonthly.toLocaleString("en-US")}
+              {format(totalMonthly)}
               <span style={{ color: "var(--faint)", fontSize: 14, fontWeight: 400 }}>/mes</span>
             </div>
             <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
-              ${totalRemaining.toLocaleString("en-US")} PENDIENTE TOTAL
+              {format(totalRemaining)} PENDIENTE TOTAL
             </div>
           </div>
         )}
       </header>
 
       <div style={{ marginTop: 8 }}>
-        {adding && <AddForm onDone={() => setAdding(false)} onAdd={handleAdd} />}
+        {adding && <AddForm onDone={() => setAdding(false)} />}
         {!adding && (
           <button onClick={() => setAdding(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -303,19 +237,12 @@ export function InstallmentsClient({ items }: { items: InstRow[] }) {
             Agregar cuota
           </button>
         )}
-        {optimisticItems.length === 0 && !adding ? (
+        {list.length === 0 && !adding ? (
           <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "32px 0" }}>
             Sin cuotas activas. Registrá compras en cuotas para ver su impacto mensual.
           </div>
         ) : (
-          optimisticItems.map(item => (
-            <InstRowItem
-              key={item.id}
-              item={item}
-              onPay={handlePay}
-              onDelete={handleDelete}
-            />
-          ))
+          list.map(item => <InstRowItem key={item.id} item={item} />)
         )}
       </div>
     </div>

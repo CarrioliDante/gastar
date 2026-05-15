@@ -4,26 +4,26 @@ import { getDashboardStats } from "@/lib/queries/stats";
 import { getRecentTransactions } from "@/lib/queries/transactions";
 import { getActiveInstallments } from "@/lib/queries/installments";
 import { getBlocks } from "@/lib/queries/blocks";
+import { getRecurringExpenses } from "@/lib/queries/recurring";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 async function DashboardData({ userId, userName }: { userId: string; userName: string }) {
-  const [stats, transactions, installments, blocks] = await Promise.all([
+  const [stats, transactions, installments, blocks, recurring] = await Promise.all([
     getDashboardStats(userId),
     getRecentTransactions(userId),
     getActiveInstallments(userId),
     getBlocks(userId),
+    getRecurringExpenses(userId),
   ]);
 
   return (
     <DashboardShell
       userName={userName}
-      balance={stats.balance}
-      monthly={stats.monthly}
-      spendingTrend={stats.spendingTrend}
-      categories={stats.categories}
-      transactions={transactions}
-      installments={installments}
-      blocks={blocks}
+      initialStats={stats}
+      initialTransactions={transactions}
+      initialInstallments={installments}
+      initialBlocks={blocks}
+      initialRecurring={recurring}
     />
   );
 }

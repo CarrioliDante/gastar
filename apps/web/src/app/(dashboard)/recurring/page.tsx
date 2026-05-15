@@ -5,5 +5,5 @@ import { RecurringClient } from "./recurring-client";
 export default async function RecurringPage() {
   const user = await requireUser();
   const items = await getRecurringExpenses(user.id);
-  return <RecurringClient items={items} />;
+  return <RecurringClient initialItems={items} />;
 }

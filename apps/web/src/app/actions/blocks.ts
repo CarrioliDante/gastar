@@ -12,12 +12,23 @@ export async function createBlock(formData: FormData) {
   const goal   = (formData.get("goal") as string) || null;
 
   if (!name || isNaN(budget)) return;
-  await db.block.create({ data: { userId: user.id, name, icon, budget, goal } });
-  revalidateTag(`user:${user.id}`, "default");
+
+  try {
+    await db.block.create({ data: { userId: user.id, name, icon, budget, goal } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("createBlock failed:", err);
+    throw err;
+  }
 }
 
 export async function archiveBlock(id: string) {
   const user = await requireUser();
-  await db.block.updateMany({ where: { id, userId: user.id }, data: { archivedAt: new Date() } });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.block.updateMany({ where: { id, userId: user.id }, data: { archivedAt: new Date() } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("archiveBlock failed:", err);
+    throw err;
+  }
 }

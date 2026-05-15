@@ -13,25 +13,37 @@ export async function createInstallment(formData: FormData) {
   const paidInstallments  = Math.max(0, parseInt(formData.get("paidInstallments") as string) || 0);
   const nextDueDateStr    = formData.get("nextDueDate") as string;
 
+  const startedAtStr = formData.get("startedAt") as string;
+
   if (!name || isNaN(totalAmount) || isNaN(monthlyAmount) || isNaN(totalInstallments)) return;
 
   const nextDueDate = nextDueDateStr ? new Date(nextDueDateStr) : new Date();
 
-  // Backdate startedAt by the number of already-paid installments
-  const startedAt = new Date(nextDueDate);
-  startedAt.setMonth(startedAt.getMonth() - paidInstallments);
+  // Use explicit start date if provided, otherwise backdate from next due date
+  // by the number of already-paid installments
+  const startedAt = startedAtStr
+    ? new Date(startedAtStr)
+    : (() => {
+        const d = new Date(nextDueDate);
+        d.setMonth(d.getMonth() - paidInstallments);
+        return d;
+      })();
 
-  await db.installment.create({
-    data: {
-      userId: user.id, name,
-      totalAmount, monthlyAmount, totalInstallments,
-      paidInstallments,
-      nextDueDate,
-      startedAt,
-    },
-  });
-
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.installment.create({
+      data: {
+        userId: user.id, name,
+        totalAmount, monthlyAmount, totalInstallments,
+        paidInstallments,
+        nextDueDate,
+        startedAt,
+      },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("createInstallment failed:", err);
+    throw err;
+  }
 }
 
 export async function payInstallment(id: string) {
@@ -45,31 +57,40 @@ export async function payInstallment(id: string) {
   const next = new Date(inst.nextDueDate);
   next.setMonth(next.getMonth() + 1);
 
-  await Promise.all([
-    db.installment.update({
-      where: { id },
-      data: {
-        paidInstallments: newPaid,
-        nextDueDate: next,
-        completedAt: completed ? new Date() : null,
-      },
-    }),
-    db.transaction.create({
-      data: {
-        userId: user.id,
-        name: `${inst.name} · cuota ${newPaid}/${inst.totalInstallments}`,
-        amount: -Number(inst.monthlyAmount),
-        category: "Cuotas",
-        note: `Cuota ${newPaid} de ${inst.totalInstallments}`,
-      },
-    }),
-  ]);
-
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await Promise.all([
+      db.installment.update({
+        where: { id },
+        data: {
+          paidInstallments: newPaid,
+          nextDueDate: next,
+          completedAt: completed ? new Date() : null,
+        },
+      }),
+      db.transaction.create({
+        data: {
+          userId: user.id,
+          name: `${inst.name} · cuota ${newPaid}/${inst.totalInstallments}`,
+          amount: -Number(inst.monthlyAmount),
+          category: "Cuotas",
+          note: `Cuota ${newPaid} de ${inst.totalInstallments}`,
+        },
+      }),
+    ]);
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("payInstallment failed:", err);
+    throw err;
+  }
 }
 
 export async function deleteInstallment(id: string) {
   const user = await requireUser();
-  await db.installment.deleteMany({ where: { id, userId: user.id } });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.installment.deleteMany({ where: { id, userId: user.id } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("deleteInstallment failed:", err);
+    throw err;
+  }
 }

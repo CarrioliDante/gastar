@@ -15,15 +15,24 @@ export async function createTransaction(formData: FormData) {
 
   if (isNaN(amount) || !category) return;
 
-  await db.transaction.create({
-    data: { userId: user.id, name, amount, category, note, blockId: blockId || null },
-  });
-
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.transaction.create({
+      data: { userId: user.id, name, amount, category, note, blockId: blockId || null },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("createTransaction failed:", err);
+    throw err;
+  }
 }
 
 export async function deleteTransaction(id: string) {
   const user = await requireUser();
-  await db.transaction.deleteMany({ where: { id, userId: user.id } });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.transaction.deleteMany({ where: { id, userId: user.id } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("deleteTransaction failed:", err);
+    throw err;
+  }
 }

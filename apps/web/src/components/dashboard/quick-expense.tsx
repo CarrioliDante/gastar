@@ -1,34 +1,30 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { createTransaction } from "@/app/actions/transactions";
-import { useOptimisticStore } from "@/stores/optimistic";
+import { useCreateTransaction } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 
 const EXP_CATS = ["Comida", "Casa", "Transporte", "Ocio", "Salud", "Tecnología", "Educación", "Suscripciones", "Otros"];
 const INC_CATS = ["Salario", "Freelance", "Devolución", "Inversión", "Regalo", "Otros"];
 
-export function QuickExpense({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [type, setType]         = useState<"expense" | "income">("expense");
+export function QuickExpense({ open, onClose, initialType = "expense" }: { open: boolean; onClose: () => void; initialType?: "expense" | "income" }) {
+  const [type, setType]         = useState<"expense" | "income">(initialType);
   const [amount, setAmount]     = useState("");
   const [label, setLabel]       = useState("");
   const [category, setCategory] = useState("Comida");
   const [saved, setSaved]       = useState(false);
-  const [, start]               = useTransition();
   const inputRef                = useRef<HTMLInputElement>(null);
-  const router                  = useRouter();
-  const addOptimistic           = useOptimisticStore(s => s.add);
-  const { symbol }              = useCurrency();
+  const { symbol, format }      = useCurrency();
+  const createTx                = useCreateTransaction();
 
   useEffect(() => {
     if (open) {
       setSaved(false); setAmount(""); setLabel("");
-      setType("expense"); setCategory("Comida");
+      setType(initialType); setCategory(initialType === "income" ? "Salario" : "Comida");
       setTimeout(() => inputRef.current?.focus(), 60);
     }
-  }, [open]);
+  }, [open, initialType]);
 
   useEffect(() => {
     setCategory(type === "income" ? "Salario" : "Comida");
@@ -44,32 +40,18 @@ export function QuickExpense({ open, onClose }: { open: boolean; onClose: () => 
     const parsedAmount = parseFloat(amount);
     const finalAmount  = isExp ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
     const name         = label.trim() || category;
-    const now          = new Date();
 
-    // 1. Optimistic update — instantaneous
-    addOptimistic({
-      id: `opt-${Date.now()}`,
-      name, category,
-      amount: finalAmount,
-      date: "Hoy",
-      time: now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
-    });
-
-    // 2. Show success & close immediately
-    setSaved(true);
-    setTimeout(onClose, 500);
-
-    // 3. Server action + router refresh in background
     const fd = new FormData();
     fd.set("name", name);
     fd.set("amount", String(finalAmount));
     fd.set("category", category);
     if (label.trim()) fd.set("note", label.trim());
 
-    start(async () => {
-      await createTransaction(fd);
-      router.refresh(); // re-renders Server Components with fresh cache
-    });
+    // Mutation handles optimistic update + invalidation automatically
+    createTx.mutate(fd);
+
+    setSaved(true);
+    setTimeout(onClose, 500);
   };
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -132,7 +114,7 @@ export function QuickExpense({ open, onClose }: { open: boolean; onClose: () => 
                 {isExp ? "Anotado" : "Recibido"}
               </div>
               <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.14em" }}>
-                {isExp ? "−" : "+"} {symbol}{parseFloat(amount).toFixed(2)} · {category}
+                {isExp ? "−" : "+"} {format(parseFloat(amount) || 0)} · {category}
               </div>
             </motion.div>
           ) : (
@@ -216,6 +198,14 @@ export function QuickExpense({ open, onClose }: { open: boolean; onClose: () => 
                       fontVariantNumeric: "tabular-nums",
                     }} />
                 </div>
+                {parseFloat(amount) >= 1000 && (
+                  <div className="mono" style={{
+                    fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em",
+                    marginTop: 6,
+                  }}>
+                    {format(parseFloat(amount))}
+                  </div>
+                )}
               </div>
 
               {/* Fields */}
@@ -264,15 +254,15 @@ export function QuickExpense({ open, onClose }: { open: boolean; onClose: () => 
                 }}>Cancelar</button>
                 <motion.button
                   onClick={save}
-                  disabled={!canSave}
+                  disabled={!canSave || createTx.isPending}
                   whileTap={canSave ? { scale: 0.96 } : {}}
                   style={{
                     padding: "11px 22px", borderRadius: 9,
-                    background: canSave ? "var(--ink)" : "var(--surface)",
-                    color: canSave ? "var(--inverse)" : "var(--faint)",
+                    background: canSave && !createTx.isPending ? "var(--ink)" : "var(--surface)",
+                    color: canSave && !createTx.isPending ? "var(--inverse)" : "var(--faint)",
                     border: "none", fontFamily: "'Inter Tight', inherit",
                     fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em",
-                    cursor: canSave ? "pointer" : "default",
+                    cursor: canSave && !createTx.isPending ? "pointer" : "default",
                     display: "flex", alignItems: "center", gap: 8,
                     transition: "background 200ms ease, color 200ms ease",
                   }}>

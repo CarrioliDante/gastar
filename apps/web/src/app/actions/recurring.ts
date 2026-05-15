@@ -39,10 +39,15 @@ export async function createRecurring(formData: FormData) {
     nextDueDate.setDate(nextDueDate.getDate() + (FREQ_DAYS[frequency] ?? 30));
   }
 
-  await db.recurringExpense.create({
-    data: { userId: user.id, name, amount, category, frequency, dayOfMonth, nextDueDate, note },
-  });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.recurringExpense.create({
+      data: { userId: user.id, name, amount, category, frequency, dayOfMonth, nextDueDate, note },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("createRecurring failed:", err);
+    throw err;
+  }
 }
 
 export async function markRecurringPaid(id: string) {
@@ -59,24 +64,33 @@ export async function markRecurringPaid(id: string) {
     next.setDate(next.getDate() + days);
   }
 
-  await Promise.all([
-    db.transaction.create({
-      data: {
-        userId: user.id, name: rec.name,
-        amount: -Math.abs(Number(rec.amount)),
-        category: rec.category,
-        note: `Recurrente · ${rec.frequency}`,
-        blockId: rec.blockId,
-      },
-    }),
-    db.recurringExpense.update({ where: { id }, data: { nextDueDate: next } }),
-  ]);
-
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await Promise.all([
+      db.transaction.create({
+        data: {
+          userId: user.id, name: rec.name,
+          amount: -Math.abs(Number(rec.amount)),
+          category: rec.category,
+          note: `Recurrente · ${rec.frequency}`,
+          blockId: rec.blockId,
+        },
+      }),
+      db.recurringExpense.update({ where: { id }, data: { nextDueDate: next } }),
+    ]);
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("markRecurringPaid failed:", err);
+    throw err;
+  }
 }
 
 export async function deleteRecurring(id: string) {
   const user = await requireUser();
-  await db.recurringExpense.deleteMany({ where: { id, userId: user.id } });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.recurringExpense.deleteMany({ where: { id, userId: user.id } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("deleteRecurring failed:", err);
+    throw err;
+  }
 }

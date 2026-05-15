@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { createGoal, contributeToGoal, deleteGoal } from "@/app/actions/goals";
-import type { GoalRow } from "@/lib/queries/goals";
+import { useState } from "react";
+import { useGoals } from "@/hooks/queries";
+import { useCreateGoal, useContributeToGoal, useDeleteGoal } from "@/hooks/mutations";
+import { useCurrency } from "@/hooks/use-currency";
+import { AmountInput } from "@/components/ui/amount-input";
+import type { GoalRow } from "@/hooks/queries";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: 8,
@@ -14,28 +17,27 @@ const fieldStyle: React.CSSProperties = {
 function GoalCard({ goal }: { goal: GoalRow }) {
   const [contributing, setContributing] = useState(false);
   const [amount, setAmount] = useState("");
-  const [isPending, start] = useTransition();
-  const [deleting, startDel] = useTransition();
+  const { format } = useCurrency();
+  const contribute = useContributeToGoal();
+  const del = useDeleteGoal();
 
   const r = 28, c = 2 * Math.PI * r;
+  const isOpt = goal.id.startsWith("opt-");
 
-  const contribute = (e: React.FormEvent) => {
+  const handleContribute = (e: React.SyntheticEvent) => {
     e.preventDefault();
+    const n = parseFloat(amount);
+    if (!n || n <= 0) return;
     const fd = new FormData();
     fd.set("id", goal.id);
-    fd.set("amount", amount);
-    start(async () => {
-      await contributeToGoal(fd);
-      setContributing(false);
-      setAmount("");
-    });
+    fd.set("amount", String(n));
+    contribute.mutate(fd);
+    setContributing(false);
+    setAmount("");
   };
 
   return (
-    <div style={{
-      padding: "28px 0 24px",
-      borderBottom: "1px solid var(--hairline)",
-    }}>
+    <div style={{ padding: "28px 0 24px", borderBottom: "1px solid var(--hairline)", opacity: isOpt ? 0.55 : 1 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
         {/* Radial ring */}
         <div style={{ position: "relative", flexShrink: 0 }}>
@@ -44,7 +46,7 @@ function GoalCard({ goal }: { goal: GoalRow }) {
             <circle cx={32} cy={32} r={r} fill="none" stroke="var(--ink)" strokeWidth={1.6}
               strokeLinecap="round" strokeDasharray={c}
               strokeDashoffset={c * (1 - goal.pct / 100)}
-              style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.2,.7,.1,1)" }} />
+              style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(.2,.7,.1,1)" }} />
           </svg>
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span className="display tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>
@@ -65,24 +67,18 @@ function GoalCard({ goal }: { goal: GoalRow }) {
           </div>
 
           <div style={{ display: "flex", gap: 24, alignItems: "baseline", marginBottom: 14 }}>
-            <div>
-              <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
-                ${goal.currentAmount.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            {[
+              { value: goal.currentAmount, label: "Ahorrado" },
+              { value: goal.targetAmount,  label: "Meta",     faint: true },
+              { value: goal.remaining,     label: "Falta",    faint: true },
+            ].map(({ value, label, faint }) => (
+              <div key={label}>
+                <div className="display tnum" style={{ fontSize: 22, fontWeight: faint ? 400 : 500, color: faint ? "var(--faint)" : "var(--ink)", letterSpacing: "-0.035em" }}>
+                  {format(value)}
+                </div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
               </div>
-              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>Ahorrado</div>
-            </div>
-            <div>
-              <div className="display tnum" style={{ fontSize: 22, fontWeight: 400, color: "var(--faint)", letterSpacing: "-0.035em" }}>
-                ${goal.targetAmount.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-              </div>
-              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>Meta</div>
-            </div>
-            <div>
-              <div className="display tnum" style={{ fontSize: 22, fontWeight: 400, color: "var(--faint)", letterSpacing: "-0.035em" }}>
-                ${goal.remaining.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-              </div>
-              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>Falta</div>
-            </div>
+            ))}
           </div>
 
           {/* Progress bar */}
@@ -90,7 +86,7 @@ function GoalCard({ goal }: { goal: GoalRow }) {
             <div style={{
               height: "100%", width: `${goal.pct}%`,
               background: "var(--ink)", borderRadius: 99,
-              transition: "width 1.2s cubic-bezier(.2,.7,.1,1)",
+              transition: "width 0.6s cubic-bezier(.2,.7,.1,1)",
             }} />
           </div>
         </div>
@@ -104,26 +100,30 @@ function GoalCard({ goal }: { goal: GoalRow }) {
           }}>
             + Aportar
           </button>
-          <button onClick={() => startDel(() => deleteGoal(goal.id))} disabled={deleting} style={{
-            padding: "7px 10px", borderRadius: 7, border: "none", cursor: "pointer",
-            background: "none", color: "var(--faint)",
-            boxShadow: "inset 0 0 0 1px var(--hairline)",
-            fontFamily: "inherit", fontSize: 12,
-          }}>×</button>
+          <button
+            onClick={() => !isOpt && del.mutate(goal.id)}
+            disabled={isOpt || del.isPending}
+            style={{
+              padding: "7px 10px", borderRadius: 7, border: "none",
+              cursor: isOpt || del.isPending ? "default" : "pointer",
+              background: "none", color: "var(--faint)",
+              boxShadow: "inset 0 0 0 1px var(--hairline)",
+              fontFamily: "inherit", fontSize: 12,
+            }}
+          >×</button>
         </div>
       </div>
 
-      {/* Contribute form */}
       {contributing && (
-        <form onSubmit={contribute} style={{ marginTop: 16, display: "flex", gap: 10, alignItems: "flex-end" }}>
+        <form onSubmit={handleContribute} style={{ marginTop: 16, display: "flex", gap: 10, alignItems: "flex-end" }}>
           <div style={{ flex: 1 }}>
             <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
               Monto a aportar
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
               <span style={{ color: "var(--faint)", fontSize: 18 }}>$</span>
-              <input
-                type="number" value={amount} onChange={e => setAmount(e.target.value)}
+              <AmountInput
+                value={amount} onChange={setAmount}
                 placeholder="0" required autoFocus
                 style={{ ...fieldStyle, flex: 1 }} />
             </div>
@@ -132,12 +132,12 @@ function GoalCard({ goal }: { goal: GoalRow }) {
             padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer",
             background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
           }}>Cancelar</button>
-          <button type="submit" disabled={isPending} style={{
+          <button type="submit" disabled={contribute.isPending} style={{
             padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
             background: "var(--ink)", color: "var(--inverse)",
             fontFamily: "inherit", fontSize: 12, fontWeight: 500,
           }}>
-            {isPending ? "…" : "Confirmar"}
+            Confirmar
           </button>
         </form>
       )}
@@ -146,23 +146,29 @@ function GoalCard({ goal }: { goal: GoalRow }) {
 }
 
 function AddGoalForm({ onDone }: { onDone: () => void }) {
-  const [isPending, start] = useTransition();
-  const save = (e: React.FormEvent<HTMLFormElement>) => {
+  const createGoal = useCreateGoal();
+
+  const save = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    start(async () => { await createGoal(fd); onDone(); });
+    createGoal.mutate(fd);
+    onDone();
   };
 
   return (
     <form onSubmit={save} style={{ padding: "16px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 80px auto", gap: 10, alignItems: "flex-end" }}>
         <div>
           <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Nombre</div>
           <input name="name" required placeholder="Viaje Japón, Fondo emergencia…" style={fieldStyle} />
         </div>
         <div>
           <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Meta</div>
-          <input name="targetAmount" type="number" required placeholder="0" style={fieldStyle} />
+          <AmountInput name="targetAmount" required placeholder="0" style={fieldStyle} />
+        </div>
+        <div>
+          <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Inicial</div>
+          <AmountInput name="currentAmount" placeholder="0" style={{ ...fieldStyle, color: "var(--mute)" }} />
         </div>
         <div>
           <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Fecha límite</div>
@@ -173,12 +179,13 @@ function AddGoalForm({ onDone }: { onDone: () => void }) {
             padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer",
             background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
           }}>Cancelar</button>
-          <button type="submit" disabled={isPending} style={{
+          <button type="submit" disabled={createGoal.isPending} style={{
             padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: "var(--ink)", color: "var(--inverse)",
+            background: createGoal.isPending ? "var(--surface)" : "var(--ink)",
+            color: createGoal.isPending ? "var(--faint)" : "var(--inverse)",
             fontFamily: "inherit", fontSize: 12, fontWeight: 500,
           }}>
-            {isPending ? "…" : "Crear meta"}
+            {createGoal.isPending ? "…" : "Crear meta"}
           </button>
         </div>
       </div>
@@ -186,10 +193,14 @@ function AddGoalForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-export function GoalsClient({ goals }: { goals: GoalRow[] }) {
+export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
   const [adding, setAdding] = useState(false);
-  const totalSaved = goals.reduce((s, g) => s + g.currentAmount, 0);
-  const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
+  const { data: goals } = useGoals(initialGoals);
+  const { format } = useCurrency();
+
+  const list = goals ?? [];
+  const totalSaved  = list.reduce((s, g) => s + g.currentAmount, 0);
+  const totalTarget = list.reduce((s, g) => s + g.targetAmount, 0);
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
@@ -205,9 +216,9 @@ export function GoalsClient({ goals }: { goals: GoalRow[] }) {
         {totalTarget > 0 && (
           <div style={{ textAlign: "right" }}>
             <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.04em" }}>
-              ${totalSaved.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              {format(totalSaved)}
               <span style={{ color: "var(--faint)", fontSize: 14, fontWeight: 400 }}>
-                {" "}/ ${totalTarget.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                {" "}/ {format(totalTarget)}
               </span>
             </div>
             <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
@@ -235,12 +246,12 @@ export function GoalsClient({ goals }: { goals: GoalRow[] }) {
           </button>
         )}
 
-        {goals.length === 0 && !adding ? (
+        {list.length === 0 && !adding ? (
           <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "32px 0" }}>
             Sin metas. Creá objetivos de ahorro y registrá tus aportes desde acá.
           </div>
         ) : (
-          goals.map(g => <GoalCard key={g.id} goal={g} />)
+          list.map(g => <GoalCard key={g.id} goal={g} />)
         )}
       </div>
     </div>

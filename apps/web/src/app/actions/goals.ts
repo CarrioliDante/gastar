@@ -6,16 +6,26 @@ import { requireUser } from "@/lib/dal";
 
 export async function createGoal(formData: FormData) {
   const user = await requireUser();
-  const name         = formData.get("name") as string;
-  const targetAmount = parseFloat(formData.get("targetAmount") as string);
-  const deadlineStr  = formData.get("deadline") as string;
+  const name          = formData.get("name") as string;
+  const targetAmount  = parseFloat(formData.get("targetAmount") as string);
+  const currentAmount = parseFloat(formData.get("currentAmount") as string) || 0;
+  const deadlineStr   = formData.get("deadline") as string;
 
   if (!name || isNaN(targetAmount)) return;
 
-  await db.savingsGoal.create({
-    data: { userId: user.id, name, targetAmount, deadline: deadlineStr ? new Date(deadlineStr) : null },
-  });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.savingsGoal.create({
+      data: {
+        userId: user.id, name, targetAmount,
+        currentAmount: isNaN(currentAmount) ? 0 : currentAmount,
+        deadline: deadlineStr ? new Date(deadlineStr) : null,
+      },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("createGoal failed:", err);
+    throw err;
+  }
 }
 
 export async function contributeToGoal(formData: FormData) {
@@ -31,21 +41,25 @@ export async function contributeToGoal(formData: FormData) {
   const newAmount = Number(goal.currentAmount) + amount;
   const completed = newAmount >= Number(goal.targetAmount);
 
-  await Promise.all([
-    db.savingsGoal.update({
+  try {
+    await db.savingsGoal.update({
       where: { id },
       data: { currentAmount: newAmount, completedAt: completed ? new Date() : null },
-    }),
-    db.transaction.create({
-      data: { userId: user.id, name: `Ahorro · ${goal.name}`, amount: -amount, category: "Ahorro", note: `Aporte a meta: ${goal.name}` },
-    }),
-  ]);
-
-  revalidateTag(`user:${user.id}`, "default");
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("contributeToGoal failed:", err);
+    throw err;
+  }
 }
 
 export async function deleteGoal(id: string) {
   const user = await requireUser();
-  await db.savingsGoal.deleteMany({ where: { id, userId: user.id } });
-  revalidateTag(`user:${user.id}`, "default");
+  try {
+    await db.savingsGoal.deleteMany({ where: { id, userId: user.id } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("deleteGoal failed:", err);
+    throw err;
+  }
 }

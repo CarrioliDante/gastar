@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useTransition, useOptimistic } from "react";
+import { useState } from "react";
+import { useRecurring } from "@/hooks/queries";
+import { useCreateRecurring, usePayRecurring, useDeleteRecurring } from "@/hooks/mutations";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
-import { createRecurring, markRecurringPaid, deleteRecurring } from "@/app/actions/recurring";
-import type { RecurringRow } from "@/lib/queries/recurring";
+import { useCurrency } from "@/hooks/use-currency";
+import { AmountInput } from "@/components/ui/amount-input";
+import type { RecurringRow } from "@/hooks/queries";
 
 const CATS = ["Casa", "Salud", "Suscripciones", "Transporte", "Educación", "Tecnología", "Otros"];
 const FREQS: { id: string; label: string }[] = [
@@ -26,83 +29,14 @@ const labelStyle: React.CSSProperties = {
   textTransform: "uppercase", marginBottom: 6,
 };
 
-// Mirror server-side logic for client-side optimistic date computation
-function computeNextDue(frequency: string, dayOfMonth: number | null) {
-  if (dayOfMonth && frequency === "monthly") {
-    const now = new Date();
-    let d = new Date(now.getFullYear(), now.getMonth(), dayOfMonth);
-    if (d <= now) d = new Date(now.getFullYear(), now.getMonth() + 1, dayOfMonth);
-    return { ms: d.getTime(), display: d.toLocaleDateString("es-AR", { day: "numeric", month: "short" }) };
-  }
-  const d = new Date();
-  d.setDate(d.getDate() + (FREQ_DAYS[frequency] ?? 30));
-  return { ms: d.getTime(), display: d.toLocaleDateString("es-AR", { day: "numeric", month: "short" }) };
-}
-
-type Action =
-  | { type: "add"; item: RecurringRow & { pending: true } }
-  | { type: "pay"; id: string }
-  | { type: "remove"; id: string };
-
-function reducer(state: (RecurringRow & { pending?: boolean })[], action: Action) {
-  switch (action.type) {
-    case "add":
-      return [...state, action.item].sort((a, b) => a.nextDueDateMs - b.nextDueDateMs);
-    case "pay":
-      return state.map(i => {
-        if (i.id !== action.id) return i;
-        const freqMult = i.frequency === "monthly" ? 1 : 1;
-        const advanceDays = FREQ_DAYS[i.frequency] ?? 30;
-        const next = new Date(i.nextDueDateMs);
-        if (i.dayOfMonth && i.frequency === "monthly") {
-          next.setMonth(next.getMonth() + 1);
-        } else {
-          next.setDate(next.getDate() + advanceDays);
-        }
-        return {
-          ...i,
-          nextDueDateMs: next.getTime(),
-          nextDueDate: next.toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
-          pending: true as const,
-        };
-      });
-    case "remove":
-      return state.filter(i => i.id !== action.id);
-  }
-}
-
-function AddForm({
-  onDone,
-  onAdd,
-}: {
-  onDone: () => void;
-  onAdd: (item: RecurringRow & { pending: true }, fd: FormData) => void;
-}) {
+function AddForm({ onDone }: { onDone: () => void }) {
   const [freq, setFreq] = useState("monthly");
+  const createRec = useCreateRecurring();
 
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const dayRaw = fd.get("dayOfMonth") as string;
-    const dayOfMonth = dayRaw ? parseInt(dayRaw) : null;
-    const frequency = fd.get("frequency") as string || "monthly";
-    const { ms, display } = computeNextDue(frequency, dayOfMonth);
-
-    const optimisticItem: RecurringRow & { pending: true } = {
-      id: `opt-${Date.now()}`,
-      name: fd.get("name") as string,
-      amount: parseFloat(fd.get("amount") as string) || 0,
-      category: fd.get("category") as string,
-      frequency: frequency as RecurringRow["frequency"],
-      dayOfMonth,
-      nextDueDate: display,
-      nextDueDateMs: ms,
-      blockId: undefined,
-      note: (fd.get("note") as string) || undefined,
-      pending: true,
-    };
-
-    onAdd(optimisticItem, fd);
+    createRec.mutate(fd);
     onDone();
   };
 
@@ -115,7 +49,7 @@ function AddForm({
         </div>
         <div>
           <div className="mono" style={labelStyle}>Importe</div>
-          <input name="amount" type="number" required placeholder="0.00" style={fieldStyle} />
+          <AmountInput name="amount" required placeholder="0" style={fieldStyle} />
         </div>
         <div>
           <div className="mono" style={labelStyle}>Frecuencia</div>
@@ -151,9 +85,10 @@ function AddForm({
             padding: "9px 14px", borderRadius: 8, border: "none", cursor: "pointer",
             background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
           }}>Cancelar</button>
-          <button type="submit" style={{
+          <button type="submit" disabled={createRec.isPending} style={{
             padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: "var(--ink)", color: "var(--inverse)",
+            background: createRec.isPending ? "var(--surface)" : "var(--ink)",
+            color: createRec.isPending ? "var(--faint)" : "var(--inverse)",
             fontFamily: "inherit", fontSize: 12, fontWeight: 500,
           }}>
             Agregar
@@ -164,25 +99,22 @@ function AddForm({
   );
 }
 
-function RecurringRowItem({
-  item,
-  onPay,
-  onDelete,
-}: {
-  item: RecurringRow & { pending?: boolean };
-  onPay: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
+function RecurringRowItem({ item }: { item: RecurringRow }) {
+  const { format } = useCurrency();
+  const pay = usePayRecurring();
+  const del = useDeleteRecurring();
+
   const freqLabel = FREQS.find(f => f.id === item.frequency)?.label ?? item.frequency;
   const daysUntil = Math.ceil((item.nextDueDateMs - Date.now()) / (1000 * 60 * 60 * 24));
   const urgent = daysUntil <= 5;
+  const isOpt = item.id.startsWith("opt-");
   const debitLabel = item.dayOfMonth ? `${freqLabel} · el ${item.dayOfMonth}` : freqLabel;
 
   return (
     <div className="row-hover" style={{
       display: "flex", alignItems: "center", gap: 14,
       padding: "14px 0", borderBottom: "1px solid var(--hairline)",
-      opacity: item.pending ? 0.55 : 1,
+      opacity: isOpt ? 0.55 : 1,
       transition: "opacity 200ms",
     }}>
       <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -209,16 +141,16 @@ function RecurringRowItem({
         fontSize: 15, fontWeight: 500, color: "var(--ink)",
         letterSpacing: "-0.025em", flexShrink: 0, minWidth: 80, textAlign: "right",
       }}>
-        ${item.amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        {format(item.amount)}
       </div>
 
       <button
-        onClick={() => !item.pending && onPay(item.id)}
-        disabled={!!item.pending}
+        onClick={() => !isOpt && pay.mutate(item.id)}
+        disabled={isOpt || pay.isPending}
         title="Marcar como pagado"
         style={{
           padding: "6px 12px", borderRadius: 7, border: "none",
-          cursor: item.pending ? "default" : "pointer",
+          cursor: isOpt || pay.isPending ? "default" : "pointer",
           background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
           color: "var(--mute)", letterSpacing: "-0.005em", flexShrink: 0,
           boxShadow: "inset 0 0 0 1px var(--hairline)", transition: "all 120ms ease",
@@ -227,15 +159,15 @@ function RecurringRowItem({
       </button>
 
       <button
-        onClick={() => !item.pending && onDelete(item.id)}
-        disabled={!!item.pending}
+        onClick={() => !isOpt && del.mutate(item.id)}
+        disabled={isOpt || del.isPending}
         title="Eliminar"
         style={{
-          background: "none", border: "none", cursor: item.pending ? "default" : "pointer",
+          background: "none", border: "none", cursor: isOpt || del.isPending ? "default" : "pointer",
           color: "var(--whisper)", fontSize: 18, lineHeight: 1, padding: "0 4px",
           flexShrink: 0, transition: "color 120ms ease",
         }}
-        onMouseEnter={e => !item.pending && (e.currentTarget.style.color = "var(--faint)")}
+        onMouseEnter={e => !isOpt && !del.isPending && (e.currentTarget.style.color = "var(--faint)")}
         onMouseLeave={e => (e.currentTarget.style.color = "var(--whisper)")}>
         ×
       </button>
@@ -243,36 +175,16 @@ function RecurringRowItem({
   );
 }
 
-export function RecurringClient({ items }: { items: RecurringRow[] }) {
+export function RecurringClient({ initialItems }: { initialItems: RecurringRow[] }) {
   const [adding, setAdding] = useState(false);
-  const [isPending, start] = useTransition();
-  const [optimisticItems, dispatch] = useOptimistic(items, reducer);
+  const { data: items } = useRecurring(initialItems);
+  const { format } = useCurrency();
 
-  const totalMonthly = optimisticItems.reduce((s, i) => {
+  const list = items ?? [];
+  const totalMonthly = list.reduce((s, i) => {
     const mult = i.frequency === "weekly" ? 4.3 : i.frequency === "bimonthly" ? 0.5 : i.frequency === "yearly" ? 1 / 12 : 1;
     return s + i.amount * mult;
   }, 0);
-
-  const handleAdd = (optimisticItem: RecurringRow & { pending: true }, fd: FormData) => {
-    start(async () => {
-      dispatch({ type: "add", item: optimisticItem });
-      await createRecurring(fd);
-    });
-  };
-
-  const handlePay = (id: string) => {
-    start(async () => {
-      dispatch({ type: "pay", id });
-      await markRecurringPaid(id);
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    start(async () => {
-      dispatch({ type: "remove", id });
-      await deleteRecurring(id);
-    });
-  };
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
@@ -289,7 +201,7 @@ export function RecurringClient({ items }: { items: RecurringRow[] }) {
           {totalMonthly > 0 && (
             <>
               <div className="display tnum" style={{ fontSize: 24, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.04em" }}>
-                ${Math.round(totalMonthly).toLocaleString("en-US")}
+                {format(Math.round(totalMonthly))}
               </div>
               <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
                 EQUIVALENTE MENSUAL
@@ -300,7 +212,7 @@ export function RecurringClient({ items }: { items: RecurringRow[] }) {
       </header>
 
       <div style={{ marginTop: 8 }}>
-        {adding && <AddForm onDone={() => setAdding(false)} onAdd={handleAdd} />}
+        {adding && <AddForm onDone={() => setAdding(false)} />}
 
         {!adding && (
           <button onClick={() => setAdding(true)} style={{
@@ -317,19 +229,12 @@ export function RecurringClient({ items }: { items: RecurringRow[] }) {
           </button>
         )}
 
-        {optimisticItems.length === 0 && !adding ? (
+        {list.length === 0 && !adding ? (
           <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "32px 0" }}>
             Sin recurrentes. Suscripciones, servicios, alquiler — agregá todo lo que se cobra solo.
           </div>
         ) : (
-          optimisticItems.map(item => (
-            <RecurringRowItem
-              key={item.id}
-              item={item}
-              onPay={handlePay}
-              onDelete={handleDelete}
-            />
-          ))
+          list.map(item => <RecurringRowItem key={item.id} item={item} />)
         )}
       </div>
     </div>

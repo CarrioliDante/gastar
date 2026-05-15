@@ -1,6 +1,6 @@
+import { cache } from "react";
 import "server-only";
 import { db } from "@/lib/db";
-import { userCache } from "@/lib/cache";
 
 function mapTx(t: { id: string; name: string; category: string; amount: object; date: Date; note: string | null; blockId: string | null }) {
   return {
@@ -9,37 +9,26 @@ function mapTx(t: { id: string; name: string; category: string; amount: object; 
     category: t.category,
     amount: Number(t.amount),
     date: formatRelativeDate(t.date),
+    isoDate: t.date.toISOString().slice(0, 10),
     time: t.date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
     note: t.note ?? undefined,
     blockId: t.blockId ?? undefined,
   };
 }
 
-export function getRecentTransactions(userId: string, limit = 8) {
-  return userCache(
-    async () => {
-      const rows = await db.transaction.findMany({
-        where: { userId }, orderBy: { date: "desc" }, take: limit,
-      });
-      return rows.map(mapTx);
-    },
-    userId,
-    ["transactions-recent"],
-  );
-}
+export const getRecentTransactions = cache(async (userId: string, limit = 8) => {
+  const rows = await db.transaction.findMany({
+    where: { userId }, orderBy: { date: "desc" }, take: limit,
+  });
+  return rows.map(mapTx);
+});
 
-export function getAllTransactions(userId: string) {
-  return userCache(
-    async () => {
-      const rows = await db.transaction.findMany({
-        where: { userId }, orderBy: { date: "desc" },
-      });
-      return rows.map(mapTx);
-    },
-    userId,
-    ["transactions-all"],
-  );
-}
+export const getAllTransactions = cache(async (userId: string) => {
+  const rows = await db.transaction.findMany({
+    where: { userId }, orderBy: { date: "desc" },
+  });
+  return rows.map(mapTx);
+});
 
 function formatRelativeDate(date: Date): string {
   const now = new Date();
