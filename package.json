@@ -12,9 +12,15 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "playwright": "^1.60.0",
     "typescript": "^5"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@prisma/engines", "prisma", "sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
