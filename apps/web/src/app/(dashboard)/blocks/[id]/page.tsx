@@ -114,7 +114,7 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
                   color: Number(tx.amount) >= 0 ? "var(--ink)" : "var(--mute)",
                   letterSpacing: "-0.02em",
                 }}>
-                  {Number(tx.amount) >= 0 ? "+" : "−"}${Math.abs(Number(tx.amount)).toFixed(2)}
+                  {Number(tx.amount) >= 0 ? "+" : "−"}{Math.abs(Number(tx.amount)).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                 </div>
               </div>
             ))}

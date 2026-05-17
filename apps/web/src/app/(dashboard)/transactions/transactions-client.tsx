@@ -367,7 +367,7 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
                         fontSize: 14, fontWeight: 500, letterSpacing: "-0.015em", color: "var(--ink)",
                       }}>
                         <span style={{ color: pos ? "var(--ink)" : "var(--faint)" }}>{pos ? "+" : "−"}</span>
-                        {Math.abs(t.amount).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                        {Math.abs(t.amount).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                       </span>
                     </td>
 

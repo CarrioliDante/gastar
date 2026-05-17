@@ -3,12 +3,13 @@
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
+import { parseNumeric } from "@/lib/parse-numeric";
 
 export async function createBlock(formData: FormData) {
   const user = await requireUser();
   const name   = formData.get("name") as string;
   const icon   = (formData.get("icon") as string) || "◈";
-  const budget = parseFloat(formData.get("budget") as string);
+  const budget = parseNumeric(formData.get("budget"));
   const goal   = (formData.get("goal") as string) || null;
 
   if (!name || isNaN(budget)) return;

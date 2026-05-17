@@ -18,11 +18,6 @@ interface UseNumberInputOpts {
   decimals?: number;
 }
 
-/**
- * Number input that formats with currency-aware thousand/decimal separators.
- * USD → 1,000.00  |  ARS/BRL/EUR → 1.000,00
- * Formatted value lives inside the input at all times.
- */
 export function useNumberInput({ value, onChange, currency = "USD", decimals = 0 }: UseNumberInputOpts) {
   const inputRef = useRef<HTMLInputElement>(null);
   const locale = CURRENCY_LOCALE[currency] ?? "en-US";
@@ -30,56 +25,77 @@ export function useNumberInput({ value, onChange, currency = "USD", decimals = 0
   const decimalSep =
     new Intl.NumberFormat(locale).formatToParts(1.1).find(p => p.type === "decimal")?.value ?? ".";
 
+  // Normalize locale decimal sep → "." for parseFloat
+  const normalize = useCallback(
+    (raw: string) => (decimalSep !== "." ? raw.replace(decimalSep, ".") : raw),
+    [decimalSep],
+  );
+
   const format = useCallback(
     (raw: string): string => {
-      const n = parseFloat(raw);
+      const n = parseFloat(normalize(raw));
       if (isNaN(n)) return raw || "";
       return new Intl.NumberFormat(locale, {
         minimumFractionDigits: 0,
         maximumFractionDigits: decimals,
       }).format(n);
     },
-    [locale, decimals],
+    [locale, decimals, normalize],
   );
 
-  // Strip any non-numeric character except minus and the locale's decimal separator
+  // Strip anything that isn't a digit, minus, or the locale's decimal separator.
+  // Deduplicate decimal separators — only the first one is kept.
   const strip = useCallback(
     (s: string): string => {
       const allowed = new Set([..."0123456789-", decimalSep]);
-      return [...s].filter(c => allowed.has(c)).join("");
+      let seenDec = false;
+      return [...s]
+        .filter(c => {
+          if (!allowed.has(c)) return false;
+          if (c === decimalSep) {
+            if (seenDec) return false;
+            seenDec = true;
+          }
+          return true;
+        })
+        .join("");
     },
     [decimalSep],
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = strip(e.target.value);
-      onChange(raw);
+      onChange(strip(e.target.value));
     },
     [strip, onChange],
   );
 
-  // Force formatted value into the DOM on blur (belt-and-suspenders with React controlled value)
+  // On blur, trim a trailing decimal separator so "100," → "100"
   const handleBlur = useCallback(() => {
     if (!value) return;
-    const formatted = format(value);
-    if (inputRef.current && inputRef.current.value !== formatted) {
-      inputRef.current.value = formatted;
+    if (value.endsWith(decimalSep)) {
+      onChange(value.slice(0, -1));
     }
-  }, [value, format]);
+  }, [value, decimalSep, onChange]);
 
-  const display = value ? format(value) : "";
-
-  // Normalize raw value to a JS number (handles comma decimal separator)
-  const numericValue = (() => {
-    if (!value) return 0;
-    let normalized = value;
-    // If the decimal separator is not ".", replace it
-    if (decimalSep !== ".") {
-      normalized = normalized.replace(decimalSep, ".");
+  // While typing, preserve the decimal portion verbatim so the cursor doesn't jump.
+  // Only the integer part gets thousand-separator formatting.
+  const display = (() => {
+    if (!value) return "";
+    const sepIdx = value.indexOf(decimalSep);
+    if (sepIdx !== -1) {
+      const intRaw = value.slice(0, sepIdx);
+      const decRaw = value.slice(sepIdx + 1);
+      const n = parseFloat(intRaw || "0");
+      const formattedInt = isNaN(n)
+        ? intRaw
+        : new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+      return formattedInt + decimalSep + decRaw;
     }
-    return parseFloat(normalized) || 0;
+    return format(value);
   })();
+
+  const numericValue = value ? parseFloat(normalize(value)) || 0 : 0;
 
   return {
     display,

@@ -10,7 +10,8 @@ export function useCurrency() {
       style: "currency",
       currency,
       notation: compact ? "compact" : "standard",
-      maximumFractionDigits: compact ? 1 : 0,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: compact ? 1 : 2,
     }).format(n);
 
   return { currency, symbol: currencySymbol, format };

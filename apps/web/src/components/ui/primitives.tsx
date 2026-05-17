@@ -475,7 +475,7 @@ export function TxRow({
 }) {
   const positive = tx.amount >= 0;
   const absAmt = Math.abs(tx.amount);
-  const formatted = absAmt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const formatted = absAmt.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
   return (
     <div className="body-font" style={{

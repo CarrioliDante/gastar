@@ -151,17 +151,17 @@ export function Sidebar() {
           width: "100%", padding: "8px 10px", borderRadius: 8,
           display: "flex", alignItems: "center", gap: 10,
         }}>
-          <div style={{
-            width: 22, height: 22, borderRadius: 6,
-            background: "var(--ink)", color: "var(--inverse)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Inter Tight', sans-serif", fontWeight: 600, fontSize: 11,
-            flexShrink: 0,
-          }}>G</div>
+          <svg width="22" height="22" viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
+            <rect width="32" height="32" rx="7" fill="var(--ink)" />
+            <circle cx="16" cy="16" r="5.12" fill="var(--inverse)" />
+          </svg>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: "-0.005em", color: "var(--ink)", whiteSpace: "nowrap" }}>
-              gast.ar
-            </div>
+            <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: "-0.005em", color: "var(--ink)", whiteSpace: "nowrap", fontFamily: "'Inter Tight', sans-serif" }}>
+              gast
+            </span>
+            <em style={{ fontSize: 12, fontStyle: "italic", fontWeight: 400, letterSpacing: "-0.04em", color: "var(--ink)", whiteSpace: "nowrap", fontFamily: "'Newsreader', Georgia, serif" }}>
+              .ar
+            </em>
             <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 1, whiteSpace: "nowrap" }}>
               Personal
             </div>

@@ -74,13 +74,10 @@ export function OnboardingFlow({ name }: { name: string }) {
       content: (
         <div>
           <div style={{ marginBottom: 48 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 11,
-              background: "var(--ink)", color: "var(--inverse)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: "'Inter Tight', sans-serif", fontWeight: 600, fontSize: 16,
-              marginBottom: 32,
-            }}>G</div>
+            <svg width="40" height="40" viewBox="0 0 32 32" style={{ marginBottom: 32 }}>
+              <rect width="32" height="32" rx="8" fill="var(--ink)" />
+              <circle cx="16" cy="16" r="5.12" fill="var(--inverse)" />
+            </svg>
             <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 16 }}>
               Bienvenido
             </div>

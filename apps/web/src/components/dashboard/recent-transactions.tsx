@@ -73,7 +73,7 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
                 </div>
               </div>
               <p style={{ color: "#111111", fontSize: 13, fontWeight: 400, letterSpacing: "-0.3px", opacity: tx.amount < 0 ? 0.6 : 1 }}>
-                {tx.amount > 0 ? "+" : "−"}${Math.abs(tx.amount).toFixed(2)}
+                {tx.amount > 0 ? "+" : "−"}{Math.abs(tx.amount).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </p>
             </motion.div>
           ))}
