@@ -1,25 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "motion/react";
 import { useUIStore } from "@/stores/ui";
 import { useDashboardStats, useRecentTransactions, useInstallments, useBlocks, useRecurring } from "@/hooks/queries";
 import { usePayInstallment, usePayRecurring } from "@/hooks/mutations";
 import type { InstallmentRow, RecurringRow, BlockRow } from "@/hooks/queries";
 import {
   BlockGlyph,
-  RadialRing,
   LineChart,
   Hairline,
   Eyebrow,
-  H2,
   TxRow,
   ListRow,
-  Amount,
   Stat,
   type GlyphKind,
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
-import type { BalanceData, MonthlyStats, SpendingPoint, Transaction } from "@gastar/shared";
+import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
+import { AnimatedNumber } from "@/components/motion/animated-number";
+import { RevealWords } from "@/components/motion/text-reveal";
+import { springGentle } from "@/components/motion/presets";
+import type { BalanceData, MonthlyStats, Category } from "@gastar/shared";
 
 interface Props {
   userName: string;
@@ -176,8 +179,7 @@ export function DashboardShell({
 
   const balance      = stats?.balance ?? { total: 0, currency: "USD", change: 0 } as BalanceData;
   const monthly      = stats?.monthly ?? { income: 0, spending: 0, savings: 0, savingsGoal: 5000 } as MonthlyStats;
-  const categories   = stats?.categories ?? [];
-  const spendingTrend = stats?.spendingTrend ?? [];
+  const categories   = stats?.categories ?? [] as Category[];
   const netWorth24mo = stats?.netWorth24mo ?? [0, 0];
 
   const hour     = new Date().getHours();
@@ -191,15 +193,16 @@ export function DashboardShell({
   const currentMonthName = new Date().toLocaleDateString("es-AR", { month: "long" });
   const currentMonthCap  = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
-  const monthBudget = monthly.savingsGoal > 0 ? monthly.savingsGoal : monthly.spending || 1;
-  const monthPct    = Math.min(1, monthly.spending / monthBudget);
-  const available   = monthBudget - monthly.spending;
+  const monthBudget  = monthly.savingsGoal > 0 ? monthly.savingsGoal : monthly.spending || 1;
+  const monthPctRaw  = monthly.spending / monthBudget;
+  const monthPct     = Math.min(1, monthPctRaw);
+  const isOverBudget = monthPctRaw > 1;
+  const overBy       = isOverBudget ? monthly.spending - monthBudget : 0;
+  const available    = Math.max(0, monthBudget - monthly.spending);
 
   const nw0     = netWorth24mo[0]  ?? 0;
   const nwLast  = netWorth24mo[netWorth24mo.length - 1] ?? 0;
   const nwPctChg = nw0 !== 0 ? Math.round((nwLast / nw0 - 1) * 100) : 0;
-
-  const trendData = spendingTrend.map(p => p.amount);
 
   const savingsRate = monthly.income > 0 ? monthly.savings / monthly.income : 0;
   const pulso = Math.min(100, Math.max(0, Math.round(savingsRate * 100)));
@@ -222,31 +225,49 @@ export function DashboardShell({
         padding: "20px 40px 0", gap: 16, flexShrink: 0,
       }}>
         <div>
-          <div className="mono" style={{
-            fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
-            textTransform: "uppercase", marginBottom: 8,
-          }}>
+          <motion.div
+            className="mono"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.05 }}
+            style={{
+              fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
+              textTransform: "uppercase", marginBottom: 8,
+            }}
+          >
             {todayCap}
-          </div>
+          </motion.div>
           <h1 className="display" style={{
             margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
             color: "var(--ink)", lineHeight: 1,
           }}>
-            {greeting}, {userName}
+            <RevealWords stagger={0.04} delay={0.1}>
+              {`${greeting}, ${userName}`}
+            </RevealWords>
           </h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.3 }}
+          style={{ display: "flex", alignItems: "center", gap: 10 }}
+        >
           <span className="mono" style={{
             fontSize: 10, color: "var(--mute)", letterSpacing: "0.12em", textTransform: "uppercase",
           }}>
             Sincronizado
           </span>
-          <button onClick={() => openCapture("expense")} style={{
-            padding: "7px 12px 7px 9px", borderRadius: 8,
-            background: "var(--ink)", color: "var(--inverse)", border: "none",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
-          }}>
+          <motion.button
+            onClick={() => openCapture("expense")}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              padding: "7px 12px 7px 9px", borderRadius: 8,
+              background: "var(--ink)", color: "var(--inverse)", border: "none",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+            }}
+          >
             <svg width="11" height="11" viewBox="0 0 11 11">
               <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -256,244 +277,363 @@ export function DashboardShell({
               background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
               color: "inherit",
             }}>⌘N</span>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </header>
 
       {/* ── Scrollable content ── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0 40px 100px" }}>
 
         {/* ── Hero balance ── */}
-        <div style={{ paddingTop: 36 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.4 }}
+          style={{ paddingTop: 36 }}
+        >
           <Eyebrow right="todas conectadas">Balance total</Eyebrow>
           <div style={{
             marginTop: 18, display: "flex", alignItems: "flex-end",
             justifyContent: "space-between", gap: 40,
           }}>
-            <Amount value={balance.total} size={84} code="AR$" decimals={2} weight={500} />
+            <div className="display tnum" style={{
+              display: "inline-flex", alignItems: "baseline", gap: 8,
+            }}>
+              <span style={{
+                fontSize: 18, fontWeight: 400, letterSpacing: "-0.005em",
+                color: "var(--faint)",
+              }}>AR$</span>
+              <span style={{ fontSize: 84, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92 }}>
+                <AnimatedNumber value={balance.total} decimals={2} />
+              </span>
+            </div>
             <div style={{ flex: 1, maxWidth: 360 }}>
-              <div className="mono" style={{
-                fontSize: 10, color: "var(--mute)", letterSpacing: "0.12em", marginBottom: 10,
-              }}>
+              <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.12em", marginBottom: 10 }}>
                 PATRIMONIO · 24 MESES
               </div>
-              <LineChart
-                data={netWorth24mo.length >= 2 ? netWorth24mo : [0, 0]}
-                width={360} height={42} stroke={1.1} dot={true} fill={false}
-              />
+              <LineChart data={netWorth24mo.length >= 2 ? netWorth24mo : [0, 0]} width={360} height={42} stroke={1.1} dot={true} fill={false} />
               <div className="tnum" style={{
                 display: "flex", justifyContent: "space-between", marginTop: 8,
-                fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
-                color: "var(--faint)", letterSpacing: "0.06em",
+                fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em",
               }}>
                 <span>JUN 24</span>
-                <span style={{ color: "var(--ink)" }}>
-                  {nwPctChg >= 0 ? "+" : ""}{nwPctChg}% · MAY 26
-                </span>
+                <span style={{ color: "var(--ink)" }}>{nwPctChg >= 0 ? "+" : ""}{nwPctChg}% · MAY 26</span>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* ── Account chips separator ── */}
         <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 28 }} />
 
         {/* ── Este mes ── */}
-        <H2 right={currentMonthCap}>Este mes</H2>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 32 }}>
+        <ScrollReveal direction="up" distance={24}>
+          <div style={{ paddingTop: 48 }}>
+            <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 24 }}>
+              Este mes · {currentMonthCap}
+            </div>
 
+            {/* Gastado — prominent with progress bar */}
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  Gastado
+                </div>
+                {isOverBudget && (
+                  <div className="mono" style={{ fontSize: 10, color: "var(--ink)", letterSpacing: "0.06em", fontWeight: 500 }}>
+                    +${fmtCompact(overBy)} sobre el presupuesto
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+                <div className="display tnum" style={{ fontSize: 48, fontWeight: 500, letterSpacing: "-0.05em", color: "var(--ink)", lineHeight: 1, display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span>${fmtCompact(monthly.spending)}</span>
+                  <span style={{ color: "var(--faint)", fontSize: 20, fontWeight: 400, display: "flex", alignItems: "baseline", gap: 4 }}>
+                    / {fmtCompact(monthBudget)}
+                  </span>
+                </div>
+                <Link
+                  href="/settings"
+                  title="Configurar presupuesto mensual"
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "flex-end",
+                    textDecoration: "none", cursor: "pointer",
+                  }}
+                >
+                  <div className="display tnum" style={{
+                    fontSize: 32, fontWeight: 500, letterSpacing: "-0.03em",
+                    color: "var(--ink)",
+                  }}>
+                    {Math.round(monthPctRaw * 100)}%
+                  </div>
+                  <div className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
+                    PRESUPUESTO →
+                  </div>
+                </Link>
+              </div>
+              <div style={{ height: 6, background: "var(--hairline2)", borderRadius: 99, overflow: "hidden" }}>
+                <motion.div
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${monthPct * 100}%` }}
+                  transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ height: "100%", background: isOverBudget ? "var(--ink)" : "var(--ink)", borderRadius: 99 }}
+                />
+              </div>
+            </div>
+
+            {/* 4 stat cards */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } } }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32 }}
+            >
+              {[
+                { value: available, label: "Disponible", suffix: "" },
+                { value: monthly.income, label: "Ingreso", suffix: "" },
+                { value: monthly.savings, label: "Ahorrado", suffix: "" },
+                { value: pulso, label: "Pulso", suffix: "/100" },
+              ].map(s => (
+                <motion.div key={s.label} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+                  <Stat value={s.value} label={s.label} size={28} suffix={s.suffix} />
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Category breakdown — where spending goes */}
+            {categories.length > 0 && (
+              <div style={{ marginTop: 40 }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 18 }}>
+                  A dónde van los gastos
+                </div>
+                <CategoryBreakdown categories={categories} />
+              </div>
+            )}
+          </div>
+        </ScrollReveal>
+
+        {/* ── Two columns: Bloques + Compromisos ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 56, marginTop: 56 }}>
+
+          {/* LEFT: Bloques de vida — horizontal cards */}
           <div>
-            <Stat value={monthly.spending} label="Gastado" size={32} decimals={0} />
             <div style={{
-              marginTop: 14, height: 2, background: "var(--hairline)",
-              borderRadius: 99, overflow: "hidden", position: "relative",
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              marginBottom: 20,
             }}>
+              <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                Bloques de vida
+              </div>
+              {blockList.length > 0 && (
+                <Link href="/blocks" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
+                    {blockList.length} activos →
+                  </span>
+                </Link>
+              )}
+            </div>
+
+            {blockList.length === 0 ? (
+              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "12px 0" }}>
+                Sin bloques. Creá bloques de presupuesto para organizar tus gastos.
+              </div>
+            ) : (
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } }}
+                style={{ display: "flex", flexDirection: "column", gap: 0, borderTop: "1px solid var(--hairline)" }}
+              >
+                {blockList.slice(0, 4).map((block, i) => {
+                  const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
+                  const glyphKind: GlyphKind = BLOCK_GLYPHS[i % BLOCK_GLYPHS.length];
+                  return (
+                    <motion.div
+                      key={block.id}
+                      variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+                      style={{ borderBottom: "1px solid var(--hairline)" }}
+                    >
+                      <Link href={`/blocks/${block.id}`} style={{
+                        display: "flex", alignItems: "flex-start", gap: 16,
+                        padding: "20px 0", cursor: "pointer", textDecoration: "none",
+                      }} className="row-hover">
+                        <BlockGlyph kind={glyphKind} size={22} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
+                            <div className="body-font" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>
+                              {block.name}
+                            </div>
+                            <span className="mono tnum" style={{ fontSize: 11, color: "var(--ink)", letterSpacing: "0.04em", fontWeight: 500 }}>
+                              {Math.round(pct * 100)}%
+                            </span>
+                          </div>
+                          {block.goal && (
+                            <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.04em", marginBottom: 10 }}>
+                              {block.goal}
+                            </div>
+                          )}
+                          <div style={{ height: 3, background: "var(--hairline2)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
+                            <motion.div
+                              initial={{ width: "0%" }}
+                              animate={{ width: `${pct * 100}%` }}
+                              transition={{ duration: 1.0, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                              style={{ height: "100%", background: "var(--ink)", borderRadius: 99 }}
+                            />
+                          </div>
+                          <div className="tnum mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.04em" }}>
+                            {fmtCompact(block.spent)} / {fmtCompact(block.budget)} · {block.expenses} mov
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </div>
+
+          {/* RIGHT: Compromisos — Cuotas + Recurrentes stacked */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+            {/* Cuotas activas */}
+            <div>
               <div style={{
-                position: "absolute", left: 0, top: 0, height: "100%",
-                width: `${monthPct * 100}%`, background: "var(--ink)",
-                transition: "width 1.4s cubic-bezier(.2,.7,.1,1)",
-              }} />
-            </div>
-            <div className="mono" style={{
-              display: "flex", justifyContent: "space-between",
-              fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 8,
-            }}>
-              <span>{Math.round(monthPct * 100)}% del presupuesto</span>
-              <span className="tnum">{fmtCompact(monthBudget)} max</span>
-            </div>
-          </div>
-
-          <Stat value={available} label="Disponible" size={32} decimals={0} />
-          <Stat value={monthly.income} label="Ingreso" size={32} decimals={0} />
-
-          <div>
-            <Stat value={pulso} suffix="/100" label="Pulso" size={32} />
-          </div>
-        </div>
-
-        {/* ── Spending trend full-width ── */}
-        {trendData.length >= 2 && (
-          <div style={{ marginTop: 36 }}>
-            <LineChart
-              data={trendData}
-              width={1020} height={64} stroke={1.2} dot={true} fill={true}
-            />
-            <div className="mono" style={{
-              display: "flex", justifyContent: "space-between",
-              fontSize: 9, color: "var(--faint)", letterSpacing: "0.08em", marginTop: 10,
-            }}>
-              <span>{spendingTrend[0]?.month}</span>
-              <span>{spendingTrend[Math.floor(spendingTrend.length / 2)]?.month}</span>
-              <span style={{ color: "var(--ink)" }}>{spendingTrend[spendingTrend.length - 1]?.month} · HOY</span>
-            </div>
-          </div>
-        )}
-
-        {/* ── Bloques de vida ── */}
-        {blockList.length > 0 && (
-          <>
-            <H2 right={
-              <Link href="/blocks" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-                Ver todos · {blockList.length} →
-              </Link>
-            }>
-              Bloques de vida
-            </H2>
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 0,
-              borderTop: "1px solid var(--hairline)",
-              borderBottom: "1px solid var(--hairline)",
-            }}>
-              {blockList.slice(0, 6).map((block, i) => {
-                const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
-                const glyphKind: GlyphKind = BLOCK_GLYPHS[i % BLOCK_GLYPHS.length];
-                return (
-                  <Link key={block.id} href={`/blocks/${block.id}`} style={{
-                    display: "block", padding: "22px 24px", cursor: "pointer",
-                    textDecoration: "none",
-                    borderRight: (i % 3 !== 2) ? "1px solid var(--hairline)" : "none",
-                    borderBottom: (i < 3) ? "1px solid var(--hairline)" : "none",
-                  }} className="row-hover">
-                    <div style={{
-                      display: "flex", justifyContent: "space-between",
-                      alignItems: "flex-start", marginBottom: 16,
-                    }}>
-                      <BlockGlyph kind={glyphKind} size={22} />
-                      <RadialRing value={pct} size={36} stroke={1.4} />
-                    </div>
-                    <div className="body-font" style={{
-                      fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em",
-                      color: "var(--ink)", marginBottom: 4,
-                    }}>
-                      {block.name}
-                    </div>
-                    {block.goal && (
-                      <div className="mono" style={{
-                        fontSize: 10, color: "var(--mute)", letterSpacing: "0.06em", marginBottom: 12,
-                      }}>
-                        {block.goal}
-                      </div>
-                    )}
-                    <div style={{
-                      display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                    }}>
-                      <div className="tnum display" style={{
-                        fontSize: 18, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.025em",
-                      }}>
-                        {fmtCompact(block.spent)}
-                        <span style={{ color: "var(--faint)", fontSize: 11, fontWeight: 400 }}>
-                          {" "}/ {fmtCompact(block.budget)}
-                        </span>
-                      </div>
-                      <span className="mono tnum" style={{
-                        fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em",
-                      }}>
-                        {block.expenses} mov
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {/* ── Two columns: Cuotas + Recurrentes ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, marginTop: 16 }}>
-
-          {/* Cuotas activas */}
-          <div>
-            <H2 right={
-              <Link href="/installments" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-                {instList.length} →
-              </Link>
-            }>
-              Cuotas activas
-            </H2>
-            {instList.length === 0 ? (
-              <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>Sin cuotas activas</div>
-            ) : (
-              <div>
-                {instList.slice(0, 4).map((inst, i, arr) => (
-                  <InstRow key={inst.id} inst={inst} isLast={i === arr.length - 1} />
-                ))}
+                display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                marginBottom: 16,
+              }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                  Cuotas
+                </div>
+                <Link href="/installments" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
+                    {instList.length} activas →
+                  </span>
+                </Link>
               </div>
-            )}
-          </div>
+              {instList.length === 0 ? (
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>Sin cuotas activas</div>
+              ) : (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.12 } } }}
+                >
+                  {instList.slice(0, 4).map((inst, i, arr) => (
+                    <motion.div
+                      key={inst.id}
+                      variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+                    >
+                      <InstRow inst={inst} isLast={i === arr.length - 1} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
 
-          {/* Recurrentes próximos */}
-          <div>
-            <H2 right={
-              <Link href="/recurring" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-                {(recurring ?? []).length} →
-              </Link>
-            }>
-              Recurrentes próximos
-            </H2>
-            {recurringByDue.length === 0 ? (
-              <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>Sin recurrentes</div>
-            ) : (
-              <div>
-                {recurringByDue.map((r, i, arr) => (
-                  <RecRow key={r.id} r={r} isLast={i === arr.length - 1} />
-                ))}
+            {/* Recurrentes próximos */}
+            <div>
+              <div style={{
+                display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                marginBottom: 16,
+              }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                  Recurrentes
+                </div>
+                <Link href="/recurring" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
+                    {(recurring ?? []).length} activos →
+                  </span>
+                </Link>
               </div>
-            )}
+              {recurringByDue.length === 0 ? (
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>Sin recurrentes</div>
+              ) : (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.14 } } }}
+                >
+                  {recurringByDue.map((r, i, arr) => (
+                    <motion.div
+                      key={r.id}
+                      variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+                    >
+                      <RecRow r={r} isLast={i === arr.length - 1} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ── Hoy ── */}
-        <H2 right={
-          <Link href="/transactions" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-            Ver todo →
-          </Link>
-        }>
-          Hoy
-        </H2>
-        {txList.length === 0 ? (
-          <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-            Sin movimientos — usá el botón Anotar para agregar el primero.
+        <div style={{ marginTop: 56 }}>
+          <div style={{
+            display: "flex", alignItems: "baseline", justifyContent: "space-between",
+            marginBottom: 16,
+          }}>
+            <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+              Hoy · {txList.length} {txList.length === 1 ? "movimiento" : "movimientos"}
+            </div>
+            <Link href="/transactions" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+              <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>Ver todo →</span>
+            </Link>
           </div>
-        ) : (
-          <div>
-            {txList.slice(0, 8).map((tx, i, arr) => {
-              const isOpt = tx.id.startsWith("opt-");
-              const glyphKind: GlyphKind = (CATEGORY_GLYPH[tx.category] as GlyphKind | undefined) ?? "circle";
-              return (
-                <div key={tx.id} style={{ opacity: isOpt ? 0.6 : 1, transition: "opacity 400ms ease" }}>
-                  <TxRow tx={{
-                    label: tx.name,
-                    glyph: glyphKind,
-                    meta: `${tx.category} · ${tx.date}`,
-                    amount: tx.amount,
-                  }} />
-                  {i < arr.length - 1 && <Hairline />}
-                </div>
-              );
-            })}
-          </div>
-        )}
+          {txList.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...springGentle, delay: 0.3 }}
+              style={{ padding: "32px 0", borderTop: "1px solid var(--hairline)" }}
+            >
+              <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
+                Sin movimientos hoy
+              </div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 16 }}>
+                Usá el botón Anotar o el atajo ⌘N para agregar tu primer gasto o ingreso.
+              </div>
+              <motion.button
+                onClick={() => openCapture("expense")}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                style={{
+                  padding: "9px 18px 9px 14px", borderRadius: 8,
+                  background: "var(--ink)", color: "var(--inverse)", border: "none",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+                  cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8,
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                  <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+                Anotar movimiento
+                <span className="kbd" style={{ background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)", color: "inherit" }}>⌘N</span>
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } } }}
+              style={{ borderTop: "1px solid var(--hairline)" }}
+            >
+              {txList.slice(0, 8).map((tx, i, arr) => {
+                const isOpt = tx.id.startsWith("opt-");
+                const glyphKind: GlyphKind = (CATEGORY_GLYPH[tx.category] as GlyphKind | undefined) ?? "circle";
+                return (
+                  <motion.div
+                    key={tx.id}
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: isOpt ? 0.6 : 1, y: 0, transition: springGentle } }}
+                  >
+                    <TxRow tx={{ label: tx.name, glyph: glyphKind, meta: `${tx.category} · ${tx.date}`, amount: tx.amount }} />
+                    {i < arr.length - 1 && <Hairline />}
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
 
       </div>
     </div>

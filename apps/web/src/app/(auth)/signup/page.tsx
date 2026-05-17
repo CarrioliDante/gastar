@@ -61,8 +61,8 @@ export default function SignupPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ ...spring, duration: 0.4 }}
       style={{ width: "100%", maxWidth: 360 }}
     >
@@ -70,9 +70,9 @@ export default function SignupPage() {
         {sentTo ? (
           <motion.div
             key="confirm"
-            initial={{ opacity: 0, y: 20, filter: "blur(4px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -16, filter: "blur(4px)" }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
             transition={{ ...spring, duration: 0.35 }}
           >
             <GMark />
@@ -107,7 +107,7 @@ export default function SignupPage() {
             key="form"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -16, filter: "blur(4px)" }}
+            exit={{ opacity: 0, y: -16 }}
             transition={{ ...spring, duration: 0.35 }}
           >
             <div style={{ marginBottom: 40 }}>

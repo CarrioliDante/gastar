@@ -3,12 +3,13 @@
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
+import { parseNumeric } from "@/lib/parse-numeric";
 
 export async function createInstallment(formData: FormData) {
   const user = await requireUser();
   const name              = formData.get("name") as string;
-  const totalAmount       = parseFloat(formData.get("totalAmount") as string);
-  const monthlyAmount     = parseFloat(formData.get("monthlyAmount") as string);
+  const totalAmount       = parseNumeric(formData.get("totalAmount"));
+  const monthlyAmount     = parseNumeric(formData.get("monthlyAmount"));
   const totalInstallments = parseInt(formData.get("totalInstallments") as string);
   const paidInstallments  = Math.max(0, parseInt(formData.get("paidInstallments") as string) || 0);
   const nextDueDateStr    = formData.get("nextDueDate") as string;

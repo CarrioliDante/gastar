@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import { logout } from "@/app/(auth)/actions";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useUIStore } from "@/stores/ui";
+import { springGentle } from "@/components/motion/presets";
 
 const NAV = [
   {
@@ -125,16 +127,26 @@ export function Sidebar() {
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <aside style={{
-      width: 232, flexShrink: 0,
-      background: "var(--surface-alt)",
-      borderRight: "1px solid var(--hairline)",
-      display: "flex", flexDirection: "column",
-      paddingTop: 14,
-      transition: "background 400ms ease, border-color 400ms ease",
-    }}>
+    <motion.aside
+      initial={{ x: -24, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ ...springGentle, delay: 0.05 }}
+      style={{
+        width: 232, flexShrink: 0,
+        background: "var(--surface-alt)",
+        borderRight: "1px solid var(--hairline)",
+        display: "flex", flexDirection: "column",
+        paddingTop: 14,
+        transition: "background 400ms ease, border-color 400ms ease",
+      }}
+    >
       {/* Workspace identity */}
-      <div style={{ padding: "6px 14px 12px" }}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        style={{ padding: "6px 14px 12px" }}
+      >
         <div style={{
           width: "100%", padding: "8px 10px", borderRadius: 8,
           display: "flex", alignItems: "center", gap: 10,
@@ -155,10 +167,15 @@ export function Sidebar() {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Search / command palette */}
-      <div style={{ padding: "0 14px 12px" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        style={{ padding: "0 14px 12px" }}
+      >
         <button onClick={openPalette} style={{
           width: "100%", padding: "7px 10px", borderRadius: 8,
           background: "var(--bg)", border: "1px solid var(--hairline)", cursor: "pointer",
@@ -172,46 +189,71 @@ export function Sidebar() {
           <span style={{ flex: 1, textAlign: "left" }}>Buscar</span>
           <span className="kbd">⌘K</span>
         </button>
-      </div>
+      </motion.div>
 
       {/* Navigation */}
       <nav style={{ flex: 1, overflowY: "auto", padding: "0 8px" }}>
         {NAV.map((section, si) => (
-          <div key={si} style={{ marginBottom: 8 }}>
+          <motion.div
+            key={si}
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.03, delayChildren: 0.18 + si * 0.06 } },
+            }}
+            style={{ marginBottom: 8 }}
+          >
             {section.label && (
-              <div className="mono" style={{
-                padding: "12px 8px 6px",
-                fontSize: 9, color: "var(--faint)",
-                letterSpacing: "0.16em", textTransform: "uppercase",
-              }}>{section.label}</div>
+              <motion.div
+                className="mono"
+                variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+                style={{
+                  padding: "12px 8px 6px",
+                  fontSize: 9, color: "var(--faint)",
+                  letterSpacing: "0.16em", textTransform: "uppercase",
+                }}
+              >
+                {section.label}
+              </motion.div>
             )}
             {section.items.map(item => {
               const active = isActive(item.href);
               return (
-                <Link key={item.href} href={item.href}
-                  className="row-hover"
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    width: "100%", padding: "7px 8px", borderRadius: 7, marginBottom: 1,
-                    background: active ? "var(--surface)" : "transparent",
-                    boxShadow: active ? `inset 0 0 0 1px var(--hairline)` : "none",
-                    color: active ? "var(--ink)" : "var(--mute)",
-                    fontSize: 13, fontWeight: active ? 500 : 400,
-                    letterSpacing: "-0.005em",
-                    textDecoration: "none",
-                    transition: "all 160ms ease",
-                  }}>
-                  <NavIcon id={item.id} active={active} />
-                  <span style={{ flex: 1 }}>{item.label}</span>
-                </Link>
+                <motion.div
+                  key={item.href}
+                  variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: springGentle } }}
+                  style={{ position: "relative" }}
+                >
+                  <Link href={item.href}
+                    className="row-hover"
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "7px 8px", borderRadius: 7, marginBottom: 1,
+                      background: "transparent",
+                      color: active ? "var(--ink)" : "var(--mute)",
+                      fontSize: 13, fontWeight: active ? 500 : 400,
+                      letterSpacing: "-0.005em",
+                      textDecoration: "none",
+                      transition: "color 200ms ease",
+                    }}>
+                    <NavIcon id={item.id} active={active} />
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                  </Link>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         ))}
       </nav>
 
       {/* Footer: + Anotar + theme toggle + logout */}
-      <div style={{ padding: "10px 12px 14px", borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 6 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        style={{ padding: "10px 12px 14px", borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 6 }}
+      >
         <button onClick={() => openCapture("expense")} title="Anotar gasto (⌘N)"
           style={{
             flex: 1, padding: "8px 10px", borderRadius: 7, border: "none",
@@ -260,7 +302,7 @@ export function Sidebar() {
             </svg>
           </button>
         </form>
-      </div>
-    </aside>
+      </motion.div>
+    </motion.aside>
   );
 }

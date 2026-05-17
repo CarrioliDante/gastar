@@ -37,8 +37,8 @@ export default function LoginPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ ...spring, duration: 0.4 }}
       style={{ width: "100%", maxWidth: 360 }}
     >

@@ -3,6 +3,7 @@
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
+import { parseNumeric } from "@/lib/parse-numeric";
 
 const FREQ_DAYS: Record<string, number> = {
   weekly: 7, monthly: 30, bimonthly: 60, yearly: 365,
@@ -22,7 +23,7 @@ function advanceByMonth(from: Date, dayOfMonth: number): Date {
 export async function createRecurring(formData: FormData) {
   const user = await requireUser();
   const name       = formData.get("name") as string;
-  const amount     = parseFloat(formData.get("amount") as string);
+  const amount     = parseNumeric(formData.get("amount"));
   const category   = formData.get("category") as string;
   const frequency  = (formData.get("frequency") as string) || "monthly";
   const note       = (formData.get("note") as string) || null;

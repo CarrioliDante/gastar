@@ -1,7 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { motion } from "motion/react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { logout } from "@/app/(auth)/actions";
+import { springGentle } from "@/components/motion/presets";
+import { setMonthlyBudget } from "@/app/actions/settings";
+import { useNumberInput } from "@/hooks/use-number-input";
 
 type Row = { label: string; value: React.ReactNode };
 
@@ -98,25 +103,61 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
-export function SettingsClient({ email, name }: { email: string; name: string }) {
+export function SettingsClient({ email, name, monthlyBudget: initialBudget }: { email: string; name: string; monthlyBudget: number }) {
   const { theme, font, currency, setTheme, setFont, setCurrency } = useTheme();
+  const [saving, setSaving] = useState(false);
+  const [budgetValue, setBudgetValue] = useState(String(initialBudget));
 
   const displayName = name || email.split("@")[0] || "Usuario";
   const initials = displayName.slice(0, 2).toUpperCase();
 
+  const budgetInput = useNumberInput({
+    value: budgetValue,
+    onChange: setBudgetValue,
+    currency,
+    decimals: 0,
+  });
+
+  const saveBudget = async () => {
+    const val = parseInt(budgetInput.raw, 10);
+    if (!val || val <= 0) return;
+    setSaving(true);
+    const fd = new FormData();
+    fd.set("budget", String(val));
+    await setMonthlyBudget(fd);
+    setSaving(false);
+  };
+
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 40px 80px" }}>
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)" }}>
-        <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
+        <motion.div
+          className="mono"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.05 }}
+          style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
+        >
           Preferencias
-        </div>
-        <h1 className="display" style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}>
+        </motion.div>
+        <motion.h1
+          className="display"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.1 }}
+          style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
+        >
           Ajustes
-        </h1>
+        </motion.h1>
       </header>
 
       {/* User avatar */}
-      <div style={{ marginTop: 36, display: "flex", alignItems: "center", gap: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...springGentle, delay: 0.3 }}
+        style={{ marginTop: 36, display: "flex", alignItems: "center", gap: 16 }}
+      >
         <div style={{
           width: 48, height: 48, borderRadius: 12,
           background: "var(--ink)", color: "var(--inverse)",
@@ -128,7 +169,50 @@ export function SettingsClient({ email, name }: { email: string; name: string })
           <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em" }}>{displayName}</div>
           <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>{email}</div>
         </div>
-      </div>
+      </motion.div>
+
+      <Section title="Finanzas" rows={[
+        {
+          label: "Presupuesto mensual",
+          value: (
+            <form
+              onSubmit={e => { e.preventDefault(); saveBudget(); }}
+              style={{ display: "flex", alignItems: "center", gap: 8 }}
+            >
+              <span style={{ color: "var(--faint)", fontSize: 14 }}>$</span>
+              <input
+                ref={budgetInput.ref}
+                value={budgetInput.display}
+                onChange={budgetInput.handleChange}
+                onBlur={budgetInput.handleBlur}
+                placeholder="5.000"
+                style={{
+                  width: 120, padding: "8px 12px", borderRadius: 8,
+                  background: "var(--surface)", border: "1px solid var(--hairline)",
+                  outline: "none", fontFamily: "'Inter Tight', sans-serif",
+                  fontSize: 14, fontWeight: 500, color: "var(--ink)",
+                  letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums",
+                  textAlign: "right",
+                }}
+              />
+              <motion.button
+                type="submit"
+                whileTap={{ scale: 0.96 }}
+                disabled={saving || parseInt(budgetInput.raw, 10) === initialBudget}
+                style={{
+                  padding: "8px 14px", borderRadius: 7, border: "none", cursor: "pointer",
+                  background: (saving || parseInt(budgetInput.raw, 10) === initialBudget) ? "var(--surface)" : "var(--ink)",
+                  color: (saving || parseInt(budgetInput.raw, 10) === initialBudget) ? "var(--faint)" : "var(--inverse)",
+                  fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+                  letterSpacing: "-0.005em", whiteSpace: "nowrap",
+                }}
+              >
+                {saving ? "..." : "Guardar"}
+              </motion.button>
+            </form>
+          ),
+        },
+      ]} />
 
       <Section title="Apariencia" rows={[
         {

@@ -1,33 +1,35 @@
 "use client";
 
+import { motion } from "motion/react";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
+import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
 import type { MonthlyStats, SpendingPoint, Category, Transaction } from "@gastar/shared";
+import {
+  AreaChart, Area, XAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, Radar,
+} from "recharts";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
+import { AnimatedNumber } from "@/components/motion/animated-number";
+import { springGentle } from "@/components/motion/presets";
 
-function MiniLineChart({ data, width = 600, height = 80, fill = false }: {
-  data: number[]; width?: number; height?: number; fill?: boolean;
+// ── ChartTooltip (recharts) ──
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean; payload?: Array<{ value: number; name?: string }>; label?: string;
 }) {
-  if (!data || data.length < 2) return null;
-  const max = Math.max(...data), min = Math.min(...data);
-  const rng = max - min || 1;
-  const pad = 6;
-  const pts = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = pad + (height - pad * 2) * (1 - (d - min) / rng);
-    return [x, y];
-  });
-  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const area = `${path} L${width},${height} L0,${height} Z`;
-  const last = pts[pts.length - 1];
+  if (!active || !payload?.length) return null;
   return (
-    <svg width={width} height={height} style={{ overflow: "visible", display: "block" }}>
-      {fill && <path d={area} fill="var(--ink)" opacity={0.06} />}
-      <path d={path} fill="none" stroke="var(--ink)" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r={5} fill="var(--bg)" stroke="var(--ink)" strokeWidth={1} />
-      <circle cx={last[0]} cy={last[1]} r={1.8} fill="var(--ink)" />
-    </svg>
+    <div style={{ background: "#0A0A0A", borderRadius: 12, padding: "9px 16px" }}>
+      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: "0.08em", marginBottom: 3 }}>{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ color: "#F5F5F2", fontSize: 16, fontWeight: 300, letterSpacing: "-0.5px" }}>
+          {p.name ? `${p.name}: ` : ""}${p.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+        </p>
+      ))}
+    </div>
   );
 }
 
+// ── Eyebrow ──
 function Eyebrow({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="mono" style={{
@@ -40,6 +42,7 @@ function Eyebrow({ children, right }: { children: React.ReactNode; right?: React
   );
 }
 
+// ── Types ──
 interface PulsoData {
   score: number;
   mood: string;
@@ -49,18 +52,19 @@ interface PulsoData {
 interface Props {
   monthly: MonthlyStats;
   spendingTrend: SpendingPoint[];
+  incomeTrend: SpendingPoint[];
   categories: Category[];
   transactions: Transaction[];
   pulso: PulsoData;
 }
 
+// ── PulsoWidget ──
 function PulsoWidget({ pulso }: { pulso: PulsoData }) {
   const r = 40, c = 2 * Math.PI * r;
   return (
     <div style={{ padding: "28px 0 24px", borderBottom: "1px solid var(--hairline)" }}>
       <Eyebrow>Pulso Financiero</Eyebrow>
       <div style={{ marginTop: 20, display: "flex", gap: 32, alignItems: "center" }}>
-        {/* Radial */}
         <div style={{ position: "relative", flexShrink: 0 }}>
           <svg width={90} height={90} style={{ transform: "rotate(-90deg)" }}>
             <circle cx={45} cy={45} r={r} fill="none" stroke="var(--hairline2)" strokeWidth={2} />
@@ -74,7 +78,6 @@ function PulsoWidget({ pulso }: { pulso: PulsoData }) {
           </div>
         </div>
 
-        {/* Components */}
         <div style={{ flex: 1 }}>
           <div className="display" style={{ fontSize: 18, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 16 }}>
             {pulso.mood}
@@ -102,13 +105,23 @@ function PulsoWidget({ pulso }: { pulso: PulsoData }) {
   );
 }
 
-export function InsightsClient({ monthly, spendingTrend, categories, transactions, pulso }: Props) {
+// ── Main ──
+export function InsightsClient({ monthly, spendingTrend, incomeTrend, categories, transactions, pulso }: Props) {
   const totalSpending = categories.reduce((s, c) => s + c.amount, 0);
   const savingsRate = monthly.income > 0 ? Math.round((monthly.savings / monthly.income) * 100) : 0;
 
-  // Income vs expense this month
-  const incomeTotal = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const expenseTotal = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  // Merge income + spending trend for bar chart
+  const barData = spendingTrend.map((s, i) => ({
+    month: s.month,
+    Ingresos: incomeTrend[i]?.amount ?? 0,
+    Gastos: s.amount,
+  }));
+
+  // Radar data from pulso components
+  const radarData = pulso.components.map(c => ({
+    dimension: c.label,
+    value: Math.round(c.value * 100),
+  }));
 
   // Top merchants (by frequency)
   const merchantFreq = transactions.reduce<Record<string, number>>((acc, t) => {
@@ -121,98 +134,201 @@ export function InsightsClient({ monthly, spendingTrend, categories, transaction
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
+      {/* Header */}
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)" }}>
-        <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
+        <motion.div
+          className="mono"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.05 }}
+          style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
+        >
           Análisis
-        </div>
-        <h1 className="display" style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}>
+        </motion.div>
+        <motion.h1
+          className="display"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.1 }}
+          style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
+        >
           Lectura
-        </h1>
+        </motion.h1>
       </header>
 
       {/* Pulso */}
       <PulsoWidget pulso={pulso} />
 
       {/* Key stats */}
-      <div style={{ paddingTop: 36, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32 }}>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.08, delayChildren: 0.3 } },
+        }}
+        style={{ paddingTop: 36, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32 }}
+      >
         {[
           { label: "Ingresos", value: monthly.income, prefix: "$" },
           { label: "Gastos", value: monthly.spending, prefix: "$" },
           { label: "Ahorrado", value: monthly.savings, prefix: "$" },
           { label: "Tasa de ahorro", value: savingsRate, suffix: "%" },
         ].map(stat => (
-          <div key={stat.label}>
+          <motion.div
+            key={stat.label}
+            variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+          >
             <div className="display tnum" style={{ fontSize: 30, fontWeight: 500, letterSpacing: "-0.04em", color: "var(--ink)", lineHeight: 1 }}>
               {stat.prefix && <span style={{ color: "var(--faint)", fontSize: 16 }}>{stat.prefix}</span>}
-              {stat.prefix
-                ? stat.value.toLocaleString("en-US", { maximumFractionDigits: 0 })
-                : stat.value}
-              {stat.suffix && <span style={{ color: "var(--faint)", fontSize: 16 }}>{stat.suffix}</span>}
+              <AnimatedNumber value={stat.value} suffix={stat.suffix} />
             </div>
             <div className="mono" style={{ fontSize: 9, color: "var(--mute)", letterSpacing: "0.16em", textTransform: "uppercase", marginTop: 8 }}>
               {stat.label}
             </div>
-          </div>
+          </motion.div>
         ))}
+      </motion.div>
+
+      {/* Two-column chart grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, marginTop: 52 }}>
+
+        {/* LEFT: Donut + Radar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+          {/* Donut */}
+          <ScrollReveal direction="up" distance={24}>
+            <div>
+              <Eyebrow right={totalSpending > 0 ? `$${totalSpending.toLocaleString("en-US")}` : undefined}>
+                Por categoría
+              </Eyebrow>
+              <div style={{ marginTop: 18 }}>
+                <CategoryBreakdown categories={categories} />
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Radar */}
+          <ScrollReveal direction="up" distance={24}>
+            <div>
+              <Eyebrow>Salud financiera</Eyebrow>
+              <div style={{ marginTop: 18, background: "#FAFAF8", borderRadius: 28, padding: 24, border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                <ResponsiveContainer width="100%" height={260}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="rgba(0,0,0,0.06)" />
+                    <PolarAngleAxis
+                      dataKey="dimension"
+                      tick={{ fontSize: 10, fill: "rgba(0,0,0,0.35)", fontFamily: "Inter, sans-serif" }}
+                    />
+                    <Radar
+                      dataKey="value"
+                      stroke="#111111"
+                      fill="#111111"
+                      fillOpacity={0.06}
+                      strokeWidth={1.2}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </ScrollReveal>
+        </div>
+
+        {/* RIGHT: Area + Bar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+          {/* Area — spending trend */}
+          <ScrollReveal direction="up" distance={24}>
+            <div>
+              <Eyebrow right="6 meses">Tendencia de gastos</Eyebrow>
+              <div style={{ marginTop: 18, background: "#FAFAF8", borderRadius: 28, padding: "24px 20px 12px", border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                {spendingTrend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <AreaChart data={spendingTrend} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="insightsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#111111" stopOpacity={0.1} />
+                          <stop offset="100%" stopColor="#111111" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "rgba(0,0,0,0.25)", fontSize: 10, fontFamily: "Inter, sans-serif", letterSpacing: "0.04em" }}
+                        dy={8}
+                      />
+                      <Tooltip
+                        content={<ChartTooltip />}
+                        cursor={{ stroke: "rgba(0,0,0,0.08)", strokeWidth: 1, strokeDasharray: "3 3" }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#111111"
+                        strokeWidth={1.2}
+                        fill="url(#insightsAreaGrad)"
+                        dot={false}
+                        activeDot={{ r: 3, fill: "#111111", strokeWidth: 0 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <p style={{ color: "rgba(0,0,0,0.2)", fontSize: 12 }}>Sin datos</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Bar — income vs expense */}
+          <ScrollReveal direction="up" distance={24}>
+            <div>
+              <Eyebrow right="6 meses">Ingresos vs Gastos</Eyebrow>
+              <div style={{ marginTop: 18, background: "#FAFAF8", borderRadius: 28, padding: "24px 20px 12px", border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={barData} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "rgba(0,0,0,0.25)", fontSize: 10, fontFamily: "Inter, sans-serif", letterSpacing: "0.04em" }}
+                      dy={8}
+                    />
+                    <Tooltip
+                      content={<ChartTooltip />}
+                      cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                    />
+                    <Bar dataKey="Ingresos" fill="rgba(0,0,0,0.25)" radius={[3, 3, 0, 0]} barSize={18} />
+                    <Bar dataKey="Gastos" fill="#111111" radius={[3, 3, 0, 0]} barSize={18} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </ScrollReveal>
+        </div>
       </div>
 
-      {/* Spending trend */}
-      {spendingTrend.length > 1 && (
-        <div style={{ marginTop: 48 }}>
-          <Eyebrow right="6 meses">Tendencia de gastos</Eyebrow>
-          <div style={{ marginTop: 18 }}>
-            <MiniLineChart data={spendingTrend.map(p => p.amount)} width={960} height={80} fill />
-            <div className="mono tnum" style={{
-              display: "flex", justifyContent: "space-between",
-              fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 10,
-            }}>
-              {spendingTrend.map(p => <span key={p.month}>{p.month}</span>)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Two columns */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, marginTop: 52 }}>
-
-        {/* Category breakdown */}
-        <div>
-          <Eyebrow right={totalSpending > 0 ? `$${totalSpending.toLocaleString("en-US")}` : undefined}>
-            Por categoría
-          </Eyebrow>
-          {categories.length === 0 ? (
-            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 20 }}>Sin datos este mes</div>
-          ) : (
-            <div style={{ marginTop: 14 }}>
-              {categories.map((cat, i) => (
-                <div key={cat.name}>
-                  {i > 0 && <div style={{ height: 1, background: "var(--hairline)" }} />}
-                  <div style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: 12 }}>
-                    <Glyph kind={CATEGORY_GLYPH[cat.name] ?? "circle"} size={14} />
-                    <span style={{ flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>{cat.name}</span>
-                    <div style={{ width: 80, height: 2, background: "var(--hairline)", borderRadius: 99, overflow: "hidden", position: "relative" }}>
-                      <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${cat.percent}%`, background: "var(--ink)", opacity: 0.5, borderRadius: 99 }} />
-                    </div>
-                    <div className="mono tnum" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", width: 32, textAlign: "right" }}>{cat.percent}%</div>
-                    <div className="display tnum" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em", width: 80, textAlign: "right" }}>
-                      ${cat.amount.toLocaleString("en-US")}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Top merchants + income vs expense */}
-        <div>
+      {/* Merchants */}
+      <ScrollReveal direction="up" distance={20}>
+        <div style={{ marginTop: 52 }}>
           <Eyebrow>Frecuencia de compra</Eyebrow>
           {topMerchants.length === 0 ? (
             <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 20 }}>Sin datos</div>
           ) : (
-            <div style={{ marginTop: 14 }}>
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+              }}
+              style={{ marginTop: 14 }}
+            >
               {topMerchants.map(([name, count], i) => (
-                <div key={name}>
+                <motion.div
+                  key={name}
+                  variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: springGentle } }}
+                >
                   {i > 0 && <div style={{ height: 1, background: "var(--hairline)" }} />}
                   <div style={{ padding: "12px 0", display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -222,42 +338,12 @@ export function InsightsClient({ monthly, spendingTrend, categories, transaction
                       ×{count}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
-          )}
-
-          {/* Income vs Expense bar */}
-          {(incomeTotal > 0 || expenseTotal > 0) && (
-            <div style={{ marginTop: 36 }}>
-              <Eyebrow>Flujo del mes</Eyebrow>
-              <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 14 }}>
-                {[
-                  { label: "Ingresos", value: incomeTotal, total: Math.max(incomeTotal, expenseTotal) },
-                  { label: "Gastos",   value: expenseTotal, total: Math.max(incomeTotal, expenseTotal) },
-                ].map(row => (
-                  <div key={row.label}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span className="mono" style={{ fontSize: 9, color: "var(--mute)", letterSpacing: "0.12em", textTransform: "uppercase" }}>{row.label}</span>
-                      <span className="display tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
-                        ${row.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                      </span>
-                    </div>
-                    <div style={{ height: 3, background: "var(--hairline)", borderRadius: 99, overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%", borderRadius: 99,
-                        width: `${row.total > 0 ? (row.value / row.total) * 100 : 0}%`,
-                        background: "var(--ink)",
-                        transition: "width 1.2s cubic-bezier(.2,.7,.1,1)",
-                      }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </motion.div>
           )}
         </div>
-      </div>
+      </ScrollReveal>
     </div>
   );
 }

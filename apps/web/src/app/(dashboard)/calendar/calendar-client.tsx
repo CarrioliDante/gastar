@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useUIStore } from "@/stores/ui";
 import {
   BlockGlyph,
@@ -8,6 +9,7 @@ import {
   type GlyphKind,
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
+import { springGentle } from "@/components/motion/presets";
 
 type CalendarEvent = {
   id: string; label: string; amount: number;
@@ -91,20 +93,37 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
         padding: "20px 40px 0", gap: 16,
       }}>
         <div>
-          <div className="mono" style={{
-            fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
-            textTransform: "uppercase", marginBottom: 8,
-          }}>
+          <motion.div
+            className="mono"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.05 }}
+            style={{
+              fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
+              textTransform: "uppercase", marginBottom: 8,
+            }}
+          >
             {monthEvents.length} vencimientos
-          </div>
-          <h1 className="display" style={{
-            margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
-            color: "var(--ink)", lineHeight: 1,
-          }}>
+          </motion.div>
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.1 }}
+            style={{
+              margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
+              color: "var(--ink)", lineHeight: 1,
+            }}
+          >
             Calendario
-          </h1>
+          </motion.h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.25 }}
+          style={{ display: "flex", alignItems: "center", gap: 8 }}
+        >
           <button onClick={prevMonth} style={ghostBtn()}>←</button>
           <div style={{
             padding: "6px 14px", borderRadius: 7,
@@ -130,7 +149,7 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
               color: "inherit",
             }}>⌘N</span>
           </button>
-        </div>
+        </motion.div>
       </header>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 40px 80px" }}>

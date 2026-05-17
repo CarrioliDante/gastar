@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useUIStore } from "@/stores/ui";
 import { useAllTransactions, useBlocks } from "@/hooks/queries";
 import { useDeleteTransaction } from "@/hooks/mutations";
@@ -12,6 +13,7 @@ import {
   type GlyphKind,
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
+import { springGentle } from "@/components/motion/presets";
 
 type Tx = TransactionRow;
 
@@ -112,28 +114,50 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
         padding: "20px 40px 0", gap: 16,
       }}>
         <div>
-          <div className="mono" style={{
-            fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
-            textTransform: "uppercase", marginBottom: 8,
-          }}>
+          <motion.div
+            className="mono"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.05 }}
+            style={{
+              fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
+              textTransform: "uppercase", marginBottom: 8,
+            }}
+          >
             {txs.length} total · {filtered.length} visibles
-          </div>
-          <h1 className="display" style={{
-            margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
-            color: "var(--ink)", lineHeight: 1,
-          }}>
+          </motion.div>
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.1 }}
+            style={{
+              margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
+              color: "var(--ink)", lineHeight: 1,
+            }}
+          >
             Movimientos
-          </h1>
+          </motion.h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.25 }}
+          style={{ display: "flex", alignItems: "center", gap: 10 }}
+        >
           <button style={ghostBtn()}>Exportar CSV</button>
           <button style={ghostBtn()}>Filtros</button>
-          <button onClick={() => openCapture("expense")} style={{
-            padding: "7px 12px 7px 9px", borderRadius: 8,
-            background: "var(--ink)", color: "var(--inverse)", border: "none",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
-          }}>
+          <motion.button
+            onClick={() => openCapture("expense")}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              padding: "7px 12px 7px 9px", borderRadius: 8,
+              background: "var(--ink)", color: "var(--inverse)", border: "none",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+            }}
+          >
             <svg width="11" height="11" viewBox="0 0 11 11">
               <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -143,8 +167,8 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
               background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
               color: "inherit",
             }}>⌘N</span>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </header>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 40px 80px" }}>
@@ -203,15 +227,32 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
         </div>
 
         {/* ── Summary bar ── */}
-        <div style={{
-          display: "flex", gap: 40, padding: "22px 0",
-          borderBottom: "1px solid var(--hairline)", marginTop: 4,
-        }}>
-          <Stat value={outflow} label="Salidas" size={20} decimals={0} />
-          <Stat value={inflow}  label="Entradas" size={20} decimals={0} />
-          <Stat value={net}     label="Neto" size={20} decimals={0} />
-          <Stat value={filtered.length} label="Movimientos" size={20} />
-        </div>
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.06, delayChildren: 0.35 } },
+          }}
+          style={{
+            display: "flex", gap: 40, padding: "22px 0",
+            borderBottom: "1px solid var(--hairline)", marginTop: 4,
+          }}
+        >
+          {[
+            { value: outflow, label: "Salidas" },
+            { value: inflow,  label: "Entradas" },
+            { value: net,     label: "Neto" },
+            { value: filtered.length, label: "Movimientos" },
+          ].map(s => (
+            <motion.div
+              key={s.label}
+              variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+            >
+              <Stat value={s.value} label={s.label} size={20} decimals={0} />
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* ── Table ── */}
         {filtered.length === 0 ? (
@@ -241,19 +282,26 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
                 <th style={{ width: 36, borderBottom: "1px solid var(--hairline)" }} />
               </tr>
             </thead>
-            <tbody>
+            <motion.tbody
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.025, delayChildren: 0.4 } },
+              }}
+            >
               {filtered.map(t => {
                 const pos = t.amount >= 0;
                 const blockName  = t.blockId ? blockMap.get(t.blockId) : null;
                 const glyphKind: GlyphKind = (CATEGORY_GLYPH[t.category] as GlyphKind | undefined) ?? "circle";
                 const isOpt = t.id.startsWith("opt-");
                 return (
-                  <tr
+                  <motion.tr
                     key={t.id}
                     className="row-hover"
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: isOpt ? 0.55 : 1, y: 0, transition: springGentle } }}
                     style={{
                       borderBottom: "1px solid var(--hairline)",
-                      opacity: isOpt ? 0.55 : 1,
                       transition: "opacity 200ms",
                     }}
                   >
@@ -331,10 +379,10 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
                         disabled={isOpt || deleteTx.isPending}
                       >×</button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 );
               })}
-            </tbody>
+            </motion.tbody>
           </table>
         )}
       </div>

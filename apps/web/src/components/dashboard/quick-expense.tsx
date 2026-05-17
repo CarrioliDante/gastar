@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useCreateTransaction } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
+import { useNumberInput } from "@/hooks/use-number-input";
 
 const EXP_CATS = ["Comida", "Casa", "Transporte", "Ocio", "Salud", "Tecnología", "Educación", "Suscripciones", "Otros"];
 const INC_CATS = ["Salario", "Freelance", "Devolución", "Inversión", "Regalo", "Otros"];
@@ -14,15 +15,26 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
   const [label, setLabel]       = useState("");
   const [category, setCategory] = useState("Comida");
   const [saved, setSaved]       = useState(false);
-  const inputRef                = useRef<HTMLInputElement>(null);
-  const { symbol, format }      = useCurrency();
+  const [inputW, setInputW]     = useState(260);
+  const { symbol, format, currency } = useCurrency();
   const createTx                = useCreateTransaction();
+  const measureRef              = useRef<HTMLSpanElement>(null);
+
+  const num = useNumberInput({ value: amount, onChange: setAmount, currency, decimals: 2 });
+
+  // Auto-resize input width based on content
+  useEffect(() => {
+    if (measureRef.current) {
+      const w = measureRef.current.offsetWidth + 16; // + padding
+      setInputW(Math.max(180, w));
+    }
+  }, [num.display]);
 
   useEffect(() => {
     if (open) {
       setSaved(false); setAmount(""); setLabel("");
       setType(initialType); setCategory(initialType === "income" ? "Salario" : "Comida");
-      setTimeout(() => inputRef.current?.focus(), 60);
+      setTimeout(() => num.ref.current?.focus(), 60);
     }
   }, [open, initialType]);
 
@@ -32,12 +44,12 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
 
   const isExp   = type === "expense";
   const cats    = isExp ? EXP_CATS : INC_CATS;
-  const canSave = amount.length > 0 && parseFloat(amount) > 0;
+  const canSave = num.numericValue > 0;
 
   const save = () => {
     if (!canSave) return;
 
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = num.numericValue;
     const finalAmount  = isExp ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
     const name         = label.trim() || category;
 
@@ -114,7 +126,7 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
                 {isExp ? "Anotado" : "Recibido"}
               </div>
               <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.14em" }}>
-                {isExp ? "−" : "+"} {format(parseFloat(amount) || 0)} · {category}
+                {isExp ? "−" : "+"} {format(num.numericValue)} · {category}
               </div>
             </motion.div>
           ) : (
@@ -178,7 +190,7 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
                 <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 8 }}>
                   {symbol}
                 </div>
-                <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
+                <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4, position: "relative" }}>
                   <motion.span
                     className="display tnum"
                     animate={{ color: isExp ? "var(--faint)" : "var(--ink)" }}
@@ -187,25 +199,35 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
                   >
                     {isExp ? "−" : "+"}
                   </motion.span>
-                  <input ref={inputRef} value={amount} type="number"
-                    onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                  {/* Hidden span to measure text width */}
+                  <span
+                    ref={measureRef}
+                    aria-hidden
+                    style={{
+                      position: "absolute", visibility: "hidden", whiteSpace: "pre",
+                      fontFamily: "'Inter Tight', inherit", fontSize: 56, fontWeight: 500,
+                      letterSpacing: "-0.05em", fontVariantNumeric: "tabular-nums",
+                      pointerEvents: "none", left: 0, top: 0,
+                    }}
+                  >
+                    {num.display || "0"}
+                  </span>
+                  <input
+                    ref={num.ref}
+                    value={num.display}
+                    onChange={num.handleChange}
+                    onBlur={num.handleBlur}
                     placeholder="0"
                     style={{
                       background: "none", border: "none", outline: "none",
                       fontFamily: "'Inter Tight', inherit", fontSize: 56, fontWeight: 500,
                       letterSpacing: "-0.05em", color: "var(--ink)",
-                      width: 260, textAlign: "left",
+                      width: inputW, minWidth: 120, maxWidth: "calc(100vw - 200px)",
+                      textAlign: "left",
                       fontVariantNumeric: "tabular-nums",
-                    }} />
+                    }}
+                  />
                 </div>
-                {parseFloat(amount) >= 1000 && (
-                  <div className="mono" style={{
-                    fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em",
-                    marginTop: 6,
-                  }}>
-                    {format(parseFloat(amount))}
-                  </div>
-                )}
               </div>
 
               {/* Fields */}

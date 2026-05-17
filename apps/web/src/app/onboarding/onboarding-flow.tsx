@@ -233,9 +233,9 @@ export function OnboardingFlow({ name }: { name: string }) {
           <AnimatePresence mode="wait">
             <motion.div
               key={current.key}
-              initial={{ opacity: 0, y: 24, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -16, filter: "blur(4px)" }}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
               transition={{ ...spring, duration: 0.35 }}
             >
               {current.content}

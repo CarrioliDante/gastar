@@ -1,8 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, type Variants } from "motion/react";
-import { AnimatedNumber, fadeUp, scaleIn, staggerContainer } from "@/components/animations";
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  type Variants,
+} from "motion/react";
+import {
+  AnimatedNumber,
+  RevealText,
+  RevealWords,
+  fadeUp,
+  scaleIn,
+  staggerContainer,
+  springGentle,
+  springSnappy,
+} from "@/components/animations";
 
 const staggerSlow: Variants = {
   hidden: {},
@@ -39,7 +55,7 @@ function TopBar({
       id="topbar"
       initial={{ y: -28, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.65, ease, delay: 0.05 }}
+      transition={{ ...springGentle, delay: 0.05 }}
     >
       <div className="wrap row">
         <motion.a
@@ -47,12 +63,12 @@ function TopBar({
           href="#top"
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.22, duration: 0.4, ease }}
+          transition={{ delay: 0.22, ...springGentle }}
         >
           <motion.span
             className="dot"
-            animate={{ scale: [1, 1.25, 1] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            animate={{ scale: [1, 1.28, 1] }}
+            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
           />
           <span>gast.ar</span>
           <span className="v">v0.2 · beta</span>
@@ -65,7 +81,7 @@ function TopBar({
               href={item.href}
               initial={{ y: -14, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.22 + i * 0.05, duration: 0.4, ease }}
+              transition={{ delay: 0.22 + i * 0.05, ...springGentle }}
             >
               {item.label}
             </motion.a>
@@ -83,7 +99,7 @@ function TopBar({
             onClick={toggleTheme}
             title="Modo"
             animate={{ rotate: theme === "dark" ? 180 : 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
+            transition={{ ...springSnappy }}
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.94 }}
           >
@@ -98,8 +114,9 @@ function TopBar({
           <motion.a
             className="btn"
             href="#precios"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            transition={springGentle}
           >
             <span>Empezar</span>
             <motion.span
@@ -121,8 +138,35 @@ function TopBar({
 // ═══════════════════════════════════════════════════════════════
 
 function HeroSection() {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  // iPhone parallax — moves faster than copy on scroll
+  const iphoneY = useTransform(scrollYProgress, [0, 1], [0, -160]);
+
+  // Cursor-aware tilt
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+  const smoothX = useSpring(mouseX, { stiffness: 80, damping: 30, mass: 0.3 });
+  const smoothY = useSpring(mouseY, { stiffness: 80, damping: 30, mass: 0.3 });
+  const rotateX = useTransform(smoothY, [0, 1], [2, -2]);
+  const rotateY = useTransform(smoothX, [0, 1], [-2, 2]);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      const rect = heroRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      mouseX.set((e.clientX - rect.left) / rect.width);
+      mouseY.set((e.clientY - rect.top) / rect.height);
+    },
+    [mouseX, mouseY]
+  );
+
   return (
-    <section className="hero">
+    <section className="hero" ref={heroRef} onMouseMove={handleMouseMove}>
       <div className="wrap">
         <div className="hero-grid">
           {/* ── Copy ── */}
@@ -141,22 +185,37 @@ function HeroSection() {
               Cuaderno calmo de finanzas · Buenos Aires
             </motion.span>
 
-            <motion.h1 variants={fadeUp}>
-              Finanzas<br />en <em>silencio</em>.
-            </motion.h1>
+            <h1>
+              <RevealText as="span" stagger={0.022} delay={0.1}>
+                Finanzas
+              </RevealText>
+              <br />
+              <RevealText as="span" stagger={0.022} delay={0.35}>
+                en{" "}
+              </RevealText>
+              <em>
+                <RevealText as="span" stagger={0.022} delay={0.55}>
+                  silencio
+                </RevealText>
+              </em>
+              .
+            </h1>
 
-            <motion.p className="lede" variants={fadeUp}>
-              gast.ar es un cuaderno calmo para tu dinero. Sin notificaciones urgentes,
-              sin colores estridentes, sin gamificación que te empuje a gastar más.
-              Solo claridad — escrita como un editorial, no como un tablero.
-            </motion.p>
+            <motion.div variants={fadeUp}>
+              <RevealWords className="lede" stagger={0.06} delay={0.8}>
+                gast.ar es un cuaderno calmo para tu dinero. Sin notificaciones urgentes,
+                sin colores estridentes, sin gamificación que te empuje a gastar más.
+                Solo claridad — escrita como un editorial, no como un tablero.
+              </RevealWords>
+            </motion.div>
 
             <motion.div className="ctas" variants={fadeUp}>
               <motion.a
                 className="btn"
                 href="#"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={springGentle}
               >
                 <span>Abrir workspace</span>
                 <motion.span
@@ -170,8 +229,9 @@ function HeroSection() {
               <motion.a
                 className="btn ghost"
                 href="#"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={springGentle}
               >
                 <span>Ver app móvil</span>
               </motion.a>
@@ -186,6 +246,12 @@ function HeroSection() {
             initial={{ opacity: 0, scale: 0.86, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.95, delay: 0.5, ease }}
+            style={{
+              y: iphoneY,
+              rotateX,
+              rotateY,
+              perspective: 800,
+            }}
           >
             <motion.div
               style={{ width: "100%", height: "100%" }}
@@ -395,7 +461,13 @@ function PrinciplesSection() {
             </span>
           </motion.div>
           <motion.h2 className="sec-title" variants={fadeUp}>
-            Tres ideas que <em>no negociamos</em>.
+            Tres ideas que{" "}
+            <em>
+              <RevealText as="span" stagger={0.025} delay={0.3}>
+                no negociamos
+              </RevealText>
+            </em>
+            .
           </motion.h2>
         </motion.div>
 
@@ -440,6 +512,13 @@ function PrinciplesSection() {
 // ═══════════════════════════════════════════════════════════════
 
 function ProductSection() {
+  const sparkRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress: sparkProgress } = useScroll({
+    target: sparkRef,
+    offset: ["start end", "end start"],
+  });
+  const pathLength = useTransform(sparkProgress, [0.15, 0.55], [0, 1]);
+
   return (
     <section id="producto">
       <div className="wrap">
@@ -461,7 +540,13 @@ function ProductSection() {
             </span>
           </motion.div>
           <motion.h2 className="sec-title" variants={fadeUp}>
-            Una mirada <em>silenciosa</em><br />a todo lo que se mueve.
+            Una mirada{" "}
+            <em>
+              <RevealText as="span" stagger={0.025} delay={0.3}>
+                silenciosa
+              </RevealText>
+            </em>
+            <br />a todo lo que se mueve.
           </motion.h2>
         </motion.div>
 
@@ -540,7 +625,7 @@ function ProductSection() {
                     initial={{ width: "0%" }}
                     whileInView={{ width: "77%" }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1, delay: 0.6, ease }}
+                    transition={{ duration: 0.9, delay: 0.6, ...springGentle }}
                   /></div>
                   <div className="m">184k / 240k</div>
                 </div>
@@ -554,7 +639,7 @@ function ProductSection() {
                     initial={{ width: "0%" }}
                     whileInView={{ width: "63%" }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1, delay: 0.75, ease }}
+                    transition={{ duration: 0.9, delay: 0.75, ...springGentle }}
                   /></div>
                   <div className="m">56.4k / 90k</div>
                 </div>
@@ -568,7 +653,7 @@ function ProductSection() {
                     initial={{ width: "0%" }}
                     whileInView={{ width: "18%" }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1, delay: 0.9, ease }}
+                    transition={{ duration: 0.9, delay: 0.9, ...springGentle }}
                   /></div>
                   <div className="m">320k / 1.8M</div>
                 </div>
@@ -580,16 +665,15 @@ function ProductSection() {
                 <div className="eyebrow">Tendencia · mayo</div>
                 <span className="mono" style={{ fontSize: "9px", color: "var(--faint)", letterSpacing: "0.06em" }}>−7.5% vs mes anterior</span>
               </div>
-              <svg className="spark" viewBox="0 0 300 40" preserveAspectRatio="none" style={{ marginTop: "10px" }}>
-                <motion.polyline
-                  points="0,28 16,24 32,26 48,20 64,24 80,18 96,16 112,18 128,14 144,16 160,12 176,14 192,11 208,9 224,12 240,8 256,10 272,6 288,8 300,5"
-                  fill="none" stroke="currentColor" strokeWidth="1.2"
-                  initial={{ pathLength: 0 }}
-                  whileInView={{ pathLength: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 1.4, delay: 1, ease: "easeInOut" }}
-                />
-              </svg>
+              <div ref={sparkRef} style={{ position: "relative" }}>
+                <svg className="spark" viewBox="0 0 300 40" preserveAspectRatio="none" style={{ marginTop: "10px" }}>
+                  <motion.polyline
+                    points="0,28 16,24 32,26 48,20 64,24 80,18 96,16 112,18 128,14 144,16 160,12 176,14 192,11 208,9 224,12 240,8 256,10 272,6 288,8 300,5"
+                    fill="none" stroke="currentColor" strokeWidth="1.2"
+                    style={{ pathLength }}
+                  />
+                </svg>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -629,7 +713,7 @@ function FeaturesSection() {
                 initial={{ width: "0%" }}
                 whileInView={{ width: b.w }}
                 viewport={{ once: true }}
-                transition={{ duration: 1, delay: 0.4 + i * 0.15, ease }}
+                transition={{ duration: 0.9, delay: 0.4 + i * 0.15, ...springGentle }}
               /></div>
               <div className="m">{b.m}</div>
             </div>
@@ -680,7 +764,7 @@ function FeaturesSection() {
                   initial={{ width: "0%" }}
                   whileInView={{ width: r.w }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.8, delay: 0.5 + i * 0.12, ease }}
+                  transition={{ duration: 0.8, delay: 0.5 + i * 0.12, ...springGentle }}
                 /></span>
                 <span className="v">{r.v}</span>
               </div>
@@ -757,14 +841,19 @@ function FeaturesSection() {
 // ═══════════════════════════════════════════════════════════════
 
 function QuoteSection() {
+  const quoteRef = useRef<HTMLElement>(null);
+  const { scrollYProgress: qp } = useScroll({
+    target: quoteRef,
+    offset: ["start end", "end start"],
+  });
+  const quoteY = useTransform(qp, [0, 1], [40, -24]);
+  const quoteOpacity = useTransform(qp, [0, 0.35, 1], [0, 1, 1]);
+
   return (
-    <section className="quote">
+    <section className="quote" ref={quoteRef}>
       <div className="wrap">
         <motion.blockquote
-          initial={{ opacity: 0, y: 32 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.8, ease }}
+          style={{ y: quoteY, opacity: quoteOpacity }}
         >
           "La mejor app de finanzas es la que no necesitás abrir todos los días.
           gast.ar entendió eso antes que el resto."
@@ -895,8 +984,9 @@ function PricingSection() {
               <motion.a
                 className={`btn${p.ghost ? " ghost" : ""}`}
                 href="#"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={springGentle}
               >
                 {p.cta}
               </motion.a>
@@ -1032,7 +1122,7 @@ function FooterSection() {
                     <motion.a
                       href="#"
                       whileHover={{ x: 3 }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ duration: 0.2, ...springGentle }}
                     >
                       {label}
                     </motion.a>
@@ -1088,8 +1178,13 @@ export default function LandingPage() {
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
+  // ── Scroll progress bar ──
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, mass: 0.5 });
+
   return (
     <>
+      <motion.div className="scroll-progress" style={{ scaleX }} />
       <TopBar scrolled={scrolled} theme={theme} toggleTheme={toggleTheme} />
       <main id="top">
         <HeroSection />

@@ -73,6 +73,18 @@ model SavingsGoal {
   @@index([userId])
 }
 
+// Key-value settings per user (monthly budget, preferences, etc.)
+model UserSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
 // Gastos recurrentes sin fin (suscripciones, servicios, alquiler)
 model RecurringExpense {
   id          String    @id @default(cuid())

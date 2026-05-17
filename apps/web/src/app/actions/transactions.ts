@@ -3,12 +3,13 @@
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
+import { parseNumeric } from "@/lib/parse-numeric";
 
 export async function createTransaction(formData: FormData) {
   const user = await requireUser();
 
   const name     = (formData.get("name") as string) || "Expense";
-  const amount   = parseFloat(formData.get("amount") as string);
+  const amount   = parseNumeric(formData.get("amount"));
   const category = formData.get("category") as string;
   const note     = (formData.get("note") as string) || null;
   const blockId  = (formData.get("blockId") as string) || null;

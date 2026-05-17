@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useRecurring } from "@/hooks/queries";
 import { useCreateRecurring, usePayRecurring, useDeleteRecurring } from "@/hooks/mutations";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
+import { springGentle } from "@/components/motion/presets";
 import type { RecurringRow } from "@/hooks/queries";
 
 const CATS = ["Casa", "Salud", "Suscripciones", "Transporte", "Educación", "Tecnología", "Otros"];
@@ -190,12 +192,24 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>
-          <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
+          <motion.div
+            className="mono"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.05 }}
+            style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
+          >
             Compromisos
-          </div>
-          <h1 className="display" style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}>
+          </motion.div>
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.1 }}
+            style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
+          >
             Recurrentes
-          </h1>
+          </motion.h1>
         </div>
         <div style={{ textAlign: "right" }}>
           {totalMonthly > 0 && (

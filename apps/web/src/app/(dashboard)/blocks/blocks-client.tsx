@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useUIStore } from "@/stores/ui";
 import { useBlocks } from "@/hooks/queries";
 import { useArchiveBlock } from "@/hooks/mutations";
@@ -16,6 +17,7 @@ import {
   type GlyphKind,
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
+import { springGentle } from "@/components/motion/presets";
 
 type Tx = {
   id: string; name: string; category: string;
@@ -78,27 +80,49 @@ export function BlocksClient({
         padding: "20px 40px 0", gap: 16, flexShrink: 0,
       }}>
         <div>
-          <div className="mono" style={{
-            fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
-            textTransform: "uppercase", marginBottom: 8,
-          }}>
+          <motion.div
+            className="mono"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.05 }}
+            style={{
+              fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em",
+              textTransform: "uppercase", marginBottom: 8,
+            }}
+          >
             {blocks.length} activos · 1 archivado
-          </div>
-          <h1 className="display" style={{
-            margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
-            color: "var(--ink)", lineHeight: 1,
-          }}>
+          </motion.div>
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.1 }}
+            style={{
+              margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em",
+              color: "var(--ink)", lineHeight: 1,
+            }}
+          >
             Bloques de vida
-          </h1>
+          </motion.h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.25 }}
+          style={{ display: "flex", alignItems: "center", gap: 10 }}
+        >
           <button style={ghostBtn()}>+ Nuevo bloque</button>
-          <button onClick={() => openCapture("expense")} style={{
-            padding: "7px 12px 7px 9px", borderRadius: 8,
-            background: "var(--ink)", color: "var(--inverse)", border: "none",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
-          }}>
+          <motion.button
+            onClick={() => openCapture("expense")}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              padding: "7px 12px 7px 9px", borderRadius: 8,
+              background: "var(--ink)", color: "var(--inverse)", border: "none",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+            }}
+          >
             <svg width="11" height="11" viewBox="0 0 11 11">
               <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -108,8 +132,8 @@ export function BlocksClient({
               background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
               color: "inherit",
             }}>⌘N</span>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </header>
 
       {/* ── Split view ── */}
@@ -127,21 +151,31 @@ export function BlocksClient({
             Bloques · {blocks.length}
           </div>
 
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.04, delayChildren: 0.15 } },
+            }}
+          >
           {blocks.map((b, idx) => {
             const p      = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
             const active = b.id === selId;
             const glyph: GlyphKind = BLOCK_GLYPHS[idx % BLOCK_GLYPHS.length];
             return (
-              <button
+              <motion.button
                 key={b.id}
                 onClick={() => setSelId(b.id)}
                 className="row-hover"
+                variants={{ hidden: { opacity: 0, x: -16 }, visible: { opacity: 1, x: 0, transition: springGentle } }}
                 style={{
                   width: "100%", padding: "14px 12px", borderRadius: 10,
                   background: active ? "var(--surface)" : "transparent",
                   border: "none", cursor: "pointer", textAlign: "left",
                   boxShadow: active ? "inset 0 0 0 1px var(--hairline)" : "none",
                   display: "block", marginBottom: 4, transition: "all 180ms",
+                  position: "relative",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -166,10 +200,15 @@ export function BlocksClient({
                 </div>
 
                 <div style={{ height: 1, background: "var(--hairline)", position: "relative" }}>
-                  <div style={{
-                    position: "absolute", left: 0, top: 0, height: "100%",
-                    width: `${p * 100}%`, background: "var(--ink)",
-                  }} />
+                  <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${p * 100}%` }}
+                    transition={{ duration: 1.0, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    style={{
+                      position: "absolute", left: 0, top: 0, height: "100%",
+                      background: "var(--ink)",
+                    }}
+                  />
                 </div>
 
                 <div className="tnum mono" style={{
@@ -178,13 +217,22 @@ export function BlocksClient({
                   {fmtCompact(b.spent)}{" "}
                   <span style={{ color: "var(--faint)" }}>/ {fmtCompact(b.budget)}</span>
                 </div>
-              </button>
+              </motion.button>
             );
           })}
+          </motion.div>
         </div>
 
         {/* Right: detail */}
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 36px 40px" }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={block.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={springGentle}
+            >
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: 28, paddingTop: 20 }}>
             <RadialRing value={pct} size={120} stroke={1.8} />
@@ -227,20 +275,39 @@ export function BlocksClient({
           </div>
 
           {/* Stats row */}
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24,
-            marginTop: 36, paddingTop: 22, paddingBottom: 22,
-            borderTop: "1px solid var(--hairline)", borderBottom: "1px solid var(--hairline)",
-          }}>
-            <Stat value={block.spent}                         label="Gastado"     size={22} decimals={0} />
-            <Stat value={Math.max(0, block.budget - block.spent)} label="Disponible" size={22} decimals={0} />
-            <Stat value={block.budget}                        label="Presupuesto" size={22} decimals={0} />
-            <Stat value={Math.round(pct * 100)} suffix="%" label="Avance" size={22} />
-          </div>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+            }}
+            style={{
+              display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24,
+              marginTop: 36, paddingTop: 22, paddingBottom: 22,
+              borderTop: "1px solid var(--hairline)", borderBottom: "1px solid var(--hairline)",
+            }}
+          >
+            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+              <Stat value={block.spent} label="Gastado" size={22} decimals={0} />
+            </motion.div>
+            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+              <Stat value={Math.max(0, block.budget - block.spent)} label="Disponible" size={22} decimals={0} />
+            </motion.div>
+            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+              <Stat value={block.budget} label="Presupuesto" size={22} decimals={0} />
+            </motion.div>
+            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+              <Stat value={Math.round(pct * 100)} suffix="%" label="Avance" size={22} />
+            </motion.div>
+          </motion.div>
 
           {/* Trend bar chart */}
           <H2 top={32} right="Tendencia">Tendencia · 14 días</H2>
           <BarChart data={trend} width={700} height={70} gap={4} />
+
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </>

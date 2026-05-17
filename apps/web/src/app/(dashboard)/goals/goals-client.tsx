@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useGoals } from "@/hooks/queries";
 import { useCreateGoal, useContributeToGoal, useDeleteGoal } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
+import { parseNumeric } from "@/hooks/use-number-input";
+import { springGentle } from "@/components/motion/presets";
 import type { GoalRow } from "@/hooks/queries";
 
 const fieldStyle: React.CSSProperties = {
@@ -26,7 +29,7 @@ function GoalCard({ goal }: { goal: GoalRow }) {
 
   const handleContribute = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    const n = parseFloat(amount);
+    const n = parseNumeric(amount);
     if (!n || n <= 0) return;
     const fd = new FormData();
     fd.set("id", goal.id);
@@ -206,12 +209,24 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>
-          <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
+          <motion.div
+            className="mono"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.05 }}
+            style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
+          >
             Crecimiento
-          </div>
-          <h1 className="display" style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}>
+          </motion.div>
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springGentle, delay: 0.1 }}
+            style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
+          >
             Metas de ahorro
-          </h1>
+          </motion.h1>
         </div>
         {totalTarget > 0 && (
           <div style={{ textAlign: "right" }}>

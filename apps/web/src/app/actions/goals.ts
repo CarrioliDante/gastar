@@ -3,12 +3,13 @@
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
+import { parseNumeric } from "@/lib/parse-numeric";
 
 export async function createGoal(formData: FormData) {
   const user = await requireUser();
   const name          = formData.get("name") as string;
-  const targetAmount  = parseFloat(formData.get("targetAmount") as string);
-  const currentAmount = parseFloat(formData.get("currentAmount") as string) || 0;
+  const targetAmount  = parseNumeric(formData.get("targetAmount"));
+  const currentAmount = parseNumeric(formData.get("currentAmount")) || 0;
   const deadlineStr   = formData.get("deadline") as string;
 
   if (!name || isNaN(targetAmount)) return;
@@ -31,7 +32,7 @@ export async function createGoal(formData: FormData) {
 export async function contributeToGoal(formData: FormData) {
   const user   = await requireUser();
   const id     = formData.get("id") as string;
-  const amount = parseFloat(formData.get("amount") as string);
+  const amount = parseNumeric(formData.get("amount"));
 
   if (!id || isNaN(amount) || amount <= 0) return;
 

@@ -43,6 +43,7 @@ export default async function InsightsPage() {
     <InsightsClient
       monthly={stats.monthly}
       spendingTrend={stats.spendingTrend}
+      incomeTrend={stats.incomeTrend}
       categories={stats.categories}
       transactions={transactions}
       pulso={pulso}
