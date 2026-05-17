@@ -1,0 +1,27 @@
+{
+  "name": "gast.ar — finanzas en silencio",
+  "short_name": "gast.ar",
+  "description": "Cuaderno calmo para tu plata. Local primero, cifrado, sin notificaciones urgentes.",
+  "lang": "es-AR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F5F2",
+  "theme_color": "#111111",
+  "categories": ["finance", "productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

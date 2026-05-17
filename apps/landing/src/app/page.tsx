@@ -176,6 +176,10 @@ function HeroSection() {
             animate="visible"
             variants={staggerContainer}
           >
+            <motion.h2 className="hero-wordmark" variants={fadeUp}>
+              gast<em>.ar</em>
+            </motion.h2>
+
             <motion.span className="eyebrow" variants={fadeUp}>
               <motion.span
                 className="dot"

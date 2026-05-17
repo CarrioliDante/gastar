@@ -3,7 +3,21 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "gast.ar · finanzas en silencio",
-  description: "Un cuaderno calmo para tu dinero. Sin notificaciones urgentes, sin colores estridentes, sin gamificación. Solo claridad.",
+  description:
+    "Un cuaderno calmo para tu dinero. Sin notificaciones urgentes, sin colores estridentes, sin gamificación. Solo claridad.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+    other: [
+      { rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#111111" },
+    ],
+  },
+  manifest: "/manifest.webmanifest",
+  themeColor: "#111111",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
