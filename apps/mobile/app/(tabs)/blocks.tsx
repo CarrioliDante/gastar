@@ -1,29 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
-import { DATA } from '../../lib/data';
+import { useBlocks, useTransactions } from '../../lib/hooks';
+import { adaptBlock, adaptTxGroup, type BlockUI } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Eyebrow, Hairline, ProgressBar, Section } from '../../components/ui/primitives';
 import { RadialRing, BarChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { ListRow } from '../../components/ui/ListRow';
 import { TxRow } from '../../components/ui/TxRow';
-import type { Block } from '../../lib/data';
 
-function BlockDetail({ block, onBack }: { block: Block; onBack: () => void }) {
+function monthName(d: Date): string {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return months[d.getMonth()];
+}
+
+function BlockDetail({ block, onBack }: { block: BlockUI; onBack: () => void }) {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
   const trend = Array.from({ length: 14 }, (_, i) => 20 + Math.sin(i * 0.6) * 8 + Math.cos(i * 1.3) * 4 + 12);
-  const txs = [
-    { label: 'Mercadolibre', meta: 'May 13 · 14:22', amount: -8420,  glyph: block.glyph },
-    { label: 'Easy',         meta: 'May 11 · 18:30', amount: -22400, glyph: block.glyph },
-    { label: 'Sodimac',      meta: 'May 09 · 11:20', amount: -14800, glyph: block.glyph },
-    { label: 'Edenor',       meta: 'May 04 · 09:00', amount: -16800, glyph: block.glyph },
-    { label: 'Aysa',         meta: 'May 02 · 09:00', amount: -8400,  glyph: block.glyph },
-  ] as const;
+  const { data: txData } = useTransactions(block.id);
+  const groups = (txData?.groups ?? []).map(adaptTxGroup);
+  const txs = groups.flatMap(g => g.txs);
 
   return (
     <ScrollView
@@ -99,13 +100,17 @@ function BlockDetail({ block, onBack }: { block: Block; onBack: () => void }) {
 
       <Hairline style={{ marginTop: 24 }} />
 
-      <Section title="Movimientos" right={`${block.txs} este mes`} top={24}>
-        {txs.map((tx, i) => (
-          <View key={i}>
-            <TxRow tx={tx as any} />
-            {i < txs.length - 1 && <Hairline />}
-          </View>
-        ))}
+      <Section title="Movimientos" right={`${txs.length} este mes`} top={24}>
+        {txs.length === 0 ? (
+          <Text style={{ fontFamily: fontBody, fontSize: 14, color: C.faint, paddingVertical: 12 }}>Sin movimientos este mes</Text>
+        ) : (
+          txs.map((tx, i) => (
+            <View key={i}>
+              <TxRow tx={tx} />
+              {i < txs.length - 1 && <Hairline />}
+            </View>
+          ))
+        )}
       </Section>
     </ScrollView>
   );
@@ -114,15 +119,28 @@ function BlockDetail({ block, onBack }: { block: Block; onBack: () => void }) {
 export default function BlocksScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
-  const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<BlockUI | null>(null);
+  const { data: apiBlocks, isLoading } = useBlocks();
 
-  if (selectedBlock) {
-    return <BlockDetail block={selectedBlock} onBack={() => setSelectedBlock(null)} />;
+  const now = new Date();
+  if (isLoading || !apiBlocks) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="small" color={C.ink} />
+      </View>
+    );
   }
 
-  const { blocks } = DATA;
+  const blocks = apiBlocks.map(adaptBlock);
+
+  if (selectedBlock) {
+    const fullBlock = blocks.find(b => b.id === selectedBlock.id) ?? selectedBlock;
+    return <BlockDetail block={fullBlock} onBack={() => setSelectedBlock(null)} />;
+  }
+
   const totalSpent = blocks.reduce((s, b) => s + b.spent, 0);
   const totalBudget = blocks.reduce((s, b) => s + b.budget, 0);
+  const pct = totalBudget > 0 ? totalSpent / totalBudget : 0;
 
   return (
     <ScrollView
@@ -134,7 +152,7 @@ export default function BlocksScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-            6 activos · 1 archivado
+            {blocks.length} activos{blocks.length ? '' : ''}
           </Text>
           <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
             Bloques
@@ -154,7 +172,7 @@ export default function BlocksScreen() {
 
       {/* Budget overview */}
       <View style={{ paddingTop: 32, paddingBottom: 20 }}>
-        <Eyebrow right={`${blocks.length} bloques`}>Asignado · Mayo</Eyebrow>
+        <Eyebrow right={`${blocks.length} bloques`}>Asignado · {monthName(now)}</Eyebrow>
         <Text style={{ fontFamily: fontDisplay, fontSize: 36, fontWeight: '500', letterSpacing: -1.5, marginTop: 14, color: C.ink, fontVariant: ['tabular-nums'] }}>
           AR$ {fmt(totalBudget, { decimals: 0 })}
         </Text>
@@ -163,25 +181,25 @@ export default function BlocksScreen() {
             Gastado · {fmt(totalSpent, { decimals: 0, compact: true })}
           </Text>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.5 }}>
-            {Math.round((totalSpent / totalBudget) * 100)}%
+            {Math.round(pct * 100)}%
           </Text>
         </View>
-        <ProgressBar value={totalSpent / totalBudget} style={{ marginTop: 10 }} />
+        <ProgressBar value={pct} style={{ marginTop: 10 }} />
       </View>
 
       <Hairline />
 
       {blocks.map((b, i) => {
-        const pct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
+        const bpct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
         return (
           <View key={b.id}>
             <ListRow
               glyph={b.glyph}
               label={b.label}
-              meta={b.note}
+              meta={b.note || undefined}
               right={`${fmt(b.spent, { decimals: 0, compact: true })}/${fmt(b.budget, { decimals: 0, compact: true })}`}
               sub={`${b.txs} mov`}
-              progress={pct}
+              progress={bpct}
               onClick={() => setSelectedBlock(b)}
             />
             <Hairline />

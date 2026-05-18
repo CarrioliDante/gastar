@@ -20,7 +20,6 @@ const TABS = [
   { name: 'transactions', label: 'Movim.' },
   { name: 'blocks',       label: 'Bloques' },
   { name: 'insights',     label: 'Lectura' },
-  { name: 'settings',     label: 'Ajustes' },
 ];
 
 function TabIcon({ name, active, color }: { name: string; active: boolean; color: string }) {
@@ -58,15 +57,6 @@ function TabIcon({ name, active, color }: { name: string; active: boolean; color
         <Svg width={18} height={18} viewBox="0 0 20 20" fill="none">
           <Circle cx={10} cy={10} r={7} fill="none" stroke={color} strokeWidth={1.2} />
           <Path d="M10 10 L10 4 A 6 6 0 0 1 15.2 13 Z" fill={filled ? color : 'none'} stroke={color} strokeWidth={1.2} strokeLinejoin="round" />
-        </Svg>
-      );
-    case 'settings':
-      return (
-        <Svg width={18} height={18} viewBox="0 0 20 20" fill="none">
-          <Line x1={3} y1={6} x2={17} y2={6} stroke={color} strokeWidth={1.2} strokeLinecap="round" />
-          <Line x1={3} y1={14} x2={17} y2={14} stroke={color} strokeWidth={1.2} strokeLinecap="round" />
-          <Circle cx={7} cy={6} r={2} fill="transparent" stroke={color} strokeWidth={1.2} />
-          <Circle cx={13} cy={14} r={2} fill="transparent" stroke={color} strokeWidth={1.2} />
         </Svg>
       );
     default:

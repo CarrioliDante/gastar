@@ -24,13 +24,11 @@ export default function TabsLayout() {
         <Tabs.Screen name="transactions" />
         <Tabs.Screen name="blocks" />
         <Tabs.Screen name="insights" />
-        <Tabs.Screen name="settings" />
       </Tabs>
       <CaptureSheet
         open={captureOpen}
         initialType={captureType}
         onClose={closeCapture}
-        onSave={() => {}}
       />
     </View>
   );

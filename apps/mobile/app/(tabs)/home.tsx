@@ -1,27 +1,60 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import React from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../hooks/useTheme';
-import { DATA } from '../../lib/data';
+import { useDashboard, useUser } from '../../lib/hooks';
 import { fmt } from '../../lib/format';
 import { Amount, Stat, Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
 import { LineChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { TxRow } from '../../components/ui/TxRow';
-import type { Block } from '../../lib/data';
+import { LoadingLogo } from '../../components/ui/LoadingLogo';
+
+function weekdayName(d: Date): string {
+  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  return days[d.getDay()];
+}
+
+function monthName(d: Date): string {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return months[d.getMonth()];
+}
 
 export default function HomeScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { data, isLoading } = useDashboard();
+  const { data: user } = useUser();
 
-  const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, pulso, blocks, recent, recurring, installments } = DATA;
-  const monthPct = Math.min(1, monthSpend / monthBudget);
+  const now = new Date();
+  const dateLabel = `${weekdayName(now)} · ${now.getDate()} ${monthName(now)}`;
+  const userName = user?.name ?? user?.email?.split('@')[0] ?? '';
+  const initial = userName.charAt(0).toUpperCase();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <LoadingLogo />
+      </View>
+    );
+  }
+
+  // Fallback: if data is null (error), render with empty defaults
+  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], pulso: 0, pulsoMood: '', categories: [] };
+  const blocks = data?.blocks ?? [];
+  const installments = data?.installments ?? [];
+  const recurring = data?.recurring ?? [];
+  const recent = data?.recent ?? [];
+  const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, pulso, categories } = stats;
+  const monthPct = monthBudget > 0 ? Math.min(1, monthSpend / monthBudget) : 0;
   const available = monthBudget - monthSpend;
-  const nwGain = netWorth12mo[11] - netWorth12mo[0];
-  const nwPct = Math.round((netWorth12mo[11] / netWorth12mo[0] - 1) * 100);
-  const recurringMonthly = recurring.reduce((s, r) => s + (r.freq === 'bimestral' ? r.monthly / 2 : r.monthly), 0);
+  const nwGain = netWorth12mo.length >= 2 ? netWorth12mo[netWorth12mo.length - 1] - netWorth12mo[0] : 0;
+  const nwPct = netWorth12mo.length >= 2 && netWorth12mo[0] !== 0
+    ? Math.round((netWorth12mo[netWorth12mo.length - 1] / netWorth12mo[0] - 1) * 100)
+    : 0;
+  const recurringMonthly = recurring.reduce((s, r) => s + r.monthly, 0);
   const installmentsMonthly = installments.reduce((s, i) => s + i.monthly, 0);
 
   return (
@@ -35,24 +68,24 @@ export default function HomeScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View>
             <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase' }}>
-              Jue · 14 Mayo
+              {dateLabel}
             </Text>
             <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, marginTop: 8, color: C.ink }}>
-              Buen día, Tomás
+              Buen día{userName ? `, ${userName}` : ''}
             </Text>
           </View>
-          <View style={{
+          <Pressable onPress={() => router.push('/settings')} style={{
             width: 32, height: 32, borderRadius: 99,
             backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
             alignItems: 'center', justifyContent: 'center',
           }}>
-            <Text style={{ fontFamily: fontDisplay, fontSize: 11, fontWeight: '500', color: C.ink }}>T</Text>
-          </View>
+            <Text style={{ fontFamily: fontDisplay, fontSize: 11, fontWeight: '500', color: C.ink }}>{initial || '?'}</Text>
+          </Pressable>
         </View>
 
         {/* Hero balance */}
         <View style={{ paddingTop: 36, paddingBottom: 14 }}>
-          <Eyebrow>Balance total · 3 cuentas</Eyebrow>
+          <Eyebrow>Balance total</Eyebrow>
           <View style={{ marginTop: 14, marginBottom: 18 }}>
             <Amount value={balance} size={52} code="AR$" decimals={2} weight="500" />
           </View>
@@ -63,7 +96,7 @@ export default function HomeScreen() {
                 +{fmt(nwGain, { decimals: 0, compact: true })} · 12 meses
               </Text>
               <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.9, textTransform: 'uppercase', marginTop: 2 }}>
-                +{nwPct}% YoY
+                {nwPct >= 0 ? '+' : ''}{nwPct}% YoY
               </Text>
             </View>
           </View>
@@ -80,7 +113,7 @@ export default function HomeScreen() {
               Tu semana, en silencio
             </Text>
             <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 3 }}>
-              Resumen del lunes · 7 días · 14 movimientos
+              Resumen del lunes · 7 días
             </Text>
           </View>
           <Text style={{ color: C.faint, fontSize: 12 }}>›</Text>
@@ -89,7 +122,7 @@ export default function HomeScreen() {
         <Hairline />
 
         {/* Este mes */}
-        <Section title="Este mes" right="Mayo" top={28}>
+        <Section title="Este mes" right={monthName(now)} top={28}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Stat value={monthSpend} label="Gastado" size={24} decimals={0} />
             <Stat value={available} label="Disponible" size={24} decimals={0} />
@@ -101,7 +134,7 @@ export default function HomeScreen() {
           <View style={{ marginTop: 26 }}>
             <LineChart data={monthSeries} width={300} height={42} stroke={1.1} dot fill color={C.ink} bgColor={C.bg} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              {['1 MAY', '14 MAY', '31 MAY'].map(l => (
+              {[`1 ${monthName(now).toUpperCase().slice(0, 3)}`, `${now.getDate()} ${monthName(now).toUpperCase().slice(0, 3)}`, `${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()} ${monthName(now).toUpperCase().slice(0, 3)}`].map(l => (
                 <Text key={l} style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.9 }}>{l}</Text>
               ))}
             </View>
@@ -169,8 +202,8 @@ export default function HomeScreen() {
         <Hairline style={{ marginTop: 28 }} />
 
         {/* Categorías */}
-        <Section title="Categorías" right="Mayo" top={26}>
-          {DATA.categories.slice(0, 5).map((c, i, arr) => (
+        <Section title="Categorías" right={monthName(now)} top={26}>
+          {categories.slice(0, 5).map((c, i, arr) => (
             <View key={c.label}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}>
                 <BlockGlyph kind={c.glyph} size={14} color={C.ink} />
@@ -218,7 +251,7 @@ export default function HomeScreen() {
                 <Stat value={recurringMonthly} label="por mes" size={26} decimals={0} />
               </View>
               <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.7, marginTop: 16, lineHeight: 18 }}>
-                próx · Gym 01 JUN{'\n'}Spotify 02 JUN
+                {recurring.slice(0, 2).map(r => `próx · ${r.label} ${r.nextDue}`).join('\n')}
               </Text>
             </Pressable>
           </View>

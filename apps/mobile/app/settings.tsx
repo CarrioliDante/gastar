@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { useTheme } from '../../hooks/useTheme';
-import { DATA } from '../../lib/data';
-import { useAppStore } from '../../store/app';
-import { Eyebrow, Hairline, Section } from '../../components/ui/primitives';
-import { Pulso } from '../../components/ui/charts';
-import type { Theme, FontFamily } from '../../lib/theme';
+import { useRouter } from 'expo-router';
+import { useTheme } from '../hooks/useTheme';
+import { useStats, useUser } from '../lib/hooks';
+import { useAppStore } from '../store/app';
+import { Eyebrow, Hairline, Section } from '../components/ui/primitives';
+import { Pulso } from '../components/ui/charts';
+import type { Theme, FontFamily } from '../lib/theme';
 
 const CHEVRON = (color: string) => (
   <Svg width={6} height={10} viewBox="0 0 6 10">
@@ -18,7 +19,21 @@ const CHEVRON = (color: string) => (
 export default function SettingsScreen() {
   const { C, fontBody, fontDisplay, fontMono, theme, font } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { setTheme, setFont } = useAppStore();
+  const { data: statsData, isLoading: statsLoading } = useStats();
+  const { data: user } = useUser();
+
+  const pulso = statsData?.pulso ?? 0;
+  const userName = user?.name ?? user?.email?.split('@')[0] ?? '';
+
+  if (statsLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="small" color={C.ink} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -28,6 +43,11 @@ export default function SettingsScreen() {
     >
       {/* Header */}
       <View style={{ paddingBottom: 12 }}>
+        <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+          <Svg width={18} height={18} viewBox="0 0 20 20">
+            <Path d="M12 4L6 10l6 6" fill="none" stroke={C.ink} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </Pressable>
         <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
           Calma · gast.ar
         </Text>
@@ -43,7 +63,7 @@ export default function SettingsScreen() {
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <Text style={{ fontFamily: fontDisplay, fontSize: 42, fontWeight: '500', letterSpacing: -2, color: C.ink, fontVariant: ['tabular-nums'] }}>
-                {DATA.pulso}
+                {pulso}
               </Text>
               <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: C.faint, fontWeight: '400' }}>/100</Text>
             </View>
@@ -51,7 +71,7 @@ export default function SettingsScreen() {
               Tranquilo · sube cuando ahorrás,{'\n'}seguís tu presupuesto y registrás a diario.
             </Text>
           </View>
-          <Pulso value={DATA.pulso} size={90} showLabel={false} color={C.ink} trackColor={C.hairline2} inkColor={C.ink} />
+          <Pulso value={pulso} size={90} showLabel={false} color={C.ink} trackColor={C.hairline2} inkColor={C.ink} />
         </View>
       </View>
 
@@ -115,7 +135,7 @@ export default function SettingsScreen() {
       {/* Cuenta */}
       <Section title="Cuenta" top={26}>
         {[
-          { label: 'Tomás · @tomas',     meta: 'Plan Quiet · activo' },
+          { label: userName ? `${userName} · @${userName.toLowerCase()}` : 'Usuario', meta: 'Plan Quiet · activo' },
           { label: 'Cuentas vinculadas', meta: '3 conectadas' },
           { label: 'Tarjetas',           meta: '2 · Visa · Amex' },
         ].map((row, i, arr) => (

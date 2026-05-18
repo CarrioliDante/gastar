@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Dimensions,
 } from 'react-native';
 import Animated, {
-  useSharedValue, withSpring, withTiming, useAnimatedStyle, FadeIn,
+  useSharedValue, withTiming, useAnimatedStyle, FadeIn,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,7 +14,11 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/auth';
 
 const { width: W } = Dimensions.get('window');
-const SPRING = { damping: 26, stiffness: 300 };
+const SLIDE_DURATION = 350;
+
+function slideConfig() {
+  return { duration: SLIDE_DURATION, easing: (t: number) => (t === 1 ? 1 : 1 - Math.pow(1 - t, 3)) };
+}
 
 const COUNTRIES = [
   { id: 'AR', label: 'Argentina', flag: '🇦🇷' },
@@ -116,8 +120,8 @@ export default function OnboardingScreen() {
   const passRef = useRef<TextInput>(null);
 
   const slideIn = (dir: 1 | -1) => {
-    translateX.value = dir * W * 0.35;
-    translateX.value = withSpring(0, SPRING);
+    translateX.value = dir * W * 0.25;
+    translateX.value = withTiming(0, slideConfig());
   };
 
   const canAdvance = () => {

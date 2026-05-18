@@ -1,13 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, Pressable,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import Animated, {
-  FadeInDown, FadeIn,
+  useSharedValue, useAnimatedStyle, withTiming, FadeIn,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle as SvgCircle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../hooks/useTheme';
 import { supabase } from '../../lib/supabase';
@@ -19,12 +18,26 @@ export default function LoginScreen() {
   const router = useRouter();
   const { setSession } = useAuthStore();
 
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const passRef = useRef<TextInput>(null);
+
+  // Screen emerges from black (the zoom circle filled the screen)
+  const bgOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    bgOpacity.value = withTiming(0, { duration: 500 });
+  }, []);
+
+  const bgStyle = useAnimatedStyle(() => ({
+    position: 'absolute' as const,
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: C.ink,
+    opacity: bgOpacity.value,
+  }));
 
   const canSubmit = email.includes('@') && password.length >= 6;
 
@@ -43,12 +56,7 @@ export default function LoginScreen() {
 
     if (data.session) {
       setSession(data.session);
-      const meta = data.session.user.user_metadata;
-      if (!meta?.onboarding_completed) {
-        router.replace('/onboarding');
-      } else {
-        router.replace('/(tabs)/home');
-      }
+      router.replace('/(tabs)/home');
     }
   };
 
@@ -87,15 +95,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo */}
-        <Animated.View
-          entering={FadeInDown.duration(400).springify().damping(28)}
-          style={{ marginBottom: 52 }}
-        >
-          <Svg width={40} height={40} viewBox="0 0 40 40" style={{ marginBottom: 24 }}>
-            <SvgCircle cx={20} cy={20} r={20} fill={C.ink} />
-            <SvgCircle cx={20} cy={20} r={6.4} fill={C.bg} />
-          </Svg>
+        {/* Header */}
+        <Animated.View entering={FadeIn.duration(700)} style={{ marginBottom: 52 }}>
           <Text style={{
             fontFamily: fontDisplay, fontSize: 26, fontWeight: '500',
             letterSpacing: -1, color: C.ink, marginBottom: 6,
@@ -110,7 +111,7 @@ export default function LoginScreen() {
         </Animated.View>
 
         {/* Form */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400).springify().damping(28)}>
+        <Animated.View entering={FadeIn.delay(120).duration(600)}>
           <Text style={labelStyle}>Email</Text>
           <TextInput
             style={inputStyle}
@@ -126,7 +127,7 @@ export default function LoginScreen() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(140).duration(400).springify().damping(28)}>
+        <Animated.View entering={FadeIn.delay(200).duration(600)}>
           <Text style={labelStyle}>Contraseña</Text>
           <View style={{ position: 'relative' }}>
             <TextInput
@@ -166,7 +167,7 @@ export default function LoginScreen() {
         )}
 
         {/* Submit */}
-        <Animated.View entering={FadeInDown.delay(200).duration(400).springify().damping(28)}>
+        <Animated.View entering={FadeIn.delay(280).duration(600)}>
           <Pressable
             onPress={handleLogin}
             disabled={!canSubmit || loading}
@@ -191,7 +192,7 @@ export default function LoginScreen() {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.delay(260).duration(400).springify().damping(28)}
+          entering={FadeIn.delay(360).duration(600)}
           style={{ alignItems: 'center' }}
         >
           <Pressable onPress={() => router.push('/onboarding')}>
@@ -204,6 +205,9 @@ export default function LoginScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+
+      {/* Black overlay — fades out, revealing the login screen */}
+      <Animated.View style={bgStyle} pointerEvents="none" />
     </KeyboardAvoidingView>
   );
 }

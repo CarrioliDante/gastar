@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue, withSpring, withTiming,
-  useAnimatedStyle, runOnJS,
+  useSharedValue, withTiming, withDelay,
+  useAnimatedStyle, runOnJS, Easing,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
@@ -10,16 +10,15 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
 
 const { width: W, height: H } = Dimensions.get('window');
-const CIRCLE       = 72;
-const SPRING_IN    = { damping: 22, stiffness: 200, mass: 1.1 };
-const SPRING_OUT   = { damping: 28, stiffness: 380 };
+const CIRCLE = 72;
+const DIAGONAL = Math.sqrt(W * W + H * H);
 
 export default function PreBoot() {
   const { C, fontMono } = useTheme();
   const router = useRouter();
   const { setSession } = useAuthStore();
 
-  const scale   = useSharedValue(0.28);
+  const size    = useSharedValue(CIRCLE);
   const opacity = useSharedValue(0);
   const textOp  = useSharedValue(0);
 
@@ -28,8 +27,10 @@ export default function PreBoot() {
   const animReady     = useRef(false);
 
   const circleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity:   opacity.value,
+    width:  size.value,
+    height: size.value,
+    borderRadius: size.value / 2,
+    opacity: opacity.value,
   }));
   const textStyle = useAnimatedStyle(() => ({ opacity: textOp.value }));
 
@@ -43,16 +44,13 @@ export default function PreBoot() {
     textOp.value = withTiming(0, { duration: 180 });
 
     if (hasSession) {
-      // Tight spring snap to zero — app is ready, step aside
-      opacity.value = withTiming(0, { duration: 300 });
-      scale.value   = withSpring(0.06, SPRING_OUT, (done) => {
+      opacity.value = withTiming(0, { duration: 350 }, (done) => {
         'worklet';
         if (done) runOnJS(goHome)();
       });
     } else {
-      // Gentle fade — first time user, no rush
-      scale.value   = withSpring(0.06, { damping: 20, stiffness: 260 });
-      opacity.value = withTiming(0, { duration: 380 }, (done) => {
+      // Expand the circle until it fills the entire screen
+      size.value = withTiming(DIAGONAL, { duration: 800, easing: Easing.out(Easing.cubic) }, (done) => {
         'worklet';
         if (done) runOnJS(goLogin)();
       });
@@ -68,15 +66,13 @@ export default function PreBoot() {
   };
 
   useEffect(() => {
-    // Entrance: circle springs in
-    opacity.value = withTiming(1, { duration: 360 });
-    scale.value   = withSpring(1, SPRING_IN, () => {
+    opacity.value = withTiming(1, { duration: 400 });
+    size.value    = withTiming(CIRCLE, { duration: 500 }, () => {
       'worklet';
       runOnJS(onAnimDone)();
     });
 
-    // Session check — minimum 1.3s so animation always completes visually
-    const minWait = new Promise<void>((r) => setTimeout(r, 1300));
+    const minWait = new Promise<void>((r) => setTimeout(r, 1600));
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       await minWait;
       if (session) setSession(session);
@@ -91,9 +87,8 @@ export default function PreBoot() {
       alignItems: 'center', justifyContent: 'center',
     }}>
       <Animated.View style={[{
-        width: CIRCLE, height: CIRCLE,
-        borderRadius: CIRCLE / 2,
         backgroundColor: C.ink,
+        position: 'absolute',
       }, circleStyle]} />
 
       <Animated.View style={[{
