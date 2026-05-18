@@ -1,88 +1,127 @@
-# Mobile — TODO
+# Gastar Mobile — TODO
 
-> Objetivo: pasar de mock estático a app funcional con auth, datos reales y onboarding de calidad.
-
----
-
-## ✅ Completado
-
-### Infraestructura
-- [x] `@supabase/supabase-js` + `expo-secure-store` instalados
-- [x] `lib/supabase.ts` — cliente con ChunkedSecureStore (maneja límite de 2KB en iOS)
-- [x] `store/auth.ts` — zustand store: `session`, `user`, `isChecking`, `setSession`
-- [x] `app/_layout.tsx` — QueryClientProvider + onAuthStateChange listener
-- [x] `app/index.tsx` — PreBoot animado: circle spring-in → logo text fade → snap-to-zero + navigate
-- [x] `lib/api.ts` — `apiFetch()` con JWT auto-inyectado + tipos de respuesta
-- [x] `lib/hooks/index.ts` — `useStats`, `useTransactions`, `useBlocks`, `useInstallments`, `useRecurring`, `useUser`, `useCreateTransaction`
-
-### Auth screens
-- [x] `app/(auth)/_layout.tsx` — Stack sin animación (manejamos las propias)
-- [x] `app/(auth)/login.tsx` — staggered FadeInDown entrance, validación inline, onboarding check
-- [x] `app/(auth)/onboarding.tsx` — 4 pasos (cuenta + contexto + objetivo + bienvenida), spring slide entre pasos
-
-### API layer (webapp)
-- [x] `api/mobile/_auth.ts` — `requireMobileAuth()` verifica JWT con Supabase Admin
-- [x] `api/mobile/stats/route.ts` — balance, monthly, dailySeries, netWorth24mo, categories, pulso
-- [x] `api/mobile/transactions/route.ts` — GET agrupado por fecha + POST crear transacción
-- [x] `api/mobile/blocks/route.ts` — bloques con spent del mes actual
-- [x] `api/mobile/installments/route.ts` — cuotas activas con count (no amount)
-- [x] `api/mobile/recurring/route.ts` — recurrentes con freq en español
-- [x] `api/mobile/user/route.ts` — nombre + email desde Supabase auth metadata
+> Actualizado 2026-05-18. Solo tareas de la app mobile (Expo + React Native).
 
 ---
 
-## Pendiente: Conectar pantallas
+## Mutations faltantes
 
-### Home (`app/(tabs)/home.tsx`)
-- [ ] Reemplazar `DATA.*` con `useStats()` + `useBlocks()` + `useTransactions()` + `useInstallments()` + `useRecurring()`
-- [ ] Fecha dinámica: `new Date()` formateada en español
-- [ ] Saludo dinámico: "Buen día/tarde/noche, {user.name}" desde `useUser()`
-- [ ] Remover banner "Tu semana, en silencio" → backlog
-- [ ] Loading state: opacidad reducida mientras carga
+### Transactions
+- [x] Crear — CaptureSheet funcional (keypad, categorías, selector de bloque)
+- [ ] Editar — modal o swipe action
+- [ ] Eliminar — confirmación + optimistic update
+- [ ] Campo nombre/nota en CaptureSheet (hoy usa la categoría como nombre)
+- [ ] Date picker en CaptureSheet (hoy siempre usa today)
 
-### Transactions (`app/(tabs)/transactions.tsx`)
-- [ ] Reemplazar `DATA.groups` con `useTransactions().data.groups`
-- [ ] Conteo "N mov" dinámico desde `useTransactions().data.total`
-- [ ] Filtros (Todo/Salida/Entrada/Cuotas/Recurrentes) sobre datos reales
-- [ ] Empty state si no hay transacciones
+### Blocks
+- [x] Crear — CreateBlockModal inline en blocks.tsx
+- [ ] Editar — modal de edición (nombre, budget, ícono)
+- [ ] Archivar/eliminar
 
-### Blocks (`app/(tabs)/blocks.tsx`)
-- [ ] Reemplazar `DATA.blocks` con `useBlocks().data`
-- [ ] Header: contar bloques reales
-- [ ] `BlockDetail`: transacciones filtradas via `useTransactions(blockId)`
-- [ ] Trend de 14 días: placeholder hasta tener endpoint específico
+### Installments
+- [ ] Crear — mutation + form
+- [ ] Pagar cuota
+- [ ] Eliminar
 
-### Insights (`app/(tabs)/insights.tsx`)
-- [ ] Reemplazar `DATA.*` con `useStats()` + `useInstallments()` + `useRecurring()`
-- [ ] Remover sección "Patrones" → backlog
-- [ ] Mes dinámico en header
+### Recurring
+- [ ] Crear — mutation + form
+- [ ] Marcar como pagado
+- [ ] Eliminar
 
-### CaptureSheet (`components/CaptureSheet.tsx`)
-- [ ] Block selector usa `useBlocks().data` (lista real)
-- [ ] `onSave` → `useCreateTransaction()` mutation (nombre + amount + category + blockId)
-
-### Settings (`app/(tabs)/settings.tsx`)
-- [ ] Mostrar nombre y email reales desde `useUser()`
-- [ ] Remover "Cuentas vinculadas" → backlog
-- [ ] Remover "Tarjetas" → backlog
-- [ ] Remover "Recordatorios" → backlog
-- [ ] Remover "Exportar CSV" → backlog
-- [ ] "Cerrar sesión" → `supabase.auth.signOut()` + navigate a `/login`
-- [ ] Pulso dinámico desde `useStats().data.pulso`
+### Goals
+- [ ] Pantalla de Goals (no existe)
+- [ ] Crear meta
+- [ ] Contribuir a meta
+- [ ] Eliminar meta
 
 ---
 
-## Limpieza final
-- [ ] Eliminar `DATA` export de `lib/data.ts` (mantener solo tipos)
-- [ ] Verificar `.env.example` con keys de desarrollo
+## Pantallas faltantes
+
+- [ ] **Calendar** — no existe screen ni componente
+- [ ] **Goals** — tipo definido en `lib/data.ts` pero sin usar
+- [ ] **Installments** — solo summary en Insights, sin pantalla dedicada
+- [ ] **Recurring** — solo summary en Insights, sin pantalla dedicada
+- [ ] **Transaction detail** — rows no son tappeables
 
 ---
 
-## Backlog (no tocar por ahora)
-- Cuentas vinculadas (bank linking)
-- Tarjetas (bank cards)
-- Recordatorios / push notifications
-- Exportar CSV
-- Zen Monday Digest (banner semanal)
-- Patrones de gasto (analytics: día/hora pico)
-- Offline-first real (MMKV + sync en background)
+## UX pendiente
+
+- [ ] Empty states en lista de transacciones ("Sin movimientos")
+- [ ] Empty state en lista de bloques ("Sin bloques")
+- [ ] Error handling en mutations (CaptureSheet, forms)
+- [ ] Error boundary global
+- [ ] Swipe-to-delete / long-press menu en filas
+- [ ] Pull-to-refresh con feedback visual más claro
+
+---
+
+## API endpoints faltantes en web
+
+El mobile consume `apps/web/src/app/api/mobile/*`. Faltan endpoints POST para:
+
+- [ ] `POST /api/mobile/installments` — crear cuota
+- [ ] `POST /api/mobile/installments/[id]/pay` — pagar cuota
+- [ ] `DELETE /api/mobile/installments/[id]` — eliminar cuota
+- [ ] `POST /api/mobile/recurring` — crear recurrente
+- [ ] `POST /api/mobile/recurring/[id]/pay` — marcar pagado
+- [ ] `DELETE /api/mobile/recurring/[id]` — eliminar recurrente
+- [ ] `GET/POST /api/mobile/goals` — CRUD metas
+- [ ] `PUT /api/mobile/transactions/[id]` — editar transacción
+- [ ] `DELETE /api/mobile/transactions/[id]` — eliminar transacción
+- [ ] `PUT /api/mobile/blocks/[id]` — editar bloque
+- [ ] `DELETE /api/mobile/blocks/[id]` — archivar bloque
+
+---
+
+## Mobile avanzado
+
+- [ ] Offline-first — React Query offline + MMKV + Zustand persist
+- [ ] Push notifications — Expo Push para vencimientos de cuotas
+- [ ] Calendar view mobile
+- [ ] Error handling en forms de auth (signup, login)
+- [ ] Form validation (email, password strength)
+
+---
+
+## Diferencias con webapp
+
+Lo que la webapp tiene y mobile todavía no.
+
+### Íconos / Glyphs
+- [ ] Web tiene 36 glyphs (Tabler Icons semánticos: Home, Car, Coffee, etc.)
+- [ ] Mobile tiene solo 12 (geométricos abstractos: circle, dot, square, etc.)
+- [ ] Expandir a 36 glyphs o migrar a Tabler Icons para paridad visual
+
+### Settings
+- [ ] **Presupuesto mensual** — web tiene input + server action `setMonthlyBudget`
+- [ ] **Currency picker** — web tiene USD/ARS/BRL/EUR
+- [ ] **CSV Export** — web tiene link `/api/export`
+
+### Charts
+- [ ] **AreaChart** — web usa recharts (gradient fill), mobile no tiene
+- [ ] **RadarChart** — web tiene spider chart de salud financiera en Insights
+- [ ] **Donut / CategoryBreakdown** — web tiene gráfico de torta por categoría
+- [ ] **Grouped BarChart** — web tiene barras lado a lado (ingreso vs gasto)
+
+### Animaciones
+- [ ] Web tiene ScrollReveal, TextReveal, AnimatedNumber, PageTransition
+- [ ] Mobile solo usa Reanimated en PreBoot, login y onboarding
+- [ ] **Cero animaciones en tab screens** (home, transactions, blocks, insights)
+- [ ] Agregar entrance animations + stagger en listas
+
+### Filtros en Transactions
+- [ ] **Month filter** — web tiene dropdown de meses
+- [ ] **Category filter** — web tiene dropdown de categorías únicas
+- [ ] **Text search** — web tiene input de búsqueda (nombre + categoría + nota)
+- [ ] **Column sorting** — web permite ordenar por fecha, descripción, categoría, monto
+
+### Export / Data
+- [ ] Web tiene CSV export en settings y transactions
+- [ ] Mobile no tiene export ni share sheet
+
+### Stats / Data shape
+- [ ] Web incluye `incomeTrend` (6 meses) — mobile no
+- [ ] Web balance es objeto `{total, currency, change}` — mobile es plain number
+- [ ] Unificar tipos entre `StatsResponse` mobile y `DashboardStats` web

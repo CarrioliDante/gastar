@@ -1,11 +1,15 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
 import { useStats, useUser } from '../lib/hooks';
 import { useAppStore } from '../store/app';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/auth';
+import { ping } from '../lib/api';
 import { Eyebrow, Hairline, Section } from '../components/ui/primitives';
 import { Pulso } from '../components/ui/charts';
 import type { Theme, FontFamily } from '../lib/theme';
@@ -20,14 +24,37 @@ export default function SettingsScreen() {
   const { C, fontBody, fontDisplay, fontMono, theme, font } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const qc = useQueryClient();
   const { setTheme, setFont } = useAppStore();
-  const { data: statsData, isLoading: statsLoading } = useStats();
-  const { data: user } = useUser();
+  const { setSession } = useAuthStore();
+  const { data: statsData, isLoading: statsLoading, error: statsErr } = useStats();
+  const { data: user, error: userErr } = useUser();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await qc.invalidateQueries({ queryKey: ['stats'] });
+    await qc.invalidateQueries({ queryKey: ['user'] });
+    setRefreshing(false);
+  }, [qc]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    router.replace('/login');
+  };
 
   const pulso = statsData?.pulso ?? 0;
   const userName = user?.name ?? user?.email?.split('@')[0] ?? '';
 
-  if (statsLoading) {
+  const hasError = !statsData && !statsLoading;
+  const [diag, setDiag] = useState<{ ok: boolean; time: string; error?: string } | null>(null);
+
+  useEffect(() => {
+    ping().then(setDiag);
+  }, []);
+
+  if (statsLoading && !statsData) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="small" color={C.ink} />
@@ -40,6 +67,7 @@ export default function SettingsScreen() {
       style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 130, paddingHorizontal: 24 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
       <View style={{ paddingBottom: 12 }}>
@@ -56,8 +84,17 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
+      {/* Error banner */}
+      {hasError && (
+        <View style={{ marginTop: 16, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.hairline }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, textAlign: 'center' }}>
+            {(statsErr as Error)?.message || (userErr as Error)?.message || 'Sin conexión'}
+          </Text>
+        </View>
+      )}
+
       {/* Pulso */}
-      <View style={{ paddingTop: 28 }}>
+      <View style={{ paddingTop: hasError ? 16 : 28 }}>
         <Eyebrow>Pulso Financiero</Eyebrow>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 14, gap: 16 }}>
           <View style={{ flex: 1 }}>
@@ -134,57 +171,49 @@ export default function SettingsScreen() {
 
       {/* Cuenta */}
       <Section title="Cuenta" top={26}>
-        {[
-          { label: userName ? `${userName} · @${userName.toLowerCase()}` : 'Usuario', meta: 'Plan Quiet · activo' },
-          { label: 'Cuentas vinculadas', meta: '3 conectadas' },
-          { label: 'Tarjetas',           meta: '2 · Visa · Amex' },
-        ].map((row, i, arr) => (
-          <View key={i}>
-            <Pressable style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View>
-                <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', letterSpacing: -0.2, color: C.ink }}>
-                  {row.label}
-                </Text>
-                {row.meta !== '' && (
-                  <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 3 }}>
-                    {row.meta}
-                  </Text>
-                )}
-              </View>
-              {CHEVRON(C.faint)}
-            </Pressable>
-            {i < arr.length - 1 && <Hairline />}
-          </View>
-        ))}
+        <View style={{ paddingVertical: 16 }}>
+          <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', letterSpacing: -0.2, color: C.ink }}>
+            {userName ? `${userName} · @${userName.toLowerCase()}` : 'Usuario'}
+          </Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 3 }}>
+            Plan Quiet · activo
+          </Text>
+        </View>
+      </Section>
+
+      <Hairline style={{ marginTop: 24 }} />
+
+      {/* Diagnóstico */}
+      <Section title="Diagnóstico" top={26}>
+        <View style={{ paddingVertical: 8, gap: 6 }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.6 }}>
+            API: {process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:3000'}
+          </Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.6 }}>
+            Ping: {diag === null ? '···' : diag.ok ? `OK · ${diag.time.slice(11,19)}` : `ERROR · ${diag.error}`}
+          </Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.6 }}>
+            Stats: {statsLoading ? 'cargando...' : statsData ? 'OK' : statsErr ? `ERROR · ${(statsErr as Error).message}` : 'sin datos'}
+          </Text>
+        </View>
       </Section>
 
       <Hairline style={{ marginTop: 24 }} />
 
       {/* Datos */}
       <Section title="Datos" top={26}>
-        {[
-          { label: 'Exportar CSV',  meta: 'AFIP · impuestos · OFX' },
-          { label: 'Privacidad',    meta: 'Local primero · cifrado' },
-          { label: 'Recordatorios', meta: 'Diario · 21:00' },
-          { label: 'Cerrar sesión', meta: '' },
-        ].map((row, i, arr) => (
-          <View key={i}>
-            <Pressable style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View>
-                <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', letterSpacing: -0.2, color: C.ink }}>
-                  {row.label}
-                </Text>
-                {row.meta !== '' && (
-                  <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 3 }}>
-                    {row.meta}
-                  </Text>
-                )}
-              </View>
-              {CHEVRON(C.faint)}
-            </Pressable>
-            {i < arr.length - 1 && <Hairline />}
-          </View>
-        ))}
+        <Pressable
+          onPress={handleLogout}
+          style={({ pressed }) => ({
+            paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            opacity: pressed ? 0.55 : 1,
+          })}
+        >
+          <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', letterSpacing: -0.2, color: C.ink }}>
+            Cerrar sesión
+          </Text>
+          {CHEVRON(C.faint)}
+        </Pressable>
       </Section>
 
       <View style={{ alignItems: 'center', paddingVertical: 28 }}>

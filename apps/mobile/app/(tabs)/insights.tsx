@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
 import { useInsights } from '../../lib/hooks';
@@ -23,12 +24,23 @@ function monthName(d: Date): string {
 export default function InsightsScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
-  const { data, isLoading } = useInsights();
+  const qc = useQueryClient();
+  const { data, isLoading, isError } = useInsights();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await qc.invalidateQueries({ queryKey: ['stats'] });
+    await qc.invalidateQueries({ queryKey: ['installments'] });
+    await qc.invalidateQueries({ queryKey: ['recurring'] });
+    await qc.invalidateQueries({ queryKey: ['transactions'] });
+    setRefreshing(false);
+  }, [qc]);
 
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-  if (isLoading || !data) {
+  if (isLoading && !data) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="small" color={C.ink} />
@@ -36,7 +48,11 @@ export default function InsightsScreen() {
     );
   }
 
-  const { stats, installments, recurring, recurringMonthly } = data;
+  const { stats, installments, recurring, recurringMonthly, patterns } = data ?? {
+    stats: { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], pulso: 0, pulsoMood: '', categories: [] as any[] },
+    installments: [] as any[], recurring: [] as any[], recurringMonthly: 0,
+    patterns: [{ value: '—', label: 'día de más gasto' }, { value: '—', label: 'hora pico' }, { value: '0', label: 'días con movimientos' }, { value: '—', label: 'categoría principal' }],
+  };
   const { monthSeries, categories, netWorth12mo, pulso, pulsoMood, monthSpend } = stats;
   const totalCats = categories.reduce((s, c) => s + c.value, 0);
   const nwPct = netWorth12mo.length >= 2 && netWorth12mo[0] !== 0
@@ -55,6 +71,7 @@ export default function InsightsScreen() {
       style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 130, paddingHorizontal: 24 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
       <View style={{ paddingBottom: 12 }}>
@@ -66,8 +83,17 @@ export default function InsightsScreen() {
         </Text>
       </View>
 
+      {/* Error banner */}
+      {isError && (
+        <View style={{ marginTop: 16, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.hairline }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, textAlign: 'center' }}>
+            Sin conexión · mostrando datos locales
+          </Text>
+        </View>
+      )}
+
       {/* Pulso hero */}
-      <View style={{ paddingTop: 28, alignItems: 'center' }}>
+      <View style={{ paddingTop: isError ? 16 : 28, alignItems: 'center' }}>
         <Eyebrow>Pulso Financiero · {monthName(now)}</Eyebrow>
         <View style={{ marginTop: 14, marginBottom: 4 }}>
           <Pulso value={pulso} size={140} showLabel color={C.ink} trackColor={C.hairline2} inkColor={C.ink} />
@@ -222,12 +248,7 @@ export default function InsightsScreen() {
       {/* Patterns */}
       <Section title="Patrones" top={26}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 28, marginTop: 4 }}>
-          {[
-            { value: 'Mié',   label: 'día de más gasto' },
-            { value: '19:42', label: 'hora pico' },
-            { value: '−7,5%', label: 'vs mes anterior' },
-            { value: '13',    label: 'días sin ocio' },
-          ].map(p => (
+          {patterns.map(p => (
             <View key={p.label} style={{ width: '44%' }}>
               <Text style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: '500', letterSpacing: -1, color: C.ink }}>
                 {p.value}

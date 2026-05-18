@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../hooks/useTheme';
 import { useDashboard, useUser } from '../../lib/hooks';
 import { fmt } from '../../lib/format';
-import { Amount, Stat, Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
+import { Stat, Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
+import { TickerAmount } from '../../components/ui/TickerAmount';
 import { LineChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { TxRow } from '../../components/ui/TxRow';
@@ -25,8 +27,21 @@ export default function HomeScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data, isLoading } = useDashboard();
+  const qc = useQueryClient();
+  const { data, isLoading, isError } = useDashboard();
   const { data: user } = useUser();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await qc.invalidateQueries({ queryKey: ['stats'] });
+    await qc.invalidateQueries({ queryKey: ['transactions'] });
+    await qc.invalidateQueries({ queryKey: ['blocks'] });
+    await qc.invalidateQueries({ queryKey: ['installments'] });
+    await qc.invalidateQueries({ queryKey: ['recurring'] });
+    await qc.invalidateQueries({ queryKey: ['user'] });
+    setRefreshing(false);
+  }, [qc]);
 
   const now = new Date();
   const dateLabel = `${weekdayName(now)} · ${now.getDate()} ${monthName(now)}`;
@@ -41,7 +56,6 @@ export default function HomeScreen() {
     );
   }
 
-  // Fallback: if data is null (error), render with empty defaults
   const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], pulso: 0, pulsoMood: '', categories: [] };
   const blocks = data?.blocks ?? [];
   const installments = data?.installments ?? [];
@@ -62,6 +76,7 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 130 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       <View style={{ paddingHorizontal: 24 }}>
         {/* Header */}
@@ -83,11 +98,20 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/* Error banner */}
+        {isError && (
+          <View style={{ marginTop: 20, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.hairline }}>
+            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, textAlign: 'center' }}>
+              Sin conexión · mostrando datos locales
+            </Text>
+          </View>
+        )}
+
         {/* Hero balance */}
-        <View style={{ paddingTop: 36, paddingBottom: 14 }}>
+        <View style={{ paddingTop: isError ? 18 : 36, paddingBottom: 14 }}>
           <Eyebrow>Balance total</Eyebrow>
           <View style={{ marginTop: 14, marginBottom: 18 }}>
-            <Amount value={balance} size={52} code="AR$" decimals={2} weight="500" />
+            <TickerAmount value={balance} size={52} code="AR$" decimals={2} weight="500" />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <LineChart data={netWorth12mo} width={130} height={28} stroke={1} dot fill={false} color={C.ink} bgColor={C.bg} />
