@@ -7,7 +7,7 @@ import type { TransactionRow, InstallmentRow, RecurringRow, GoalRow, BlockRow } 
 import { createTransaction, deleteTransaction } from "@/app/actions/transactions";
 import { createInstallment, payInstallment, deleteInstallment } from "@/app/actions/installments";
 import { createRecurring, markRecurringPaid, deleteRecurring } from "@/app/actions/recurring";
-import { createBlock, archiveBlock } from "@/app/actions/blocks";
+import { createBlock, archiveBlock, updateBlock } from "@/app/actions/blocks";
 import { createGoal, contributeToGoal, deleteGoal } from "@/app/actions/goals";
 
 // ---------------------------------------------------------------------------
@@ -316,6 +316,58 @@ export function useCreateBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (fd: FormData) => createBlock(fd),
+    onMutate: async (fd) => {
+      await qc.cancelQueries({ queryKey: ["blocks"] });
+      const prev = snapshot<BlockRow[]>(qc, qk.blocks);
+      const opt: BlockRow = {
+        id: `opt-${Date.now()}`,
+        name: fd.get("name") as string,
+        icon: (fd.get("icon") as string) || "Home",
+        budget: parseFloat(fd.get("budget") as string) || 0,
+        spent: 0,
+        color: "",
+        expenses: 0,
+        goal: (fd.get("goal") as string) || "",
+      };
+      qc.setQueryData<BlockRow[]>(qk.blocks, (old) => old ? [...old, opt] : [opt]);
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(qk.blocks, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["blocks"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useUpdateBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fd }: { id: string; fd: FormData }) => updateBlock(id, fd),
+    onMutate: async ({ id, fd }) => {
+      await qc.cancelQueries({ queryKey: ["blocks"] });
+      const prev = snapshot<BlockRow[]>(qc, qk.blocks);
+
+      qc.setQueryData<BlockRow[]>(qk.blocks, (old) =>
+        old?.map(b => {
+          if (b.id !== id) return b;
+          return {
+            ...b,
+            name: fd.get("name") as string,
+            icon: fd.get("icon") as string,
+            budget: parseFloat(fd.get("budget") as string) || 0,
+            goal: (fd.get("goal") as string) || "",
+          };
+        })
+      );
+
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(qk.blocks, ctx.prev);
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["blocks"] });
       qc.invalidateQueries({ queryKey: ["stats"] });

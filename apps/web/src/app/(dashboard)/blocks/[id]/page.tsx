@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
+import { BlockGlyph, toGlyphKind, type GlyphKind } from "@/components/ui/primitives";
 
 function formatDate(d: Date) {
   const now = new Date();
@@ -41,18 +42,24 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
 
       {/* Header */}
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "flex-end", gap: 28 }}>
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
-            <circle cx={32} cy={32} r={r} fill="none" stroke="var(--hairline2)" strokeWidth={1.6} />
-            <circle cx={32} cy={32} r={r} fill="none" stroke="var(--ink)" strokeWidth={1.6}
-              strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
-          </svg>
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span className="display tnum" style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>
-              {Math.round(pct * 100)}%
-            </span>
+        {budget > 0 ? (
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
+              <circle cx={32} cy={32} r={r} fill="none" stroke="var(--hairline2)" strokeWidth={1.6} />
+              <circle cx={32} cy={32} r={r} fill="none" stroke="var(--ink)" strokeWidth={1.6}
+                strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span className="display tnum" style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>
+                {Math.round(pct * 100)}%
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <BlockGlyph kind={toGlyphKind(block.icon)} size={32} />
+          </div>
+        )}
 
         <div style={{ flex: 1 }}>
           <h1 className="display" style={{ margin: "0 0 6px", fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}>
@@ -63,21 +70,44 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
           )}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 32, flexShrink: 0 }}>
-          {[
-            { label: "Gastado",    value: spent },
-            { label: "Disponible", value: budget - spent },
-            { label: "Presupuesto",value: budget },
-          ].map(stat => (
-            <div key={stat.label} style={{ textAlign: "right" }}>
+        <div style={{ display: "grid", gridTemplateColumns: budget > 0 ? "1fr 1fr 1fr" : "1fr 1fr", gap: 32, flexShrink: 0 }}>
+          <div style={{ textAlign: "right" }}>
+            <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
+              ${spent.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            </div>
+            <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
+              Total gastado
+            </div>
+          </div>
+          {budget > 0 ? (
+            <>
+              <div style={{ textAlign: "right" }}>
+                <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
+                  ${Math.max(0, budget - spent).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                </div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
+                  Disponible
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
+                  ${budget.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                </div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
+                  Techo mensual
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: "right" }}>
               <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
-                ${stat.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                {block.transactions.length}
               </div>
               <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
-                {stat.label}
+                Movimientos
               </div>
             </div>
-          ))}
+          )}
         </div>
       </header>
 
@@ -99,7 +129,7 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
                 padding: "13px 0", borderBottom: "1px solid var(--hairline)",
               }}>
                 <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Glyph kind={CATEGORY_GLYPH[tx.category] ?? "circle"} size={14} />
+                  <Glyph kind={CATEGORY_GLYPH[tx.category] ?? "Home"} size={14} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

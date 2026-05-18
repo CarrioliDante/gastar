@@ -33,7 +33,7 @@ interface Props {
   initialRecurring: RecurringRow[];
 }
 
-const BLOCK_GLYPHS: GlyphKind[] = ["square", "circle", "arc", "diamond", "cross", "ring"];
+const BLOCK_GLYPHS: GlyphKind[] = ["Home", "Car", "Heart", "Coffee", "Briefcase", "Users"];
 
 const FREQ_LABEL: Record<string, string> = {
   monthly:    "mensual",
@@ -64,7 +64,7 @@ function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
           alignItems: "flex-start", marginBottom: 8,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <BlockGlyph kind="square" size={14} />
+            <BlockGlyph kind="Home" size={14} />
             <div>
               <div className="body-font" style={{
                 fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em", color: "var(--ink)",
@@ -124,7 +124,7 @@ function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
 function RecRow({ r, isLast }: { r: RecurringRow; isLast: boolean }) {
   const pay = usePayRecurring();
   const glyphKind: GlyphKind =
-    (CATEGORY_GLYPH[r.category] as GlyphKind | undefined) ?? "circle";
+    (CATEGORY_GLYPH[r.category] as GlyphKind | undefined) ?? "Home";
   const freqLabel = FREQ_LABEL[r.frequency] ?? r.frequency;
   const isOpt = r.id.startsWith("opt-");
 
@@ -620,7 +620,7 @@ export function DashboardShell({
             >
               {txList.slice(0, 8).map((tx, i, arr) => {
                 const isOpt = tx.id.startsWith("opt-");
-                const glyphKind: GlyphKind = (CATEGORY_GLYPH[tx.category] as GlyphKind | undefined) ?? "circle";
+                const glyphKind: GlyphKind = (CATEGORY_GLYPH[tx.category] as GlyphKind | undefined) ?? "Home";
                 return (
                   <motion.div
                     key={tx.id}

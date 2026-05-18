@@ -3,21 +3,25 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useCreateTransaction } from "@/hooks/mutations";
+import { useBlocks } from "@/hooks/queries";
 import { useCurrency } from "@/hooks/use-currency";
 import { useNumberInput } from "@/hooks/use-number-input";
+import { BlockGlyph, toGlyphKind, type GlyphKind } from "@/components/ui/primitives";
 
 const EXP_CATS = ["Comida", "Casa", "Transporte", "Ocio", "Salud", "Tecnología", "Educación", "Suscripciones", "Otros"];
 const INC_CATS = ["Salario", "Freelance", "Devolución", "Inversión", "Regalo", "Otros"];
 
-export function QuickExpense({ open, onClose, initialType = "expense" }: { open: boolean; onClose: () => void; initialType?: "expense" | "income" }) {
+export function QuickExpense({ open, onClose, initialType = "expense", initialBlockId }: { open: boolean; onClose: () => void; initialType?: "expense" | "income"; initialBlockId?: string }) {
   const [type, setType]         = useState<"expense" | "income">(initialType);
   const [amount, setAmount]     = useState("");
   const [label, setLabel]       = useState("");
   const [category, setCategory] = useState("Comida");
+  const [blockId, setBlockId]   = useState<string | null>(null);
   const [saved, setSaved]       = useState(false);
   const [inputW, setInputW]     = useState(260);
   const { symbol, format, currency } = useCurrency();
   const createTx                = useCreateTransaction();
+  const { data: blocks }        = useBlocks();
   const measureRef              = useRef<HTMLSpanElement>(null);
 
   const num = useNumberInput({ value: amount, onChange: setAmount, currency, decimals: 2 });
@@ -33,10 +37,11 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
   useEffect(() => {
     if (open) {
       setSaved(false); setAmount(""); setLabel("");
+      setBlockId(initialBlockId ?? null);
       setType(initialType); setCategory(initialType === "income" ? "Salario" : "Comida");
       setTimeout(() => num.ref.current?.focus(), 60);
     }
-  }, [open, initialType]);
+  }, [open, initialType, initialBlockId]);
 
   useEffect(() => {
     setCategory(type === "income" ? "Salario" : "Comida");
@@ -58,6 +63,7 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
     fd.set("amount", String(finalAmount));
     fd.set("category", category);
     if (label.trim()) fd.set("note", label.trim());
+    if (blockId) fd.set("blockId", blockId);
 
     // Mutation handles optimistic update + invalidation automatically
     createTx.mutate(fd);
@@ -262,7 +268,56 @@ export function QuickExpense({ open, onClose, initialType = "expense" }: { open:
                     ))}
                   </div>
                 </div>
+
+                {blocks && blocks.length > 0 && (
+                  <div>
+                    <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+                      Bloque <span style={{ opacity: 0.4, textTransform: "none", letterSpacing: 0 }}>Opcional</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+                      {blocks.map(b => {
+                        const active = blockId === b.id;
+                        return (
+                          <button
+                            key={b.id}
+                            onClick={() => setBlockId(active ? null : b.id)}
+                            style={{
+                              padding: "6px 10px 6px 8px", borderRadius: 7, border: "none", cursor: "pointer",
+                              background: active ? "var(--ink)" : "var(--surface)",
+                              color: active ? "var(--inverse)" : "var(--mute)",
+                              boxShadow: `inset 0 0 0 1px ${active ? "transparent" : "var(--hairline)"}`,
+                              fontSize: 12, fontFamily: "inherit",
+                              display: "flex", alignItems: "center", gap: 6,
+                              transition: "all 140ms ease",
+                            }}
+                          >
+                            <BlockGlyph kind={toGlyphKind(b.icon)} size={11} color={active ? "var(--inverse)" : "var(--mute)"} />
+                            {b.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Error */}
+              {createTx.isError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ padding: "0 22px" }}
+                >
+                  <div style={{
+                    padding: "9px 12px", borderRadius: 8,
+                    background: "rgba(0,0,0,0.05)",
+                    fontSize: 12, color: "var(--ink)",
+                    fontFamily: "inherit", letterSpacing: "-0.005em",
+                  }}>
+                    Algo salió mal. Intentá de nuevo.
+                  </div>
+                </motion.div>
+              )}
 
               {/* Actions */}
               <div style={{

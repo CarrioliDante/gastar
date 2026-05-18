@@ -1,53 +1,74 @@
 "use client";
 
 import { useId } from "react";
+import {
+  IconHome, IconBuilding, IconKey, IconBulb, IconFlame, IconDroplet,
+  IconCar, IconBike, IconPlane, IconTrain, IconBus, IconGasStation,
+  IconHeart, IconActivity, IconBarbell, IconApple, IconFirstAidKit, IconRun,
+  IconCoffee, IconToolsKitchen2, IconShoppingBag, IconPizza, IconCoins, IconCreditCard,
+  IconBriefcase, IconTrendingUp, IconMusic, IconBook, IconMovie, IconCamera,
+  IconUsers, IconDog, IconGlobe, IconMap, IconDeviceMobile, IconDeviceLaptop,
+  type Icon as TablerIcon,
+} from "@tabler/icons-react";
 
 // ─────────────────────────────────────────────────────────────
-// BlockGlyph — abstract geometric (13 shapes)
+// BlockGlyph — Tabler icons (36 curated for life blocks)
 // ─────────────────────────────────────────────────────────────
 export type GlyphKind =
-  | "circle" | "dot" | "square" | "diamond" | "arc" | "line"
-  | "cross" | "half" | "ring" | "triangle" | "bar" | "grid";
+  // Vivienda
+  | "Home" | "Building" | "Key" | "Bulb" | "Flame" | "Droplet"
+  // Transporte
+  | "Car" | "Bike" | "Plane" | "Train" | "Bus" | "GasStation"
+  // Salud
+  | "Heart" | "Activity" | "Barbell" | "Apple" | "FirstAidKit" | "Run"
+  // Comida & Compras
+  | "Coffee" | "ToolsKitchen2" | "ShoppingBag" | "Pizza" | "Coins" | "CreditCard"
+  // Trabajo & Ocio
+  | "Briefcase" | "TrendingUp" | "Music" | "Book" | "Movie" | "Camera"
+  // Social & Tech
+  | "Users" | "Dog" | "Globe" | "Map" | "DeviceMobile" | "DeviceLaptop";
+
+const ICON_MAP: Record<GlyphKind, TablerIcon> = {
+  Home: IconHome, Building: IconBuilding, Key: IconKey, Bulb: IconBulb, Flame: IconFlame, Droplet: IconDroplet,
+  Car: IconCar, Bike: IconBike, Plane: IconPlane, Train: IconTrain, Bus: IconBus, GasStation: IconGasStation,
+  Heart: IconHeart, Activity: IconActivity, Barbell: IconBarbell, Apple: IconApple, FirstAidKit: IconFirstAidKit, Run: IconRun,
+  Coffee: IconCoffee, ToolsKitchen2: IconToolsKitchen2, ShoppingBag: IconShoppingBag, Pizza: IconPizza, Coins: IconCoins, CreditCard: IconCreditCard,
+  Briefcase: IconBriefcase, TrendingUp: IconTrendingUp, Music: IconMusic, Book: IconBook, Movie: IconMovie, Camera: IconCamera,
+  Users: IconUsers, Dog: IconDog, Globe: IconGlobe, Map: IconMap, DeviceMobile: IconDeviceMobile, DeviceLaptop: IconDeviceLaptop,
+};
+
+// Maps legacy icon names (old custom SVG values) to new GlyphKind
+const LEGACY: Record<string, GlyphKind> = {
+  house: "Home", car: "Car", bike: "Bike", plane: "Plane", globe: "Globe", person: "Users",
+  circle: "Home", dot: "Home", square: "Home", diamond: "Home", arc: "Home",
+  line: "Home", cross: "Heart", half: "Home", ring: "Home", triangle: "Home",
+  bar: "Briefcase", grid: "Home",
+};
+
+export function toGlyphKind(icon: string): GlyphKind {
+  if (icon in ICON_MAP) return icon as GlyphKind;
+  return LEGACY[icon] ?? "Home";
+}
 
 export function BlockGlyph({
-  kind = "circle",
+  kind = "Home",
   size = 18,
   color,
-  weight = 1.2,
+  stroke = 1.5,
 }: {
   kind?: GlyphKind;
   size?: number;
   color?: string;
-  weight?: number;
+  stroke?: number;
 }) {
-  const c = color || "var(--ink)";
-  const s = size;
-  const w = weight;
-
-  const shapes: Record<GlyphKind, React.ReactNode> = {
-    circle:   <circle cx={s/2} cy={s/2} r={s/2 - w} fill="none" stroke={c} strokeWidth={w} />,
-    dot:      <circle cx={s/2} cy={s/2} r={s/3} fill={c} />,
-    square:   <rect x={w} y={w} width={s-w*2} height={s-w*2} rx={2} fill="none" stroke={c} strokeWidth={w} />,
-    diamond:  <rect x={s*0.2} y={s*0.2} width={s*0.6} height={s*0.6} fill="none" stroke={c} strokeWidth={w} transform={`rotate(45 ${s/2} ${s/2})`} />,
-    arc:      <path d={`M${w} ${s-w} A ${s-w*2} ${s-w*2} 0 0 1 ${s-w} ${w}`} fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" />,
-    line:     <line x1={w} y1={s/2} x2={s-w} y2={s/2} stroke={c} strokeWidth={w} strokeLinecap="round" />,
-    cross:    <g><line x1={s/2} y1={w} x2={s/2} y2={s-w} stroke={c} strokeWidth={w} strokeLinecap="round"/><line x1={w} y1={s/2} x2={s-w} y2={s/2} stroke={c} strokeWidth={w} strokeLinecap="round"/></g>,
-    half:     <path d={`M${s/2} ${w} A ${s/2-w} ${s/2-w} 0 0 1 ${s/2} ${s-w} Z`} fill={c} />,
-    ring:     <g><circle cx={s/2} cy={s/2} r={s/2 - w*1.5} fill="none" stroke={c} strokeWidth={w} /><circle cx={s/2} cy={s/2} r={1.3} fill={c} /></g>,
-    triangle: <path d={`M${s/2} ${w+1} L${s-w} ${s-w} L${w} ${s-w} Z`} fill="none" stroke={c} strokeWidth={w} strokeLinejoin="round" />,
-    bar:      <rect x={w} y={s/2 - 1.5} width={s-w*2} height={3} rx={1.5} fill={c} />,
-    grid:     <g>
-                <rect x={w}       y={w}       width={s/2-w*1.5} height={s/2-w*1.5} fill="none" stroke={c} strokeWidth={w}/>
-                <rect x={s/2+w/2} y={w}       width={s/2-w*1.5} height={s/2-w*1.5} fill="none" stroke={c} strokeWidth={w}/>
-                <rect x={w}       y={s/2+w/2} width={s/2-w*1.5} height={s/2-w*1.5} fill="none" stroke={c} strokeWidth={w}/>
-                <rect x={s/2+w/2} y={s/2+w/2} width={s/2-w*1.5} height={s/2-w*1.5} fill={c}/>
-              </g>,
-  };
-
+  const IconComponent = ICON_MAP[kind] ?? IconHome;
   return (
-    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{ display: "block", flexShrink: 0 }}>
-      {shapes[kind] ?? shapes.circle}
-    </svg>
+    <IconComponent
+      size={size}
+      stroke={stroke}
+      color={color ?? "var(--ink)"}
+      style={{ display: "block", flexShrink: 0 }}
+    />
   );
 }
 
@@ -488,7 +509,7 @@ export function TxRow({
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
-          <BlockGlyph kind={tx.glyph ?? "circle"} size={16} />
+          <BlockGlyph kind={tx.glyph ?? "Home"} size={16} />
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
