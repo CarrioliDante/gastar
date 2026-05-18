@@ -9,6 +9,9 @@
 **/.env.*
 !**/.env.example
 
+# MCP config (contains access tokens)
+.mcp.json
+
 # Next.js
 **/.next/
 **/out/
