@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useUIStore } from "@/stores/ui";
+import { useCurrency } from "@/hooks/use-currency";
 import { useDashboardStats, useRecentTransactions, useInstallments, useBlocks, useRecurring } from "@/hooks/queries";
 import { usePayInstallment, usePayRecurring } from "@/hooks/mutations";
 import type { InstallmentRow, RecurringRow, BlockRow } from "@/hooks/queries";
 import {
   BlockGlyph,
-  LineChart,
   Hairline,
   Eyebrow,
   TxRow,
@@ -42,15 +42,10 @@ const FREQ_LABEL: Record<string, string> = {
   yearly:     "anual",
 };
 
-function fmtCompact(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return (abs / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (abs >= 1_000)     return (abs / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
-  return abs.toLocaleString("en-US", { maximumFractionDigits: 0 });
-}
 
 function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
   const pay = usePayInstallment();
+  const { format: formatCurrency } = useCurrency();
   const paid = inst.total_installments - inst.remaining;
   const total = inst.total_installments;
   const isOpt = inst.id.startsWith("opt-");
@@ -82,7 +77,7 @@ function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
             <div className="tnum display" style={{
               fontSize: 13, fontWeight: 500, letterSpacing: "-0.015em", color: "var(--ink)",
             }}>
-              {inst.monthly.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              {formatCurrency(inst.monthly, true)}
             </div>
             {!isOpt && !isDone && (
               <button
@@ -123,6 +118,7 @@ function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
 
 function RecRow({ r, isLast }: { r: RecurringRow; isLast: boolean }) {
   const pay = usePayRecurring();
+  const { format: formatCurrency } = useCurrency();
   const glyphKind: GlyphKind =
     (CATEGORY_GLYPH[r.category] as GlyphKind | undefined) ?? "Home";
   const freqLabel = FREQ_LABEL[r.frequency] ?? r.frequency;
@@ -136,7 +132,7 @@ function RecRow({ r, isLast }: { r: RecurringRow; isLast: boolean }) {
             glyph={glyphKind}
             label={r.name}
             meta={`${freqLabel} · próx ${r.nextDueDate}`}
-            right={r.amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            right={formatCurrency(r.amount, true)}
           />
           {!isOpt && (
             <button
@@ -170,6 +166,7 @@ export function DashboardShell({
   initialRecurring,
 }: Props) {
   const { openCapture } = useUIStore();
+  const { format: formatCurrency } = useCurrency();
 
   const { data: stats }              = useDashboardStats(initialStats);
   const { data: transactions }        = useRecentTransactions(initialTransactions);
@@ -180,8 +177,7 @@ export function DashboardShell({
   const balance      = stats?.balance ?? { total: 0, currency: "USD", change: 0 } as BalanceData;
   const monthly      = stats?.monthly ?? { income: 0, spending: 0, savings: 0, savingsGoal: 5000 } as MonthlyStats;
   const categories   = stats?.categories ?? [] as Category[];
-  const netWorth24mo = stats?.netWorth24mo ?? [0, 0];
-
+  const spendingTrend = stats?.spendingTrend ?? [];
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Buen día" : hour < 18 ? "Buenas tardes" : "Buenas noches";
 
@@ -198,14 +194,6 @@ export function DashboardShell({
   const monthPct     = Math.min(1, monthPctRaw);
   const isOverBudget = monthPctRaw > 1;
   const overBy       = isOverBudget ? monthly.spending - monthBudget : 0;
-  const available    = Math.max(0, monthBudget - monthly.spending);
-
-  const nw0     = netWorth24mo[0]  ?? 0;
-  const nwLast  = netWorth24mo[netWorth24mo.length - 1] ?? 0;
-  const nwPctChg = nw0 !== 0 ? Math.round((nwLast / nw0 - 1) * 100) : 0;
-
-  const savingsRate = monthly.income > 0 ? monthly.savings / monthly.income : 0;
-  const pulso = Math.min(100, Math.max(0, Math.round(savingsRate * 100)));
 
   const recurringByDue = (recurring ?? [])
     .slice()
@@ -252,11 +240,6 @@ export function DashboardShell({
           transition={{ ...springGentle, delay: 0.3 }}
           style={{ display: "flex", alignItems: "center", gap: 10 }}
         >
-          <span className="mono" style={{
-            fontSize: 10, color: "var(--mute)", letterSpacing: "0.12em", textTransform: "uppercase",
-          }}>
-            Sincronizado
-          </span>
           <motion.button
             onClick={() => openCapture("expense")}
             whileHover={{ scale: 1.02 }}
@@ -289,41 +272,19 @@ export function DashboardShell({
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...springGentle, delay: 0.4 }}
-          style={{ paddingTop: 36 }}
+          style={{ paddingTop: 52 }}
         >
-          <Eyebrow right="todas conectadas">Balance total</Eyebrow>
-          <div style={{
-            marginTop: 18, display: "flex", alignItems: "flex-end",
-            justifyContent: "space-between", gap: 40,
-          }}>
-            <div className="display tnum" style={{
-              display: "inline-flex", alignItems: "baseline", gap: 8,
+          <Eyebrow>Balance total</Eyebrow>
+          <div style={{ marginTop: 20 }}>
+            <span className="display tnum" style={{
+              fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
             }}>
-              <span style={{
-                fontSize: 18, fontWeight: 400, letterSpacing: "-0.005em",
-                color: "var(--faint)",
-              }}>AR$</span>
-              <span style={{ fontSize: 84, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92 }}>
-                <AnimatedNumber value={balance.total} decimals={2} />
-              </span>
-            </div>
-            <div style={{ flex: 1, maxWidth: 360 }}>
-              <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.12em", marginBottom: 10 }}>
-                PATRIMONIO · 24 MESES
-              </div>
-              <LineChart data={netWorth24mo.length >= 2 ? netWorth24mo : [0, 0]} width={360} height={42} stroke={1.1} dot={true} fill={false} />
-              <div className="tnum" style={{
-                display: "flex", justifyContent: "space-between", marginTop: 8,
-                fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em",
-              }}>
-                <span>JUN 24</span>
-                <span style={{ color: "var(--ink)" }}>{nwPctChg >= 0 ? "+" : ""}{nwPctChg}% · MAY 26</span>
-              </div>
-            </div>
+              <AnimatedNumber value={balance.total} decimals={2} />
+            </span>
           </div>
         </motion.div>
 
-        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 28 }} />
+        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 40 }} />
 
         {/* ── Este mes ── */}
         <ScrollReveal direction="up" distance={24}>
@@ -340,15 +301,15 @@ export function DashboardShell({
                 </div>
                 {isOverBudget && (
                   <div className="mono" style={{ fontSize: 10, color: "var(--ink)", letterSpacing: "0.06em", fontWeight: 500 }}>
-                    +${fmtCompact(overBy)} sobre el presupuesto
+                    +{formatCurrency(overBy, true)} sobre el presupuesto
                   </div>
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                 <div className="display tnum" style={{ fontSize: 48, fontWeight: 500, letterSpacing: "-0.05em", color: "var(--ink)", lineHeight: 1, display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span>${fmtCompact(monthly.spending)}</span>
+                  <span>{formatCurrency(monthly.spending, true)}</span>
                   <span style={{ color: "var(--faint)", fontSize: 20, fontWeight: 400, display: "flex", alignItems: "baseline", gap: 4 }}>
-                    / {fmtCompact(monthBudget)}
+                    / {formatCurrency(monthBudget, true)}
                   </span>
                 </div>
                 <Link
@@ -385,13 +346,11 @@ export function DashboardShell({
               initial="hidden"
               animate="visible"
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } } }}
-              style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32 }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}
             >
               {[
-                { value: available, label: "Disponible", suffix: "" },
                 { value: monthly.income, label: "Ingreso", suffix: "" },
                 { value: monthly.savings, label: "Ahorrado", suffix: "" },
-                { value: pulso, label: "Pulso", suffix: "/100" },
               ].map(s => (
                 <motion.div key={s.label} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
                   <Stat value={s.value} label={s.label} size={28} suffix={s.suffix} />
@@ -400,9 +359,9 @@ export function DashboardShell({
             </motion.div>
 
             {/* Category breakdown — where spending goes */}
-            {categories.length > 0 && (
-              <div style={{ marginTop: 40 }}>
-                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 18 }}>
+            {categories.length > 0 && blockList.length === 0 && (
+              <div style={{ marginTop: 32 }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 16 }}>
                   A dónde van los gastos
                 </div>
                 <CategoryBreakdown categories={categories} />
@@ -412,13 +371,13 @@ export function DashboardShell({
         </ScrollReveal>
 
         {/* ── Two columns: Bloques + Compromisos ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 56, marginTop: 56 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 40, marginTop: 48 }}>
 
           {/* LEFT: Bloques de vida — horizontal cards */}
           <div>
             <div style={{
               display: "flex", alignItems: "baseline", justifyContent: "space-between",
-              marginBottom: 20,
+              marginBottom: 16,
             }}>
               <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
                 Bloques de vida
@@ -433,8 +392,26 @@ export function DashboardShell({
             </div>
 
             {blockList.length === 0 ? (
-              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "12px 0" }}>
-                Sin bloques. Creá bloques de presupuesto para organizar tus gastos.
+              <div style={{ padding: "16px 0", borderTop: "1px solid var(--hairline)", textAlign: "center" }}>
+                <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
+                  Sin bloques
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 16 }}>
+                  Creá bloques de presupuesto para organizar tus gastos.
+                </div>
+                <Link href="/blocks" style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "9px 18px 9px 14px", borderRadius: 8,
+                  background: "var(--ink)", color: "var(--inverse)", border: "none",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+                  cursor: "pointer", textDecoration: "none",
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12">
+                    <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  Crear bloque
+                </Link>
               </div>
             ) : (
               <motion.div
@@ -454,7 +431,7 @@ export function DashboardShell({
                     >
                       <Link href={`/blocks/${block.id}`} style={{
                         display: "flex", alignItems: "flex-start", gap: 16,
-                        padding: "20px 0", cursor: "pointer", textDecoration: "none",
+                        padding: "14px 0", cursor: "pointer", textDecoration: "none",
                       }} className="row-hover">
                         <BlockGlyph kind={glyphKind} size={22} />
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -480,7 +457,7 @@ export function DashboardShell({
                             />
                           </div>
                           <div className="tnum mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.04em" }}>
-                            {fmtCompact(block.spent)} / {fmtCompact(block.budget)} · {block.expenses} mov
+                            {formatCurrency(block.spent, true)} / {formatCurrency(block.budget, true)} · {block.expenses} mov
                           </div>
                         </div>
                       </Link>
@@ -489,6 +466,58 @@ export function DashboardShell({
                 })}
               </motion.div>
             )}
+
+            {/* Gasto mensual — bar chart */}
+            <div style={{ marginTop: 40 }}>
+              <div style={{
+                display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                marginBottom: 16,
+              }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                  Gasto mensual
+                </div>
+              </div>
+              {spendingTrend.length > 0 ? (() => {
+                const max = Math.max(...spendingTrend.map(x => x.amount), 1);
+                return (
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 88 }}>
+                    {spendingTrend.map((p, i) => {
+                      const h = Math.max(8, (p.amount / max) * 72);
+                      const isLast = i === spendingTrend.length - 1;
+                      return (
+                        <div key={p.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                          <span className="mono tnum" style={{
+                            fontSize: 9, color: isLast ? "var(--ink)" : "var(--faint)",
+                            letterSpacing: "0.04em", fontWeight: isLast ? 500 : 400,
+                          }}>
+                            {formatCurrency(p.amount, true)}
+                          </span>
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: h }}
+                            transition={{ duration: 0.7, delay: 0.5 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                            style={{
+                              width: "100%", maxWidth: 28, borderRadius: 3,
+                              background: isLast ? "var(--ink)" : "var(--hairline)",
+                              marginTop: "auto",
+                            }}
+                          />
+                          <span className="mono" style={{
+                            fontSize: 9, color: isLast ? "var(--mute)" : "var(--faint)", letterSpacing: "0.04em",
+                          }}>
+                            {p.month.slice(0, 3)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })() : (
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "20px 0", textAlign: "center" }}>
+                  Sin datos aún
+                </div>
+              )}
+            </div>
           </div>
 
           {/* RIGHT: Compromisos — Cuotas + Recurrentes stacked */}
@@ -509,7 +538,24 @@ export function DashboardShell({
                 </Link>
               </div>
               {instList.length === 0 ? (
-                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>Sin cuotas activas</div>
+                <div style={{ padding: "16px 0", textAlign: "center" }}>
+                  <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
+                    Sin cuotas activas
+                  </div>
+                  <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 14 }}>
+                    Registrá compras en cuotas para hacerles seguimiento.
+                  </div>
+                  <Link href="/installments" style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "8px 16px 8px 12px", borderRadius: 8,
+                    background: "var(--surface)", color: "var(--ink)", border: "none",
+                    fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+                    cursor: "pointer", textDecoration: "none",
+                    boxShadow: "inset 0 0 0 1px var(--hairline)",
+                  }}>
+                    Ver cuotas →
+                  </Link>
+                </div>
               ) : (
                 <motion.div
                   initial="hidden"
@@ -544,7 +590,24 @@ export function DashboardShell({
                 </Link>
               </div>
               {recurringByDue.length === 0 ? (
-                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>Sin recurrentes</div>
+                <div style={{ padding: "16px 0", textAlign: "center" }}>
+                  <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
+                    Sin gastos recurrentes
+                  </div>
+                  <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 14 }}>
+                    Registrá suscripciones, alquiler o servicios que se repiten.
+                  </div>
+                  <Link href="/recurring" style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "8px 16px 8px 12px", borderRadius: 8,
+                    background: "var(--surface)", color: "var(--ink)", border: "none",
+                    fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+                    cursor: "pointer", textDecoration: "none",
+                    boxShadow: "inset 0 0 0 1px var(--hairline)",
+                  }}>
+                    Ver recurrentes →
+                  </Link>
+                </div>
               ) : (
                 <motion.div
                   initial="hidden"
@@ -566,7 +629,7 @@ export function DashboardShell({
         </div>
 
         {/* ── Hoy ── */}
-        <div style={{ marginTop: 56 }}>
+        <div style={{ marginTop: 48 }}>
           <div style={{
             display: "flex", alignItems: "baseline", justifyContent: "space-between",
             marginBottom: 16,

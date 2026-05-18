@@ -79,11 +79,13 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
     fd.set("icon", glyph);
     fd.set("budget", String(num.numericValue || 0));
     if (goal.trim()) fd.set("goal", goal.trim());
-    createBlock.mutate(fd);
-    setSaved(true);
-    setTimeout(onClose, 500);
+    createBlock.mutate(fd, {
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(onClose, 500);
+      },
+    });
   };
-
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose();
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
@@ -275,7 +277,7 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
                     fontSize: 12, color: "var(--ink)",
                     fontFamily: "inherit", letterSpacing: "-0.005em",
                   }}>
-                    Algo salió mal. Intentá de nuevo.
+                    {createBlock.error?.message || "Algo salió mal. Intentá de nuevo."}
                   </div>
                 </motion.div>
               )}

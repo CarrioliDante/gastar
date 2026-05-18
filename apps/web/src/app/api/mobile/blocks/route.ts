@@ -32,3 +32,36 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(blocks);
 }
+
+export async function POST(req: NextRequest) {
+  const auth = await requireMobileAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await req.json() as {
+    name: string; icon: string; budget: number; goal?: string;
+  };
+
+  if (!body.name || body.budget == null || isNaN(body.budget)) {
+    return NextResponse.json({ error: 'Nombre y presupuesto son obligatorios' }, { status: 400 });
+  }
+
+  const block = await db.block.create({
+    data: {
+      userId: auth.userId,
+      name: body.name,
+      icon: body.icon || 'circle',
+      budget: body.budget,
+      goal: body.goal ?? null,
+    },
+  });
+
+  return NextResponse.json({
+    id: block.id,
+    name: block.name,
+    icon: block.icon,
+    budget: Number(block.budget),
+    spent: 0,
+    txs: 0,
+    goal: block.goal ?? '',
+  }, { status: 201 });
+}

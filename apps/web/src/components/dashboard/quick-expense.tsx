@@ -65,11 +65,12 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
     if (label.trim()) fd.set("note", label.trim());
     if (blockId) fd.set("blockId", blockId);
 
-    // Mutation handles optimistic update + invalidation automatically
-    createTx.mutate(fd);
-
-    setSaved(true);
-    setTimeout(onClose, 500);
+    createTx.mutate(fd, {
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(onClose, 500);
+      },
+    });
   };
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -314,7 +315,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
                     fontSize: 12, color: "var(--ink)",
                     fontFamily: "inherit", letterSpacing: "-0.005em",
                   }}>
-                    Algo salió mal. Intentá de nuevo.
+                    {createTx.error?.message || "Algo salió mal. Intentá de nuevo."}
                   </div>
                 </motion.div>
               )}

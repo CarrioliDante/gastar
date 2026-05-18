@@ -8,20 +8,20 @@ export async function GET(req: NextRequest) {
 
   const { userId } = auth;
   const now = new Date();
-  const startOfMonth   = new Date(now.getFullYear(), now.getMonth(), 1);
-  const twentyFourAgo  = new Date(now.getFullYear(), now.getMonth() - 23, 1);
-  const sixMonthsAgo   = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const startOfMonth  = new Date(now.getFullYear(), now.getMonth(), 1);
+  const twentyFourAgo = new Date(now.getFullYear(), now.getMonth() - 23, 1);
 
-  const [allTx, monthTx, trendTx, netWorthTx, budgetSetting] = await Promise.all([
-    db.transaction.aggregate({ where: { userId }, _sum: { amount: true } }),
+  // pre24moTx: aggregate of transactions older than the 24-month window (typically zero rows for new users)
+  // netWorthTx: all transactions in the last 24 months (already needed for net-worth chart)
+  // balance = pre24mo sum + sum(netWorthTx) — avoids a full-table aggregate with no date filter
+  const [pre24moTx, monthTx, netWorthTx, budgetSetting] = await Promise.all([
+    db.transaction.aggregate({
+      where: { userId, date: { lt: twentyFourAgo } },
+      _sum: { amount: true },
+    }),
     db.transaction.findMany({
       where: { userId, date: { gte: startOfMonth } },
       select: { amount: true, category: true, date: true },
-      orderBy: { date: 'asc' },
-    }),
-    db.transaction.findMany({
-      where: { userId, date: { gte: sixMonthsAgo } },
-      select: { amount: true, date: true },
       orderBy: { date: 'asc' },
     }),
     db.transaction.findMany({
@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
   ]);
 
   const monthlyBudget = budgetSetting ? parseInt(budgetSetting.value, 10) || 0 : 0;
-  const balance       = Number(allTx._sum.amount ?? 0);
+  const recentTotal   = netWorthTx.reduce((s, t) => s + Number(t.amount), 0);
+  const balance       = Number(pre24moTx._sum.amount ?? 0) + recentTotal;
   const monthIncome   = monthTx.filter(t => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
   const monthSpend    = monthTx.filter(t => Number(t.amount) < 0).reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
