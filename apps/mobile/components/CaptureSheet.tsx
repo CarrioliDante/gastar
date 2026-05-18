@@ -1,22 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, Pressable, ScrollView, Modal, Dimensions,
+  View, Text, Pressable, ScrollView, Modal, Dimensions, ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue, withSpring, useAnimatedStyle, runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
+import { useBlocks, useCreateTransaction } from '../lib/hooks';
+import { adaptBlock, type BlockUI } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { BlockGlyph } from './ui/BlockGlyph';
-import { DATA } from '../lib/data';
 import type { GlyphKind } from '../lib/data';
 
 interface CaptureSheetProps {
   open: boolean;
   initialType?: 'expense' | 'income';
   onClose: () => void;
-  onSave: (data: { type: string; amount: number; category: string; block: string }) => void;
+  onSave?: (data: { type: string; amount: number; category: string; block: string }) => void;
 }
 
 const EXPENSE_CATS = [
@@ -52,10 +53,21 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   const [type, setType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(EXPENSE_CATS[0].id);
-  const [block, setBlock] = useState(DATA.blocks[0].id);
+  const [block, setBlock] = useState<string>('');
+
+  const { data: apiBlocks } = useBlocks();
+  const blocks: BlockUI[] = (apiBlocks ?? []).map(adaptBlock);
+  const createTx = useCreateTransaction();
+
+  useEffect(() => {
+    if (blocks.length > 0 && !block) {
+      setBlock(blocks[0].id);
+    }
+  }, [blocks]);
 
   const cats = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
   const isExp = type === 'expense';
+  const selectedBlock = blocks.find(b => b.id === block);
 
   useEffect(() => {
     setCategory(cats[0].id);
@@ -95,11 +107,27 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   const wholeFmt = parseInt(whole || '0', 10).toLocaleString('en-US');
 
   const save = () => {
-    setSaved(true);
-    setTimeout(() => {
-      onSave({ type, amount: parseFloat(amount || '0'), category, block });
-      onClose();
-    }, 700);
+    const amt = parseFloat(amount || '0');
+    if (!amt) return;
+
+    const txAmount = isExp ? -Math.abs(amt) : Math.abs(amt);
+    createTx.mutate(
+      {
+        name: cats.find(c => c.id === category)?.label ?? category,
+        amount: txAmount,
+        category,
+        blockId: isExp ? block : undefined,
+      },
+      {
+        onSuccess: () => {
+          setSaved(true);
+          onSave?.({ type, amount: amt, category, block });
+          setTimeout(() => {
+            onClose();
+          }, 700);
+        },
+      },
+    );
   };
 
   if (!visible) return null;
@@ -236,16 +264,16 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
                 borderWidth: 1, borderColor: C.hairline,
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <BlockGlyph kind={DATA.blocks.find(b => b.id === block)?.glyph || 'circle'} size={16} color={C.ink} />
+                  <BlockGlyph kind={selectedBlock?.glyph || 'circle'} size={16} color={C.ink} />
                   <View>
                     <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.1, textTransform: 'uppercase' }}>Bloque</Text>
                     <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, marginTop: 2 }}>
-                      {DATA.blocks.find(b => b.id === block)?.label}
+                      {selectedBlock?.label ?? 'Sin bloque'}
                     </Text>
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 4 }}>
-                  {DATA.blocks.map(b => (
+                  {blocks.slice(0, 6).map(b => (
                     <Pressable key={b.id} onPress={() => setBlock(b.id)}
                       style={{
                         width: 22, height: 22, borderRadius: 6,
@@ -283,17 +311,21 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
             {/* Save */}
             <Pressable
               onPress={save}
-              disabled={!amount || parseFloat(amount) === 0}
+              disabled={!amount || parseFloat(amount) === 0 || createTx.isPending}
               style={({ pressed }) => ({
                 width: '100%', height: 52, borderRadius: 14,
-                backgroundColor: (!amount || parseFloat(amount) === 0) ? C.surfaceAlt : C.ink,
+                backgroundColor: (!amount || parseFloat(amount) === 0 || createTx.isPending) ? C.surfaceAlt : C.ink,
                 alignItems: 'center', justifyContent: 'center',
                 opacity: pressed ? 0.8 : 1,
               })}
             >
-              <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: (!amount || parseFloat(amount) === 0) ? C.mute : C.bg }}>
-                {isExp ? 'Anotar gasto' : 'Anotar ingreso'}
-              </Text>
+              {createTx.isPending ? (
+                <ActivityIndicator size="small" color={C.bg} />
+              ) : (
+                <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: (!amount || parseFloat(amount) === 0) ? C.mute : C.bg }}>
+                  {isExp ? 'Anotar gasto' : 'Anotar ingreso'}
+                </Text>
+              )}
             </Pressable>
           </>
         )}

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
-import { DATA } from '../../lib/data';
+import { useTransactions } from '../../lib/hooks';
+import { adaptTxGroup } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Hairline } from '../../components/ui/primitives';
 import { TxRow } from '../../components/ui/TxRow';
@@ -10,10 +11,28 @@ import Svg, { Circle, Line } from 'react-native-svg';
 
 const FILTERS = ['Todo', 'Salida', 'Entrada', 'Cuotas', 'Recurrentes'];
 
+function monthName(d: Date): string {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return months[d.getMonth()];
+}
+
 export default function TransactionsScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState('Todo');
+  const { data: apiData, isLoading } = useTransactions();
+
+  const now = new Date();
+  const groups = (apiData?.groups ?? []).map(adaptTxGroup);
+  const totalTx = apiData?.total ?? 0;
+
+  if (isLoading || !apiData) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="small" color={C.ink} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -25,7 +44,7 @@ export default function TransactionsScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-            Mayo · 47 mov
+            {monthName(now)} · {totalTx} mov
           </Text>
           <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
             Movimientos
@@ -63,7 +82,7 @@ export default function TransactionsScreen() {
 
       <Hairline />
 
-      {DATA.groups.map((g, gi) => (
+      {groups.map((g, gi) => (
         <View key={gi} style={{ paddingTop: 22 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
             <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase' }}>
@@ -79,8 +98,8 @@ export default function TransactionsScreen() {
               {i < arr.length - 1 && <Hairline />}
             </View>
           ))}
-          {gi < DATA.groups.length - 1 && <View style={{ height: 8 }} />}
-          {gi < DATA.groups.length - 1 && <Hairline />}
+          {gi < groups.length - 1 && <View style={{ height: 8 }} />}
+          {gi < groups.length - 1 && <Hairline />}
         </View>
       ))}
     </ScrollView>
