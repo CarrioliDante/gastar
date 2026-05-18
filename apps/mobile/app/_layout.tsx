@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,
+      staleTime: 0,
       retry: (failureCount, error: unknown) => {
         if ((error as { status?: number })?.status === 401) return false;
         return failureCount < 2;
@@ -37,6 +37,11 @@ function Inner() {
   const C = THEMES[theme];
 
   useEffect(() => {
+    // Eagerly populate auth store from storage so isChecking resolves before queries fire
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
