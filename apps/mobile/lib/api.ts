@@ -1,27 +1,36 @@
 import { supabase } from './supabase';
+import { useAuthStore } from '../store/auth';
 
-const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:3000';
 
-async function getToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+function getToken(): string | null {
+  // Read from the Zustand store — always reflects the latest session
+  // (updated by onAuthStateChange in _layout.tsx on INITIAL_SESSION and TOKEN_REFRESHED)
+  return useAuthStore.getState().session?.access_token ?? null;
 }
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = await getToken();
+  const token = getToken();
 
-  const res = await fetch(`${BASE}/api/mobile${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/mobile${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options?.headers,
+      },
+    });
+  } catch (err) {
+    const e = new Error(`No se pudo conectar con el servidor (${BASE})`);
+    (e as any).status = 0;
+    throw e;
+  }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-    const e = Object.assign(new Error(err.error ?? res.statusText), { status: res.status });
+    const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    const e = Object.assign(new Error(body.error ?? res.statusText), { status: res.status });
     throw e;
   }
 
@@ -71,4 +80,15 @@ export interface Recurring {
 
 export interface UserProfile {
   id: string; email: string; name: string | null;
+}
+
+// Health check — no auth required
+export async function ping(): Promise<{ ok: boolean; time: string; error?: string }> {
+  try {
+    const res = await fetch(`${BASE}/api/mobile/ping`);
+    if (!res.ok) return { ok: false, time: '', error: `HTTP ${res.status}` };
+    return await res.json();
+  } catch (err) {
+    return { ok: false, time: '', error: (err as Error).message };
+  }
 }
