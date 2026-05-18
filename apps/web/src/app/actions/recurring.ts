@@ -30,7 +30,7 @@ export async function createRecurring(formData: FormData) {
   const dayRaw     = formData.get("dayOfMonth") as string;
   const dayOfMonth = dayRaw ? parseInt(dayRaw) : null;
 
-  if (!name || isNaN(amount)) return;
+  if (!name || isNaN(amount)) throw new Error("El nombre y el importe son obligatorios");
 
   let nextDueDate: Date;
   if (dayOfMonth && frequency === "monthly") {

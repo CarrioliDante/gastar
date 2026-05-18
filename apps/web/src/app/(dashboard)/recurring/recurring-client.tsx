@@ -38,8 +38,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    createRec.mutate(fd);
-    onDone();
+    createRec.mutate(fd, { onSuccess: () => onDone() });
   };
 
   return (
@@ -82,6 +81,17 @@ function AddForm({ onDone }: { onDone: () => void }) {
           <div className="mono" style={labelStyle}>Nota</div>
           <input name="note" placeholder="Opcional" style={fieldStyle} />
         </div>
+        {createRec.isError && (
+          <div style={{
+            padding: "9px 12px", borderRadius: 8,
+            background: "rgba(0,0,0,0.05)",
+            fontSize: 12, color: "var(--ink)",
+            fontFamily: "inherit", letterSpacing: "-0.005em",
+          }}>
+            {createRec.error?.message || "Algo salió mal. Intentá de nuevo."}
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={onDone} style={{
             padding: "9px 14px", borderRadius: 8, border: "none", cursor: "pointer",

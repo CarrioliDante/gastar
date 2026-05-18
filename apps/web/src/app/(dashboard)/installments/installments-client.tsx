@@ -44,8 +44,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
     fd.set("monthlyAmount", monthlyAmt.toString());
     fd.set("paidInstallments", String(paidN));
 
-    createInst.mutate(fd);
-    onDone();
+    createInst.mutate(fd, { onSuccess: () => onDone() });
   };
 
   return (
@@ -99,6 +98,17 @@ function AddForm({ onDone }: { onDone: () => void }) {
           )}
         </div>
       </div>
+
+      {createInst.isError && (
+        <div style={{
+          padding: "9px 12px", borderRadius: 8,
+          background: "rgba(0,0,0,0.05)",
+          fontSize: 12, color: "var(--ink)",
+          fontFamily: "inherit", letterSpacing: "-0.005em",
+        }}>
+          {createInst.error?.message || "Algo salió mal. Intentá de nuevo."}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8 }}>
         <button type="button" onClick={onDone} style={{

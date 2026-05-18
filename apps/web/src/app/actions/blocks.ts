@@ -12,7 +12,7 @@ export async function createBlock(formData: FormData) {
   const budget = parseNumeric(formData.get("budget"));
   const goal   = (formData.get("goal") as string) || null;
 
-  if (!name || isNaN(budget)) return;
+  if (!name || isNaN(budget)) throw new Error("El nombre y el presupuesto son obligatorios");
 
   try {
     await db.block.create({ data: { userId: user.id, name, icon, budget, goal } });
@@ -30,7 +30,7 @@ export async function updateBlock(id: string, formData: FormData) {
   const budget = parseNumeric(formData.get("budget"));
   const goal   = (formData.get("goal") as string) || null;
 
-  if (!name || isNaN(budget)) return;
+  if (!name || isNaN(budget)) throw new Error("El nombre y el presupuesto son obligatorios");
 
   try {
     await db.block.updateMany({

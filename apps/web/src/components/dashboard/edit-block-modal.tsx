@@ -81,9 +81,12 @@ export function EditBlockModal({ open, onClose, block }: EditBlockModalProps) {
     fd.set("icon", glyph);
     fd.set("budget", String(num.numericValue || 0));
     if (goal.trim()) fd.set("goal", goal.trim());
-    updateBlock.mutate({ id: block.id, fd });
-    setSaved(true);
-    setTimeout(onClose, 500);
+    updateBlock.mutate({ id: block.id, fd }, {
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(onClose, 500);
+      },
+    });
   };
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -263,6 +266,24 @@ export function EditBlockModal({ open, onClose, block }: EditBlockModalProps) {
                   />
                 </div>
               </div>
+
+              {/* Error */}
+              {updateBlock.isError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ padding: "0 22px" }}
+                >
+                  <div style={{
+                    padding: "9px 12px", borderRadius: 8,
+                    background: "rgba(0,0,0,0.05)",
+                    fontSize: 12, color: "var(--ink)",
+                    fontFamily: "inherit", letterSpacing: "-0.005em",
+                  }}>
+                    {updateBlock.error?.message || "Algo salió mal. Intentá de nuevo."}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Actions */}
               <div style={{

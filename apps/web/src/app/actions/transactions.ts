@@ -14,11 +14,18 @@ export async function createTransaction(formData: FormData) {
   const note     = (formData.get("note") as string) || null;
   const blockId  = (formData.get("blockId") as string) || null;
 
-  if (isNaN(amount) || !category) return;
+  if (isNaN(amount) || !category) throw new Error("El monto y la categoría son obligatorios");
+
+  // Validate blockId belongs to the user — silently unlink if not
+  let resolvedBlockId = blockId || null;
+  if (resolvedBlockId) {
+    const block = await db.block.findFirst({ where: { id: resolvedBlockId, userId: user.id } });
+    if (!block) resolvedBlockId = null;
+  }
 
   try {
     await db.transaction.create({
-      data: { userId: user.id, name, amount, category, note, blockId: blockId || null },
+      data: { userId: user.id, name, amount, category, note, blockId: resolvedBlockId },
     });
     revalidateTag(`user:${user.id}`, "default");
   } catch (err) {

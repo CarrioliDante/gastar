@@ -16,7 +16,7 @@ export async function createInstallment(formData: FormData) {
 
   const startedAtStr = formData.get("startedAt") as string;
 
-  if (!name || isNaN(totalAmount) || isNaN(monthlyAmount) || isNaN(totalInstallments)) return;
+  if (!name || isNaN(totalAmount) || isNaN(monthlyAmount) || isNaN(totalInstallments)) throw new Error("Completá todos los campos obligatorios");
 
   const nextDueDate = nextDueDateStr ? new Date(nextDueDateStr) : new Date();
 

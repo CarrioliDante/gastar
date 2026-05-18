@@ -64,13 +64,20 @@ export async function POST(req: NextRequest) {
     blockId?: string; note?: string; date?: string;
   };
 
+  // Validate blockId belongs to user — silent fallback if not
+  let blockId = body.blockId && body.blockId.trim() ? body.blockId.trim() : null;
+  if (blockId) {
+    const block = await db.block.findFirst({ where: { id: blockId, userId: auth.userId } });
+    if (!block) blockId = null;
+  }
+
   const tx = await db.transaction.create({
     data: {
       userId:   auth.userId,
       name:     body.name,
       amount:   body.amount,
       category: body.category,
-      blockId:  body.blockId ?? null,
+      blockId,
       note:     body.note ?? null,
       date:     body.date ? new Date(body.date) : new Date(),
     },
