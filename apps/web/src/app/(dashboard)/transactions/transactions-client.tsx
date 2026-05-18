@@ -44,10 +44,11 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
   const { data: blocksRaw } = useBlocks(initialBlocks);
   const deleteTx = useDeleteTransaction();
 
-  const [tab, setTab]             = useState<Tab>("Todo");
-  const [q, setQ]                 = useState("");
-  const [catFilter, setCatFilter] = useState("Todas");
-  const [sort, setSort]           = useState<{ col: SortCol; dir: SortDir }>({ col: "isoDate", dir: "desc" });
+  const [tab, setTab]               = useState<Tab>("Todo");
+  const [q, setQ]                   = useState("");
+  const [catFilter, setCatFilter]   = useState("Todas");
+  const [monthFilter, setMonthFilter] = useState("Todos");
+  const [sort, setSort]             = useState<{ col: SortCol; dir: SortDir }>({ col: "isoDate", dir: "desc" });
 
   const blocks = blocksRaw ?? [];
   const txs = transactions ?? [];
@@ -55,10 +56,18 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
   const blockMap = new Map(blocks.map(b => [b.id, b.name]));
   const cats     = ["Todas", ...Array.from(new Set(txs.map(t => t.category))).sort()];
 
+  const months = ["Todos", ...Array.from(new Set(txs.map(t => t.isoDate.slice(0, 7)))).sort().reverse()];
+  const fmtMonth = (m: string) => {
+    if (m === "Todos") return "Todos los meses";
+    const [y, mo] = m.split("-");
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  };
+
   let filtered = txs.slice();
-  if (tab === "Salida")       filtered = filtered.filter(t => t.amount < 0);
-  if (tab === "Entrada")      filtered = filtered.filter(t => t.amount > 0);
-  if (catFilter !== "Todas")  filtered = filtered.filter(t => t.category === catFilter);
+  if (tab === "Salida")           filtered = filtered.filter(t => t.amount < 0);
+  if (tab === "Entrada")          filtered = filtered.filter(t => t.amount > 0);
+  if (catFilter !== "Todas")      filtered = filtered.filter(t => t.category === catFilter);
+  if (monthFilter !== "Todos")    filtered = filtered.filter(t => t.isoDate.startsWith(monthFilter));
   if (q) {
     const Q = q.toLowerCase();
     filtered = filtered.filter(t => (t.name + " " + t.category + " " + (t.note ?? "")).toLowerCase().includes(Q));
@@ -194,6 +203,19 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
 
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <select
+              value={monthFilter}
+              onChange={e => setMonthFilter(e.target.value)}
+              style={{
+                padding: "7px 28px 7px 12px", borderRadius: 8,
+                background: "var(--surface)", color: "var(--ink)",
+                border: "1px solid var(--hairline)", outline: "none",
+                fontFamily: "inherit", fontSize: 12, letterSpacing: "-0.005em",
+                appearance: "none", cursor: "pointer",
+              }}
+            >
+              {months.map(m => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+            </select>
+            <select
               value={catFilter}
               onChange={e => setCatFilter(e.target.value)}
               style={{
@@ -255,7 +277,27 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
         </motion.div>
 
         {/* ── Table ── */}
-        {filtered.length === 0 ? (
+        {txs.length === 0 ? (
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", padding: "80px 0", gap: 16,
+          }}>
+            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
+              Aún no registraste ningún movimiento.
+            </div>
+            <button
+              onClick={() => openCapture("expense")}
+              style={{
+                padding: "9px 18px", borderRadius: 9,
+                background: "var(--ink)", color: "var(--inverse)", border: "none",
+                fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+                letterSpacing: "-0.005em", cursor: "pointer",
+              }}
+            >
+              Anotar gasto
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "48px 0" }}>
             Sin movimientos que coincidan con los filtros.
           </div>
@@ -293,7 +335,7 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
               {filtered.map(t => {
                 const pos = t.amount >= 0;
                 const blockName  = t.blockId ? blockMap.get(t.blockId) : null;
-                const glyphKind: GlyphKind = (CATEGORY_GLYPH[t.category] as GlyphKind | undefined) ?? "circle";
+                const glyphKind: GlyphKind = (CATEGORY_GLYPH[t.category] as GlyphKind | undefined) ?? "Home";
                 const isOpt = t.id.startsWith("opt-");
                 return (
                   <motion.tr

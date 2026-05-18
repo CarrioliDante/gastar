@@ -230,7 +230,7 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                   {evs.slice(0, 3).map((e, k) => {
-                    const glyphKind: GlyphKind = (CATEGORY_GLYPH[e.category ?? ""] as GlyphKind | undefined) ?? "circle";
+                    const glyphKind: GlyphKind = (CATEGORY_GLYPH[e.category ?? ""] as GlyphKind | undefined) ?? "Home";
                     return (
                       <div key={k} style={{
                         fontSize: 10, color: "var(--ink)", letterSpacing: "-0.005em",
@@ -272,7 +272,7 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
               {monthEvents.map(e => {
-                const glyphKind: GlyphKind = (CATEGORY_GLYPH[e.category ?? ""] as GlyphKind | undefined) ?? "circle";
+                const glyphKind: GlyphKind = (CATEGORY_GLYPH[e.category ?? ""] as GlyphKind | undefined) ?? "Home";
                 return (
                   <div key={e.id} style={{
                     display: "flex", alignItems: "center", gap: 14,

@@ -23,6 +23,27 @@ export async function createBlock(formData: FormData) {
   }
 }
 
+export async function updateBlock(id: string, formData: FormData) {
+  const user = await requireUser();
+  const name   = formData.get("name") as string;
+  const icon   = formData.get("icon") as string;
+  const budget = parseNumeric(formData.get("budget"));
+  const goal   = (formData.get("goal") as string) || null;
+
+  if (!name || isNaN(budget)) return;
+
+  try {
+    await db.block.updateMany({
+      where: { id, userId: user.id },
+      data: { name, icon, budget, goal },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("updateBlock failed:", err);
+    throw err;
+  }
+}
+
 export async function archiveBlock(id: string) {
   const user = await requireUser();
   try {

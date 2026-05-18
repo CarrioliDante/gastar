@@ -14,10 +14,13 @@ import {
   H2,
   TxRow,
   Stat,
+  toGlyphKind,
   type GlyphKind,
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { springGentle } from "@/components/motion/presets";
+import { CreateBlockModal } from "@/components/dashboard/create-block-modal";
+import { EditBlockModal } from "@/components/dashboard/edit-block-modal";
 
 type Tx = {
   id: string; name: string; category: string;
@@ -25,8 +28,6 @@ type Tx = {
   note?: string; blockId?: string;
   isoDate: string;
 };
-
-const BLOCK_GLYPHS: GlyphKind[] = ["square", "circle", "arc", "diamond", "cross", "ring"];
 
 function ghostBtn(): React.CSSProperties {
   return {
@@ -52,17 +53,33 @@ export function BlocksClient({
 }) {
   const { data: blocksRaw } = useBlocks(initialBlocks);
   const blocks = blocksRaw ?? [];
-  const [selId, setSelId] = useState(blocks[0]?.id ?? null);
-  const { openCapture }   = useUIStore();
-  const archiveBlock      = useArchiveBlock();
+  const [selId, setSelId]         = useState(blocks[0]?.id ?? null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit]   = useState(false);
+  const { openCapture }           = useUIStore();
+  const archiveBlock              = useArchiveBlock();
 
   const block = blocks.find(b => b.id === selId) ?? blocks[0];
   if (!block) return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-        Sin bloques todavía. Usá el comando para crear el primero.
+    <>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
+          Sin bloques todavía.
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{
+            padding: "9px 18px", borderRadius: 9,
+            background: "var(--ink)", color: "var(--inverse)", border: "none",
+            fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+            letterSpacing: "-0.005em", cursor: "pointer",
+          }}
+        >
+          + Nuevo bloque
+        </button>
       </div>
-    </div>
+      <CreateBlockModal open={showCreate} onClose={() => setShowCreate(false)} />
+    </>
   );
 
   const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
@@ -111,7 +128,7 @@ export function BlocksClient({
           transition={{ ...springGentle, delay: 0.25 }}
           style={{ display: "flex", alignItems: "center", gap: 10 }}
         >
-          <button style={ghostBtn()}>+ Nuevo bloque</button>
+          <button onClick={() => setShowCreate(true)} style={ghostBtn()}>+ Nuevo bloque</button>
           <motion.button
             onClick={() => openCapture("expense")}
             whileHover={{ scale: 1.02 }}
@@ -159,10 +176,10 @@ export function BlocksClient({
               visible: { transition: { staggerChildren: 0.04, delayChildren: 0.15 } },
             }}
           >
-          {blocks.map((b, idx) => {
+          {blocks.map((b) => {
             const p      = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
             const active = b.id === selId;
-            const glyph: GlyphKind = BLOCK_GLYPHS[idx % BLOCK_GLYPHS.length];
+            const glyph  = toGlyphKind(b.icon);
             return (
               <motion.button
                 key={b.id}
@@ -192,30 +209,36 @@ export function BlocksClient({
                       {b.expenses} mov · {b.goal || "Sin objetivo"}
                     </div>
                   </div>
-                  <span className="mono tnum" style={{
-                    fontSize: 10, color: "var(--mute)", letterSpacing: "0.04em", flexShrink: 0,
-                  }}>
-                    {Math.round(p * 100)}%
-                  </span>
+                  {b.budget > 0 && (
+                    <span className="mono tnum" style={{
+                      fontSize: 10, color: "var(--mute)", letterSpacing: "0.04em", flexShrink: 0,
+                    }}>
+                      {Math.round(p * 100)}%
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ height: 1, background: "var(--hairline)", position: "relative" }}>
-                  <motion.div
-                    initial={{ width: "0%" }}
-                    animate={{ width: `${p * 100}%` }}
-                    transition={{ duration: 1.0, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    style={{
-                      position: "absolute", left: 0, top: 0, height: "100%",
-                      background: "var(--ink)",
-                    }}
-                  />
+                  {b.budget > 0 && (
+                    <motion.div
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${p * 100}%` }}
+                      transition={{ duration: 1.0, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                      style={{
+                        position: "absolute", left: 0, top: 0, height: "100%",
+                        background: "var(--ink)",
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="tnum mono" style={{
                   fontSize: 9, color: "var(--mute)", letterSpacing: "0.04em", marginTop: 6,
                 }}>
-                  {fmtCompact(b.spent)}{" "}
-                  <span style={{ color: "var(--faint)" }}>/ {fmtCompact(b.budget)}</span>
+                  {fmtCompact(b.spent)}
+                  {b.budget > 0 && (
+                    <span style={{ color: "var(--faint)" }}> / {fmtCompact(b.budget)}</span>
+                  )}
                 </div>
               </motion.button>
             );
@@ -235,7 +258,12 @@ export function BlocksClient({
             >
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: 28, paddingTop: 20 }}>
-            <RadialRing value={pct} size={120} stroke={1.8} />
+            {block.budget > 0
+              ? <RadialRing value={pct} size={120} stroke={1.8} />
+              : <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <BlockGlyph kind={toGlyphKind(block.icon)} size={36} />
+                </div>
+            }
             <div style={{ flex: 1, paddingTop: 8 }}>
               <div className="mono" style={{
                 fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase",
@@ -256,7 +284,7 @@ export function BlocksClient({
                 </p>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-                <button style={ghostBtn()}>Editar</button>
+                <button onClick={() => setShowEdit(true)} style={ghostBtn()}>Editar</button>
                 <button
                   onClick={() => archiveBlock.mutate(block.id)}
                   disabled={archiveBlock.isPending}
@@ -265,7 +293,7 @@ export function BlocksClient({
                   Archivar
                 </button>
                 <button
-                  onClick={() => openCapture("expense")}
+                  onClick={() => openCapture("expense", block.id)}
                   style={{ ...ghostBtn(), background: "var(--ink)", color: "var(--inverse)", border: "none" }}
                 >
                   + Anotar en este bloque
@@ -283,23 +311,29 @@ export function BlocksClient({
               visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
             }}
             style={{
-              display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24,
+              display: "grid",
+              gridTemplateColumns: block.budget > 0 ? "repeat(4, 1fr)" : "repeat(2, 1fr)",
+              gap: 24,
               marginTop: 36, paddingTop: 22, paddingBottom: 22,
               borderTop: "1px solid var(--hairline)", borderBottom: "1px solid var(--hairline)",
             }}
           >
             <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
-              <Stat value={block.spent} label="Gastado" size={22} decimals={0} />
+              <Stat value={block.spent} label="Total gastado" size={22} decimals={0} />
             </motion.div>
             <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
-              <Stat value={Math.max(0, block.budget - block.spent)} label="Disponible" size={22} decimals={0} />
+              <Stat value={block.expenses} label="Movimientos" size={22} decimals={0} />
             </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
-              <Stat value={block.budget} label="Presupuesto" size={22} decimals={0} />
-            </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
-              <Stat value={Math.round(pct * 100)} suffix="%" label="Avance" size={22} />
-            </motion.div>
+            {block.budget > 0 && (
+              <>
+                <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+                  <Stat value={Math.max(0, block.budget - block.spent)} label="Disponible" size={22} decimals={0} />
+                </motion.div>
+                <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
+                  <Stat value={Math.round(pct * 100)} suffix="%" label="Avance" size={22} />
+                </motion.div>
+              </>
+            )}
           </motion.div>
 
           {/* Trend bar chart */}
@@ -310,6 +344,13 @@ export function BlocksClient({
           </AnimatePresence>
         </div>
       </div>
+
+      <CreateBlockModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <EditBlockModal
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        block={{ id: block.id, name: block.name, icon: block.icon, budget: block.budget, goal: block.goal ?? "" }}
+      />
     </>
   );
 }

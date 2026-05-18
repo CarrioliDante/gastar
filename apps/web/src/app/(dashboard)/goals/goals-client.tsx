@@ -262,8 +262,13 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
         )}
 
         {list.length === 0 && !adding ? (
-          <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "32px 0" }}>
-            Sin metas. Creá objetivos de ahorro y registrá tus aportes desde acá.
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", padding: "80px 0", gap: 16,
+          }}>
+            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
+              Sin metas de ahorro. Creá tu primera meta.
+            </div>
           </div>
         ) : (
           list.map(g => <GoalCard key={g.id} goal={g} />)

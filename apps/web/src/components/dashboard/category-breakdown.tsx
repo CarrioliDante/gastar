@@ -1,106 +1,78 @@
 "use client";
 
 import { motion } from "motion/react";
+import { BlockGlyph, type GlyphKind } from "@/components/ui/primitives";
+import { CATEGORY_GLYPH } from "@/components/ui/glyph";
 import type { Category } from "@gastar/shared";
+import { springGentle } from "@/components/motion/presets";
 
-const SHADES = ["#0A0A0A", "#2A2A2A", "#4A4A4A", "#6A6A6A", "#8E8E8E", "#B8B8B8"];
+function fmtAmount(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  return n.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+}
 
 export function CategoryBreakdown({ categories }: { categories: Category[] }) {
   if (categories.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-        style={{
-          background: "#FAFAF8",
-          borderRadius: 28,
-          padding: 28,
-          border: "1px solid rgba(0,0,0,0.05)",
-          boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <p style={{ color: "rgba(0,0,0,0.2)", fontSize: 12 }}>No spending this month</p>
-      </motion.div>
+      <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "12px 0" }}>
+        Sin gastos este mes.
+      </div>
     );
   }
 
-  const total = categories.reduce((s, c) => s + c.amount, 0);
-  let cumulativePct = 0;
-
-  const segments = categories.slice(0, 6).map((cat, i) => {
-    const pct = cat.amount / total;
-    const start = cumulativePct;
-    cumulativePct += pct;
-    return { ...cat, pct, startPct: start, color: SHADES[i] };
-  });
-
-  const R = 44, cx = 56, cy = 56, strokeW = 10;
-
-  function describeArc(startPct: number, endPct: number) {
-    const gap = 0.008;
-    const s = (startPct + gap) * 2 * Math.PI - Math.PI / 2;
-    const e = (endPct - gap) * 2 * Math.PI - Math.PI / 2;
-    const x1 = cx + R * Math.cos(s), y1 = cy + R * Math.sin(s);
-    const x2 = cx + R * Math.cos(e), y2 = cy + R * Math.sin(e);
-    return `M ${x1} ${y1} A ${R} ${R} 0 ${endPct - startPct > 0.5 ? 1 : 0} 1 ${x2} ${y2}`;
-  }
+  const top = categories.slice(0, 6);
+  const max = top[0]?.amount ?? 1;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-      style={{
-        background: "#FAFAF8",
-        borderRadius: 28,
-        padding: 28,
-        border: "1px solid rgba(0,0,0,0.05)",
-        boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-      }}
+      initial="hidden"
+      animate="visible"
+      variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } } }}
+      style={{ display: "flex", flexDirection: "column" }}
     >
-      <p style={{ color: "rgba(0,0,0,0.35)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
-        By Category
-      </p>
-
-      <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <svg width={112} height={112} viewBox="0 0 112 112">
-            <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth={strokeW} />
-            {segments.map((seg, i) => (
-              <motion.path
-                key={seg.name}
-                d={describeArc(seg.startPct, seg.startPct + seg.pct)}
-                fill="none" stroke={seg.color} strokeWidth={strokeW} strokeLinecap="round"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 0.9, delay: 0.25 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-              />
-            ))}
-          </svg>
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ color: "#111111", fontSize: 16, fontWeight: 300, letterSpacing: "-0.5px", lineHeight: 1 }}>
-              ${(total / 1000).toFixed(1)}k
-            </p>
-            <p style={{ color: "rgba(0,0,0,0.3)", fontSize: 9, letterSpacing: "0.06em", marginTop: 3 }}>total</p>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 9 }}>
-          {segments.map((cat, i) => (
-            <div key={cat.name} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: SHADES[i], flexShrink: 0 }} />
-              <span style={{ color: "rgba(0,0,0,0.5)", fontSize: 11, flex: 1 }}>{cat.name}</span>
-              <span style={{ color: "#111111", fontSize: 11, fontWeight: 500, letterSpacing: "-0.2px" }}>
-                {cat.percent}%
-              </span>
+      {top.map((cat, i) => {
+        const glyphKind = (CATEGORY_GLYPH[cat.name] as GlyphKind | undefined) ?? "Home";
+        const barW = max > 0 ? (cat.amount / max) * 100 : 0;
+        return (
+          <motion.div
+            key={cat.name}
+            variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: springGentle } }}
+          >
+            {i > 0 && <div style={{ height: 1, background: "var(--hairline)" }} />}
+            <div style={{ padding: "11px 0", display: "flex", alignItems: "center", gap: 12 }}>
+              <BlockGlyph kind={glyphKind} size={14} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                  <span className="body-font" style={{
+                    fontSize: 13, fontWeight: 500, color: "var(--ink)",
+                    letterSpacing: "-0.005em", whiteSpace: "nowrap" as const,
+                    overflow: "hidden", textOverflow: "ellipsis", maxWidth: "60%",
+                  }}>
+                    {cat.name}
+                  </span>
+                  <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexShrink: 0 }}>
+                    <span className="mono tnum" style={{ fontSize: 10, color: "var(--mute)" }}>
+                      {cat.percent}%
+                    </span>
+                    <span className="tnum display" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em" }}>
+                      {fmtAmount(cat.amount)}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ height: 1.5, background: "var(--hairline)", borderRadius: 99, overflow: "hidden" }}>
+                  <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${barW}%` }}
+                    transition={{ duration: 0.8, delay: 0.15 + i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ height: "100%", background: "var(--ink)", borderRadius: 99 }}
+                  />
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </motion.div>
+        );
+      })}
     </motion.div>
   );
 }

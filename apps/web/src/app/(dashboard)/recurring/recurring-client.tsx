@@ -120,7 +120,7 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
       transition: "opacity 200ms",
     }}>
       <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <Glyph kind={CATEGORY_GLYPH[item.category] ?? "ring"} size={14} />
+        <Glyph kind={CATEGORY_GLYPH[item.category] ?? "Home"} size={14} />
       </div>
 
       <div style={{ flex: 1 }}>
@@ -244,8 +244,13 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
         )}
 
         {list.length === 0 && !adding ? (
-          <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "32px 0" }}>
-            Sin recurrentes. Suscripciones, servicios, alquiler — agregá todo lo que se cobra solo.
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", padding: "80px 0", gap: 16,
+          }}>
+            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
+              Sin gastos recurrentes. Registrá alquiler, suscripciones o servicios.
+            </div>
           </div>
         ) : (
           list.map(item => <RecurringRowItem key={item.id} item={item} />)
