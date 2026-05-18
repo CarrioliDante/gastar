@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../hooks/useTheme';
 import { useTransactions } from '../../lib/hooks';
 import { adaptTxGroup } from '../../lib/adapters';
@@ -19,14 +20,40 @@ function monthName(d: Date): string {
 export default function TransactionsScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
   const [activeFilter, setActiveFilter] = useState('Todo');
-  const { data: apiData, isLoading } = useTransactions();
+  const { data: apiData, isLoading, isError } = useTransactions();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await qc.invalidateQueries({ queryKey: ['transactions'] });
+    setRefreshing(false);
+  }, [qc]);
 
   const now = new Date();
-  const groups = (apiData?.groups ?? []).map(adaptTxGroup);
-  const totalTx = apiData?.total ?? 0;
+  const rawGroups = (apiData?.groups ?? []).map(adaptTxGroup);
 
-  if (isLoading || !apiData) {
+  // Filter logic
+  const filteredGroups = rawGroups.map(g => {
+    const filtered = g.txs.filter(tx => {
+      switch (activeFilter) {
+        case 'Salida':      return tx.amount < 0;
+        case 'Entrada':     return tx.amount >= 0;
+        case 'Cuotas':      return tx.installment != null;
+        case 'Recurrentes': return tx.meta.toLowerCase().includes('recurrente');
+        default:            return true;
+      }
+    });
+    if (filtered.length === 0) return null;
+    const total = filtered.reduce((s, tx) => s + tx.amount, 0);
+    return { ...g, txs: filtered, total };
+  }).filter(Boolean) as typeof rawGroups;
+
+  const groups = filteredGroups;
+  const totalTx = groups.reduce((s, g) => s + g.txs.length, 0);
+
+  if (isLoading && !apiData) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="small" color={C.ink} />
@@ -39,6 +66,7 @@ export default function TransactionsScreen() {
       style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 130, paddingHorizontal: 24 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
@@ -61,6 +89,15 @@ export default function TransactionsScreen() {
           </Svg>
         </Pressable>
       </View>
+
+      {/* Error banner */}
+      {isError && (
+        <View style={{ marginTop: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.hairline }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, textAlign: 'center' }}>
+            Sin conexión · mostrando datos locales
+          </Text>
+        </View>
+      )}
 
       {/* Filter tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 18, marginBottom: 8 }} contentContainerStyle={{ gap: 18 }}>

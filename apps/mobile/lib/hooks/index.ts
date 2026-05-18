@@ -21,46 +21,59 @@ import {
   type TxGroupUI,
   type TransactionUI,
 } from '../adapters';
+import { useAuthStore } from '../../store/auth';
 
 export function useStats() {
+  const { isChecking } = useAuthStore();
   return useQuery({
     queryKey: ['stats'],
     queryFn: () => apiFetch<StatsResponse>('/stats'),
+    enabled: !isChecking,
   });
 }
 
 export function useTransactions(blockId?: string) {
+  const { isChecking } = useAuthStore();
   return useQuery({
     queryKey: ['transactions', blockId ?? 'all'],
     queryFn: () => apiFetch<TransactionsResponse>(`/transactions${blockId ? `?blockId=${blockId}` : ''}`),
+    enabled: !isChecking,
   });
 }
 
 export function useBlocks() {
+  const { isChecking } = useAuthStore();
   return useQuery({
     queryKey: ['blocks'],
     queryFn: () => apiFetch<Block[]>('/blocks'),
+    enabled: !isChecking,
   });
 }
 
 export function useInstallments() {
+  const { isChecking } = useAuthStore();
   return useQuery({
     queryKey: ['installments'],
     queryFn: () => apiFetch<Installment[]>('/installments'),
+    enabled: !isChecking,
   });
 }
 
 export function useRecurring() {
+  const { isChecking } = useAuthStore();
   return useQuery({
     queryKey: ['recurring'],
     queryFn: () => apiFetch<Recurring[]>('/recurring'),
+    enabled: !isChecking,
   });
 }
 
 export function useUser() {
+  const { isChecking } = useAuthStore();
   return useQuery({
     queryKey: ['user'],
     queryFn: () => apiFetch<UserProfile>('/user'),
+    enabled: !isChecking,
   });
 }
 
@@ -72,9 +85,25 @@ export function useCreateTransaction() {
       blockId?: string; note?: string; date?: string;
     }) => apiFetch('/transactions', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['stats'] });
-      qc.invalidateQueries({ queryKey: ['transactions'] });
+      // Delay until after the sheet close animation completes (~1050ms total)
+      // to avoid triggering concurrent refetches while the spring animation is running
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['stats'] });
+        qc.invalidateQueries({ queryKey: ['transactions'] });
+        qc.invalidateQueries({ queryKey: ['blocks'] });
+      }, 1200);
+    },
+  });
+}
+
+export function useCreateBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; icon: string; budget: number; goal?: string }) =>
+      apiFetch('/blocks', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['blocks'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }
@@ -140,27 +169,76 @@ interface InsightsData {
   installments: InstallmentUI[];
   recurring: RecurringUI[];
   recurringMonthly: number;
+  patterns: { value: string; label: string }[];
 }
 
 export function useInsights() {
   const stats = useStats();
   const installments = useInstallments();
   const recurring = useRecurring();
+  const transactions = useTransactions();
 
-  const isLoading = stats.isLoading || installments.isLoading || recurring.isLoading;
-  const isError = stats.isError || installments.isError || recurring.isError;
+  const isLoading = stats.isLoading || installments.isLoading || recurring.isLoading || transactions.isLoading;
+  const isError = stats.isError || installments.isError || recurring.isError || transactions.isError;
 
   const data: InsightsData | null =
     stats.data
-      ? {
-          stats:            adaptStats(stats.data),
-          installments:     (installments.data ?? []).map(adaptInstallment),
-          recurring:        (recurring.data ?? []).map(adaptRecurring),
-          recurringMonthly: (recurring.data ?? []).reduce(
-            (s, r) => s + (r.freq === 'bimestral' ? r.amount / 2 : r.amount),
-            0,
-          ),
-        }
+      ? (() => {
+          const s = adaptStats(stats.data);
+          const rawTxs = (transactions.data?.groups ?? []).flatMap(g => g.txs);
+          const monthTxs = rawTxs.filter(t => t.amount < 0);
+
+          // Peak day of spending
+          const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+          let peakDay = '—';
+          if (s.monthSeries.length > 0) {
+            const maxIdx = s.monthSeries.indexOf(Math.max(...s.monthSeries));
+            const now = new Date();
+            const peakDate = new Date(now.getFullYear(), now.getMonth(), maxIdx + 1);
+            peakDay = dayNames[peakDate.getDay()];
+          }
+
+          // Peak hour from raw tx times (time is "HH:MM" string from API)
+          let peakHour = '—';
+          if (monthTxs.length > 0) {
+            const hourCounts = new Map<number, number>();
+            for (const t of monthTxs) {
+              const timeStr = (t as { time?: string }).time;
+              if (timeStr) {
+                const h = parseInt(timeStr.split(':')[0], 10);
+                if (!isNaN(h)) hourCounts.set(h, (hourCounts.get(h) ?? 0) + 1);
+              }
+            }
+            if (hourCounts.size > 0) {
+              const best = [...hourCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+              peakHour = `${String(best[0]).padStart(2, '0')}:00`;
+            }
+          }
+
+          // Active days with transactions
+          const activeDays = s.monthSeries.filter(v => v > 0).length;
+
+          // Top category
+          const topCat = s.categories[0]?.label ?? '—';
+
+          const patterns = [
+            { value: peakDay,            label: 'día de más gasto' },
+            { value: peakHour,           label: 'hora pico' },
+            { value: String(activeDays), label: 'días con movimientos' },
+            { value: topCat,             label: 'categoría principal' },
+          ];
+
+          return {
+            stats: s,
+            installments: (installments.data ?? []).map(adaptInstallment),
+            recurring: (recurring.data ?? []).map(adaptRecurring),
+            recurringMonthly: (recurring.data ?? []).reduce(
+              (acc, r) => acc + (r.freq === 'bimestral' ? r.amount / 2 : r.amount),
+              0,
+            ),
+            patterns,
+          };
+        })()
       : null;
 
   return { data, isLoading, isError };
