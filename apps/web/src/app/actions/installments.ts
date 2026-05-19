@@ -47,6 +47,37 @@ export async function createInstallment(formData: FormData) {
   }
 }
 
+export async function updateInstallment(
+  id: string,
+  data: { name: string; monthlyAmount: number; paidInstallments: number },
+) {
+  const user = await requireUser();
+  const inst = await db.installment.findFirst({
+    where: { id, userId: user.id },
+    select: { totalInstallments: true },
+  });
+  if (!inst) throw new Error("Cuota no encontrada");
+
+  const paid = Math.max(0, data.paidInstallments);
+  if (paid >= inst.totalInstallments) throw new Error("Las cuotas pagadas no pueden igualar o superar el total");
+  if (data.monthlyAmount <= 0) throw new Error("El importe mensual debe ser mayor a cero");
+
+  try {
+    await db.installment.update({
+      where: { id },
+      data: {
+        name: data.name,
+        monthlyAmount: data.monthlyAmount,
+        paidInstallments: paid,
+      },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("updateInstallment failed:", err);
+    throw err;
+  }
+}
+
 export async function payInstallment(id: string) {
   const user = await requireUser();
   const inst = await db.installment.findFirst({ where: { id, userId: user.id } });

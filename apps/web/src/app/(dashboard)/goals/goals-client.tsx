@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useGoals } from "@/hooks/queries";
-import { useCreateGoal, useContributeToGoal, useDeleteGoal } from "@/hooks/mutations";
+import { useCreateGoal, useContributeToGoal, useDeleteGoal, useUpdateGoal } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
 import { parseNumeric } from "@/hooks/use-number-input";
@@ -17,12 +17,22 @@ const fieldStyle: React.CSSProperties = {
   color: "var(--ink)", letterSpacing: "-0.005em", boxSizing: "border-box",
 };
 
+const labelStyle: React.CSSProperties = {
+  fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em",
+  textTransform: "uppercase", marginBottom: 6,
+};
+
 function GoalCard({ goal }: { goal: GoalRow }) {
   const [contributing, setContributing] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState("");
+  const [editName, setEditName] = useState(goal.name);
+  const [editTarget, setEditTarget] = useState(String(goal.targetAmount));
+  const [editDeadline, setEditDeadline] = useState(goal.deadlineISO ?? "");
   const { format } = useCurrency();
   const contribute = useContributeToGoal();
   const del = useDeleteGoal();
+  const upd = useUpdateGoal();
 
   const r = 28, c = 2 * Math.PI * r;
   const isOpt = goal.id.startsWith("opt-");
@@ -38,6 +48,59 @@ function GoalCard({ goal }: { goal: GoalRow }) {
     setContributing(false);
     setAmount("");
   };
+
+  const handleEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetAmt = parseNumeric(editTarget);
+    if (!editName.trim() || targetAmt <= 0) return;
+    upd.mutate(
+      { id: goal.id, name: editName.trim(), targetAmount: targetAmt, deadline: editDeadline || null },
+      { onSuccess: () => setEditing(false) },
+    );
+  };
+
+  if (editing) {
+    return (
+      <form onSubmit={handleEdit} style={{
+        padding: "20px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12,
+      }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 120px auto", gap: 10, alignItems: "flex-end" }}>
+          <div>
+            <div className="mono" style={labelStyle}>Nombre</div>
+            <input value={editName} onChange={e => setEditName(e.target.value)} required style={fieldStyle} />
+          </div>
+          <div>
+            <div className="mono" style={labelStyle}>Meta</div>
+            <AmountInput value={editTarget} onChange={setEditTarget} required style={fieldStyle} />
+          </div>
+          <div>
+            <div className="mono" style={labelStyle}>Fecha límite</div>
+            <input type="date" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} style={fieldStyle} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => setEditing(false)} style={{
+              padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+            }}>Cancelar</button>
+            <button type="submit" disabled={upd.isPending} style={{
+              padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: upd.isPending ? "var(--surface)" : "var(--ink)",
+              color: upd.isPending ? "var(--faint)" : "var(--inverse)",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+            }}>Guardar</button>
+          </div>
+        </div>
+        {upd.isError && (
+          <div style={{
+            padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
+            fontSize: 12, color: "var(--ink)", fontFamily: "inherit",
+          }}>
+            {upd.error?.message || "Algo salió mal. Intentá de nuevo."}
+          </div>
+        )}
+      </form>
+    );
+  }
 
   return (
     <div style={{ padding: "28px 0 24px", borderBottom: "1px solid var(--hairline)", opacity: isOpt ? 0.55 : 1 }}>
@@ -103,6 +166,17 @@ function GoalCard({ goal }: { goal: GoalRow }) {
           }}>
             + Aportar
           </button>
+          <button
+            onClick={() => !isOpt && setEditing(true)}
+            disabled={isOpt}
+            style={{
+              padding: "7px 12px", borderRadius: 7, border: "none",
+              cursor: isOpt ? "default" : "pointer",
+              background: "var(--surface)", color: "var(--mute)",
+              boxShadow: "inset 0 0 0 1px var(--hairline)",
+              fontFamily: "inherit", fontSize: 12,
+            }}
+          >Editar</button>
           <button
             onClick={() => !isOpt && del.mutate(goal.id)}
             disabled={isOpt || del.isPending}

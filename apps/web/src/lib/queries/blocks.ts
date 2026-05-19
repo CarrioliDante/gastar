@@ -2,6 +2,26 @@ import { cache } from "react";
 import "server-only";
 import { db } from "@/lib/db";
 
+export async function getTransactionsByBlock(blockId: string, userId: string) {
+  const rows = await db.transaction.findMany({
+    where: { blockId, userId },
+    orderBy: { date: "desc" },
+    take: 30,
+    select: { id: true, name: true, category: true, amount: true, date: true, note: true },
+  });
+
+  return rows.map(t => ({
+    id: t.id,
+    name: t.name,
+    category: t.category,
+    amount: Number(t.amount),
+    date: t.date.toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+    note: t.note ?? undefined,
+  }));
+}
+
+export type BlockTransactionRow = Awaited<ReturnType<typeof getTransactionsByBlock>>[number];
+
 export const getBlocks = cache(async (userId: string) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useRecurring } from "@/hooks/queries";
-import { useCreateRecurring, usePayRecurring, useDeleteRecurring } from "@/hooks/mutations";
+import { useCreateRecurring, usePayRecurring, useDeleteRecurring, usePauseRecurring } from "@/hooks/mutations";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -115,10 +115,11 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
   const { format } = useCurrency();
   const pay = usePayRecurring();
   const del = useDeleteRecurring();
+  const pause = usePauseRecurring();
 
   const freqLabel = FREQS.find(f => f.id === item.frequency)?.label ?? item.frequency;
   const daysUntil = Math.ceil((item.nextDueDateMs - Date.now()) / (1000 * 60 * 60 * 24));
-  const urgent = daysUntil <= 5;
+  const urgent = !item.paused && daysUntil <= 5;
   const isOpt = item.id.startsWith("opt-");
   const debitLabel = item.dayOfMonth ? `${freqLabel} · el ${item.dayOfMonth}` : freqLabel;
 
@@ -126,7 +127,7 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
     <div className="row-hover" style={{
       display: "flex", alignItems: "center", gap: 14,
       padding: "14px 0", borderBottom: "1px solid var(--hairline)",
-      opacity: isOpt ? 0.55 : 1,
+      opacity: isOpt || item.paused ? 0.45 : 1,
       transition: "opacity 200ms",
     }}>
       <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -146,7 +147,7 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
         fontWeight: urgent ? 500 : 400,
         flexShrink: 0,
       }}>
-        {daysUntil <= 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : item.nextDueDate}
+        {item.paused ? "Pausado" : daysUntil <= 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : item.nextDueDate}
       </div>
 
       <div className="display tnum" style={{
@@ -156,18 +157,34 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
         {format(item.amount)}
       </div>
 
+      {!item.paused && (
+        <button
+          onClick={() => !isOpt && pay.mutate(item.id)}
+          disabled={isOpt || pay.isPending}
+          title="Marcar como pagado"
+          style={{
+            padding: "6px 12px", borderRadius: 7, border: "none",
+            cursor: isOpt || pay.isPending ? "default" : "pointer",
+            background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
+            color: "var(--mute)", letterSpacing: "-0.005em", flexShrink: 0,
+            boxShadow: "inset 0 0 0 1px var(--hairline)", transition: "all 120ms ease",
+          }}>
+          Pagar
+        </button>
+      )}
+
       <button
-        onClick={() => !isOpt && pay.mutate(item.id)}
-        disabled={isOpt || pay.isPending}
-        title="Marcar como pagado"
+        onClick={() => !isOpt && pause.mutate(item.id)}
+        disabled={isOpt || pause.isPending}
+        title={item.paused ? "Reanudar" : "Pausar"}
         style={{
           padding: "6px 12px", borderRadius: 7, border: "none",
-          cursor: isOpt || pay.isPending ? "default" : "pointer",
+          cursor: isOpt || pause.isPending ? "default" : "pointer",
           background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
           color: "var(--mute)", letterSpacing: "-0.005em", flexShrink: 0,
           boxShadow: "inset 0 0 0 1px var(--hairline)", transition: "all 120ms ease",
         }}>
-        Pagar
+        {item.paused ? "Reanudar" : "Pausar"}
       </button>
 
       <button
@@ -194,6 +211,7 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
 
   const list = items ?? [];
   const totalMonthly = list.reduce((s, i) => {
+    if (i.paused) return s;
     const mult = i.frequency === "weekly" ? 4.3 : i.frequency === "bimonthly" ? 0.5 : i.frequency === "yearly" ? 1 / 12 : 1;
     return s + i.amount * mult;
   }, 0);

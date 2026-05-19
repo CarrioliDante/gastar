@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 
 export const getRecurringExpenses = cache(async (userId: string) => {
   const rows = await db.recurringExpense.findMany({
-    where: { userId, pausedAt: null },
-    orderBy: { nextDueDate: "asc" },
+    where: { userId },
+    orderBy: [{ pausedAt: "asc" }, { nextDueDate: "asc" }],
   });
 
   return rows.map(r => ({
@@ -16,6 +16,7 @@ export const getRecurringExpenses = cache(async (userId: string) => {
     dayOfMonth: r.dayOfMonth ?? null,
     nextDueDate: r.nextDueDate.toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
     nextDueDateMs: r.nextDueDate.getTime(),
+    paused: r.pausedAt !== null,
     blockId: r.blockId ?? undefined,
     note: r.note ?? undefined,
   }));

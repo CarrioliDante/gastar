@@ -10,6 +10,7 @@ import {
   fetchInstallments,
   fetchRecurring,
   fetchGoals,
+  fetchBlockTransactions,
 } from "@/app/actions/queries";
 
 type DashboardStats = Awaited<ReturnType<typeof fetchDashboardStats>>;
@@ -80,6 +81,17 @@ export function useGoals(initialData?: GoalRow[]) {
     queryKey: qk.goals,
     queryFn: fetchGoals,
     initialData,
+    staleTime: 0,
+  });
+}
+
+export type BlockTransactionRow = Awaited<ReturnType<typeof fetchBlockTransactions>>[number];
+
+export function useBlockTransactions(blockId: string | null) {
+  return useQuery({
+    queryKey: ["block-transactions", blockId],
+    queryFn: () => fetchBlockTransactions(blockId!),
+    enabled: !!blockId,
     staleTime: 0,
   });
 }

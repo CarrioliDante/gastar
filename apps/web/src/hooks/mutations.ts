@@ -5,10 +5,10 @@ import { qk } from "@/hooks/query-keys";
 import type { TransactionRow, InstallmentRow, RecurringRow, GoalRow, BlockRow } from "@/hooks/queries";
 
 import { createTransaction, deleteTransaction } from "@/app/actions/transactions";
-import { createInstallment, payInstallment, deleteInstallment } from "@/app/actions/installments";
-import { createRecurring, markRecurringPaid, deleteRecurring } from "@/app/actions/recurring";
+import { createInstallment, payInstallment, deleteInstallment, updateInstallment } from "@/app/actions/installments";
+import { createRecurring, markRecurringPaid, deleteRecurring, toggleRecurringPause } from "@/app/actions/recurring";
 import { createBlock, archiveBlock, updateBlock } from "@/app/actions/blocks";
-import { createGoal, contributeToGoal, deleteGoal } from "@/app/actions/goals";
+import { createGoal, contributeToGoal, deleteGoal, updateSavingsGoal } from "@/app/actions/goals";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -192,6 +192,38 @@ export function useDeleteInstallment() {
   });
 }
 
+export function useUpdateInstallment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; name: string; monthlyAmount: number; paidInstallments: number }) =>
+      updateInstallment(vars.id, { name: vars.name, monthlyAmount: vars.monthlyAmount, paidInstallments: vars.paidInstallments }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["installments"] });
+      const prev = snapshot<InstallmentRow[]>(qc, qk.installments);
+      qc.setQueryData<InstallmentRow[]>(qk.installments, (old) =>
+        old?.map(i => {
+          if (i.id !== vars.id) return i;
+          const newRemaining = i.total_installments - vars.paidInstallments;
+          return {
+            ...i,
+            name: vars.name,
+            monthly: vars.monthlyAmount,
+            remaining: newRemaining,
+            paid: vars.paidInstallments * vars.monthlyAmount,
+          };
+        })
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(qk.installments, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["installments"] });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Recurring
 // ---------------------------------------------------------------------------
@@ -228,6 +260,7 @@ export function useCreateRecurring() {
         dayOfMonth,
         nextDueDate: new Date(nextMs).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
         nextDueDateMs: nextMs,
+        paused: false,
         blockId: undefined,
         note: undefined,
       };
@@ -304,6 +337,27 @@ export function useDeleteRecurring() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["recurring"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function usePauseRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => toggleRecurringPause(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["recurring"] });
+      const prev = snapshot<RecurringRow[]>(qc, qk.recurring);
+      qc.setQueryData<RecurringRow[]>(qk.recurring, (old) =>
+        old?.map(r => r.id === id ? { ...r, paused: !r.paused } : r)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(qk.recurring, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["recurring"] });
     },
   });
 }
@@ -452,6 +506,35 @@ export function useDeleteGoal() {
       await qc.cancelQueries({ queryKey: ["goals"] });
       const prev = snapshot<GoalRow[]>(qc, qk.goals);
       qc.setQueryData<GoalRow[]>(qk.goals, (old) => old?.filter(g => g.id !== id));
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(qk.goals, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+
+export function useUpdateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; name: string; targetAmount: number; deadline: string | null }) =>
+      updateSavingsGoal(vars.id, { name: vars.name, targetAmount: vars.targetAmount, deadline: vars.deadline }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["goals"] });
+      const prev = snapshot<GoalRow[]>(qc, qk.goals);
+      qc.setQueryData<GoalRow[]>(qk.goals, (old) =>
+        old?.map(g => {
+          if (g.id !== vars.id) return g;
+          const remaining = Math.max(0, vars.targetAmount - g.currentAmount);
+          const pct = vars.targetAmount > 0
+            ? Math.min(100, Math.round((g.currentAmount / vars.targetAmount) * 100))
+            : 0;
+          return { ...g, name: vars.name, targetAmount: vars.targetAmount, remaining, pct, deadlineISO: vars.deadline };
+        })
+      );
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
