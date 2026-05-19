@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
-import { useStats, useUser } from '../lib/hooks';
+import { useStats, useUser, useCategories, useSaveCategories } from '../lib/hooks';
 import { useAppStore, CURRENCY_SYMBOLS, type CurrencyCode } from '../store/app';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
-import { ping } from '../lib/api';
+import { ping, type CategoryItem } from '../lib/api';
 import { Eyebrow, Hairline, Section } from '../components/ui/primitives';
 import { Pulso } from '../components/ui/charts';
+import { BlockGlyph } from '../components/ui/BlockGlyph';
 import type { Theme, FontFamily } from '../lib/theme';
+import type { GlyphKind } from '../lib/data';
 
 const CURRENCIES = Object.keys(CURRENCY_SYMBOLS) as CurrencyCode[];
 
@@ -22,21 +24,58 @@ const CHEVRON = (color: string) => (
   </Svg>
 );
 
+const GLYPHS: GlyphKind[] = ['Home', 'Building', 'Key', 'Bulb', 'Flame', 'Droplet', 'Car', 'Bike', 'Plane', 'Train', 'Bus', 'GasStation', 'Heart', 'Activity', 'Barbell', 'Apple', 'FirstAidKit', 'Run', 'Coffee', 'ToolsKitchen2', 'ShoppingBag', 'Pizza', 'Coins', 'CreditCard', 'Briefcase', 'TrendingUp', 'Music', 'Book', 'Movie', 'Camera', 'Users', 'Dog', 'Globe', 'Map', 'DeviceMobile', 'DeviceLaptop'];
+
+const DEFAULT_CATEGORIES: CategoryItem[] = [
+  { id: 'comida', label: 'Comida', glyph: 'Coffee', type: 'expense' },
+  { id: 'casa', label: 'Casa', glyph: 'Home', type: 'expense' },
+  { id: 'transporte', label: 'Transporte', glyph: 'Car', type: 'expense' },
+  { id: 'ocio', label: 'Ocio', glyph: 'Music', type: 'expense' },
+  { id: 'subs', label: 'Subscripciones', glyph: 'CreditCard', type: 'expense' },
+  { id: 'salud', label: 'Salud', glyph: 'Heart', type: 'expense' },
+  { id: 'salario', label: 'Salario', glyph: 'Coins', type: 'income' },
+  { id: 'freelance', label: 'Freelance', glyph: 'Briefcase', type: 'income' },
+  { id: 'devolucion', label: 'Devolución', glyph: 'Coins', type: 'income' },
+  { id: 'inversion', label: 'Inversión', glyph: 'TrendingUp', type: 'income' },
+  { id: 'regalo', label: 'Regalo', glyph: 'Heart', type: 'income' },
+  { id: 'otros', label: 'Otros', glyph: 'Globe', type: 'income' },
+];
+
 export default function SettingsScreen() {
   const { C, fontBody, fontDisplay, fontMono, theme, font, currency } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
-  const { setTheme, setFont, setCurrency } = useAppStore();
+  const { setTheme, setFont, setCurrency, animationsEnabled, setAnimationsEnabled } = useAppStore();
   const { setSession } = useAuthStore();
   const { data: statsData, isLoading: statsLoading, error: statsErr } = useStats();
   const { data: user, error: userErr } = useUser();
+  const { data: apiCategories } = useCategories();
+  const saveCats = useSaveCategories();
   const [refreshing, setRefreshing] = useState(false);
+  const [categories, setCategories] = useState<CategoryItem[] | null>(null);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [catEditLabel, setCatEditLabel] = useState('');
+  const [catEditGlyph, setCatEditGlyph] = useState<GlyphKind>('Home');
+
+  // Sync local categories from API data, or fall back to defaults
+  const effectiveCategories = categories ?? (apiCategories
+    ? [...apiCategories.expenses, ...apiCategories.incomes]
+    : DEFAULT_CATEGORIES
+  );
+
+  // When API data arrives and we haven't local-edited yet, initialize
+  useEffect(() => {
+    if (!categories && apiCategories) {
+      setCategories([...apiCategories.expenses, ...apiCategories.incomes]);
+    }
+  }, [apiCategories]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await qc.invalidateQueries({ queryKey: ['stats'] });
     await qc.invalidateQueries({ queryKey: ['user'] });
+    await qc.invalidateQueries({ queryKey: ['categories'] });
     setRefreshing(false);
   }, [qc]);
 
@@ -46,7 +85,6 @@ export default function SettingsScreen() {
     router.replace('/login');
   };
 
-  const pulso = statsData?.pulso ?? 0;
   const userName = user?.name ?? user?.email?.split('@')[0] ?? '';
 
   const hasError = !statsData && !statsLoading;
@@ -94,27 +132,6 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
-
-      {/* Pulso */}
-      <View style={{ paddingTop: hasError ? 16 : 28 }}>
-        <Eyebrow>Pulso Financiero</Eyebrow>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 14, gap: 16 }}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              <Text style={{ fontFamily: fontDisplay, fontSize: 42, fontWeight: '500', letterSpacing: -2, color: C.ink, fontVariant: ['tabular-nums'] }}>
-                {pulso}
-              </Text>
-              <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: C.faint, fontWeight: '400' }}>/100</Text>
-            </View>
-            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 8, lineHeight: 18 }}>
-              Tranquilo · sube cuando ahorrás,{'\n'}seguís tu presupuesto y registrás a diario.
-            </Text>
-          </View>
-          <Pulso value={pulso} size={90} showLabel={false} color={C.ink} trackColor={C.hairline2} inkColor={C.ink} />
-        </View>
-      </View>
-
-      <Hairline style={{ marginTop: 28 }} />
 
       {/* Apariencia */}
       <Section title="Apariencia" top={26}>
@@ -171,6 +188,34 @@ export default function SettingsScreen() {
 
       <Hairline style={{ marginTop: 28 }} />
 
+      {/* Animaciones */}
+      <Section title="Animaciones" top={26}>
+        <Eyebrow style={{ marginBottom: 12 }}>Transiciones y micro-interacciones</Eyebrow>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {(['on', 'off'] as const).map(v => (
+            <Pressable key={v} onPress={() => setAnimationsEnabled(v === 'on')}
+              style={({ pressed }) => ({
+                flex: 1, paddingHorizontal: 14, paddingVertical: 12,
+                backgroundColor: animationsEnabled === (v === 'on') ? C.ink : C.surface,
+                borderRadius: 12,
+                borderWidth: 1, borderColor: animationsEnabled === (v === 'on') ? C.ink : C.hairline,
+                alignItems: 'center',
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{
+                fontFamily: fontBody, fontSize: 13, fontWeight: '500',
+                color: animationsEnabled === (v === 'on') ? C.bg : C.ink,
+              }}>
+                {v === 'on' ? 'Activadas' : 'Desactivadas'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </Section>
+
+      <Hairline style={{ marginTop: 28 }} />
+
       {/* Moneda */}
       <Section title="Moneda" top={26}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -191,6 +236,175 @@ export default function SettingsScreen() {
               </Text>
             </Pressable>
           ))}
+        </View>
+      </Section>
+
+      <Hairline style={{ marginTop: 28 }} />
+
+      {/* Categorías */}
+      <Section title="Categorías" top={26}>
+        {/* Expense categories */}
+        <Eyebrow style={{ marginBottom: 12 }}>Gastos</Eyebrow>
+        {effectiveCategories.filter(c => c.type === 'expense').map(cat => (
+          <View key={cat.id} style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline,
+          }}>
+            {editingCatId === cat.id ? (
+              <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 4 }}>
+                  {GLYPHS.map(g => (
+                    <Pressable key={g} onPress={() => setCatEditGlyph(g)}
+                      style={{
+                        width: 28, height: 28, borderRadius: 6,
+                        alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: catEditGlyph === g ? C.ink : C.surface,
+                        borderWidth: 1, borderColor: catEditGlyph === g ? C.ink : C.hairline,
+                      }}
+                    >
+                      <BlockGlyph kind={g} size={14} color={catEditGlyph === g ? C.bg : C.ink} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  value={catEditLabel}
+                  onChangeText={setCatEditLabel}
+                  style={{
+                    fontFamily: fontBody, fontSize: 13, color: C.ink,
+                    borderWidth: 1, borderColor: C.hairline, borderRadius: 6,
+                    paddingHorizontal: 8, paddingVertical: 5, minWidth: 100,
+                    backgroundColor: C.surface,
+                  }}
+                />
+                <Pressable
+                  onPress={() => {
+                    setCategories(prev => prev!.map(c =>
+                      c.id === editingCatId ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
+                    ));
+                    setEditingCatId(null);
+                  }}
+                  style={{ padding: 6 }}
+                >
+                  <Text style={{ fontFamily: fontBody, fontSize: 12, fontWeight: '500', color: C.ink }}>OK</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingCatId(null)} style={{ padding: 6 }}>
+                  <Text style={{ fontFamily: fontBody, fontSize: 12, color: C.mute }}>×</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <BlockGlyph kind={cat.glyph as GlyphKind} size={14} color={C.ink} />
+                <Text style={{ flex: 1, fontFamily: fontBody, fontSize: 13, color: C.ink, letterSpacing: -0.2 }}>
+                  {cat.label}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setEditingCatId(cat.id);
+                    setCatEditLabel(cat.label);
+                    setCatEditGlyph(cat.glyph as GlyphKind);
+                  }}
+                  style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5, borderWidth: 1, borderColor: C.hairline }}
+                >
+                  <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.faint }}>Editar</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        ))}
+
+        {/* Income categories */}
+        <Eyebrow style={{ marginTop: 20, marginBottom: 12 }}>Ingresos</Eyebrow>
+        {effectiveCategories.filter(c => c.type === 'income').map(cat => (
+          <View key={cat.id} style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline,
+          }}>
+            {editingCatId === cat.id ? (
+              <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 4 }}>
+                  {GLYPHS.map(g => (
+                    <Pressable key={g} onPress={() => setCatEditGlyph(g)}
+                      style={{
+                        width: 28, height: 28, borderRadius: 6,
+                        alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: catEditGlyph === g ? C.ink : C.surface,
+                        borderWidth: 1, borderColor: catEditGlyph === g ? C.ink : C.hairline,
+                      }}
+                    >
+                      <BlockGlyph kind={g} size={14} color={catEditGlyph === g ? C.bg : C.ink} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  value={catEditLabel}
+                  onChangeText={setCatEditLabel}
+                  style={{
+                    fontFamily: fontBody, fontSize: 13, color: C.ink,
+                    borderWidth: 1, borderColor: C.hairline, borderRadius: 6,
+                    paddingHorizontal: 8, paddingVertical: 5, minWidth: 100,
+                    backgroundColor: C.surface,
+                  }}
+                />
+                <Pressable
+                  onPress={() => {
+                    setCategories(prev => prev!.map(c =>
+                      c.id === editingCatId ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
+                    ));
+                    setEditingCatId(null);
+                  }}
+                  style={{ padding: 6 }}
+                >
+                  <Text style={{ fontFamily: fontBody, fontSize: 12, fontWeight: '500', color: C.ink }}>OK</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingCatId(null)} style={{ padding: 6 }}>
+                  <Text style={{ fontFamily: fontBody, fontSize: 12, color: C.mute }}>×</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <BlockGlyph kind={cat.glyph as GlyphKind} size={14} color={C.ink} />
+                <Text style={{ flex: 1, fontFamily: fontBody, fontSize: 13, color: C.ink, letterSpacing: -0.2 }}>
+                  {cat.label}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setEditingCatId(cat.id);
+                    setCatEditLabel(cat.label);
+                    setCatEditGlyph(cat.glyph as GlyphKind);
+                  }}
+                  style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5, borderWidth: 1, borderColor: C.hairline }}
+                >
+                  <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.faint }}>Editar</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        ))}
+
+        {/* Actions */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          <Pressable
+            onPress={() => saveCats.mutate(effectiveCategories)}
+            disabled={saveCats.isPending}
+            style={{
+              flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+              backgroundColor: saveCats.isPending ? C.surfaceAlt : C.ink,
+              borderWidth: 1, borderColor: saveCats.isPending ? C.hairline : C.ink,
+            }}
+          >
+            <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: saveCats.isPending ? C.mute : C.bg }}>
+              {saveCats.isPending ? '...' : 'Guardar cambios'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setCategories(DEFAULT_CATEGORIES)}
+            style={{
+              flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+              backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+            }}
+          >
+            <Text style={{ fontFamily: fontBody, fontSize: 13, color: C.mute }}>Restaurar defaults</Text>
+          </Pressable>
         </View>
       </Section>
 

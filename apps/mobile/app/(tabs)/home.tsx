@@ -9,8 +9,8 @@ import { adaptGoal } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Stat, Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
 import { TickerAmount } from '../../components/ui/TickerAmount';
-import { LineChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
+import Svg, { Circle } from 'react-native-svg';
 import { TxRow } from '../../components/ui/TxRow';
 import { LoadingLogo } from '../../components/ui/LoadingLogo';
 
@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const { data: goalsData } = useGoals();
   const goals = (goalsData ?? []).map(adaptGoal);
   const [refreshing, setRefreshing] = useState(false);
+  const [period, setPeriod] = useState<'semana' | 'mes'>('mes');
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -59,22 +60,32 @@ export default function HomeScreen() {
     );
   }
 
-  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], pulso: 0, pulsoMood: '', categories: [] };
+  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], weekSpending: 0 };
   const blocks = data?.blocks ?? [];
   const installments = data?.installments ?? [];
   const recurring = data?.recurring ?? [];
-  // "Hoy" — show only today's transactions (first group if it's labeled "Hoy")
-  const todayGroup = data?.groups?.find(g => g.date === 'Hoy');
-  const todayTxs = todayGroup?.txs ?? [];
-  const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, pulso, categories } = stats;
+  const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, weekSpending = 0 } = stats;
   const monthPct = monthBudget > 0 ? Math.min(1, monthSpend / monthBudget) : 0;
   const available = monthBudget - monthSpend;
-  const nwGain = netWorth12mo.length >= 2 ? netWorth12mo[netWorth12mo.length - 1] - netWorth12mo[0] : 0;
-  const nwPct = netWorth12mo.length >= 2 && netWorth12mo[0] !== 0
-    ? Math.round((netWorth12mo[netWorth12mo.length - 1] / netWorth12mo[0] - 1) * 100)
-    : 0;
+  const weekSpend = weekSpending ?? 0;
+  const weekBudget = Math.round(monthBudget / 4.3);
+  const weekAvailable = weekBudget - weekSpend;
+  const displaySpend = period === 'semana' ? weekSpend : monthSpend;
+  const displayBudget = period === 'semana' ? weekBudget : monthBudget;
+  const displayAvailable = period === 'semana' ? weekAvailable : available;
+  const displayPct = displayBudget > 0 ? Math.min(1, displaySpend / displayBudget) : 0;
+  const totalSaved = goals.reduce((s, g) => s + g.current, 0);
+  const totalTarget = goals.reduce((s, g) => s + g.target, 0);
+  const totalPct = totalTarget > 0 ? Math.min(1, totalSaved / totalTarget) : 0;
   const recurringMonthly = recurring.reduce((s, r) => s + r.monthly, 0);
   const installmentsMonthly = installments.reduce((s, i) => s + i.monthly, 0);
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).toISOString().slice(0, 10);
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const filteredGroups = (data?.groups ?? []).filter(g => {
+    if (period === 'semana') return g.isoDate >= monday;
+    return g.isoDate >= firstOfMonth;
+  });
+  const filteredTxs = filteredGroups.flatMap(g => g.txs).slice(0, 5);
 
   return (
     <ScrollView
@@ -112,73 +123,125 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Hero balance */}
+        {/* Hero balance + Ahorro */}
         <View style={{ paddingTop: isError ? 18 : 36, paddingBottom: 14 }}>
-          <Eyebrow>Balance total</Eyebrow>
-          <View style={{ marginTop: 14, marginBottom: 18 }}>
-            <TickerAmount value={balance} size={52} code="AR$" decimals={2} weight="500" />
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <LineChart data={netWorth12mo} width={130} height={28} stroke={1} dot fill={false} color={C.ink} bgColor={C.bg} />
-            <View>
-              <Text style={{ fontFamily: fontDisplay, fontSize: 12, fontWeight: '500', color: C.ink, letterSpacing: -0.2, fontVariant: ['tabular-nums'] }}>
-                +{fmt(nwGain, { decimals: 0, compact: true })} · 12 meses
-              </Text>
-              <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.9, textTransform: 'uppercase', marginTop: 2 }}>
-                {nwPct >= 0 ? '+' : ''}{nwPct}% YoY
-              </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <View style={{ flex: 1 }}>
+              <Eyebrow>Balance total</Eyebrow>
+              <TickerAmount value={balance} size={48} code="AR$" decimals={2} weight="500" />
             </View>
+            {goals.length > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16 }}>
+                <Svg width={36} height={36} viewBox="0 0 36 36">
+                  <Circle cx={18} cy={18} r={14} fill="none" stroke={C.hairline} strokeWidth={3} />
+                  <Circle cx={18} cy={18} r={14} fill="none" stroke={C.ink} strokeWidth={3}
+                    strokeDasharray={`${totalPct * 88} 88`} strokeLinecap="round"
+                    rotation={-90} originX={18} originY={18} />
+                </Svg>
+                <View>
+                  <Text style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: '500', color: C.ink }}>
+                    {fmt(totalSaved, { decimals: 0, compact: true })}
+                  </Text>
+                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint }}>
+                    {goals.length === 1 ? goals[0].label : `${goals.length} metas`}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
-        <Hairline />
-
-        {/* Weekly digest banner */}
-        <Pressable onPress={() => router.navigate('/insights')}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 20 }}>
-          <BlockGlyph kind="dot" size={12} color={C.ink} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, letterSpacing: -0.2 }}>
-              Tu semana, en silencio
-            </Text>
-            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 3 }}>
-              Resumen del lunes · 7 días
-            </Text>
-          </View>
-          <Text style={{ color: C.faint, fontSize: 12 }}>›</Text>
-        </Pressable>
-
-        <Hairline />
-
-        {/* Este mes */}
-        <Section title="Este mes" right={monthName(now)} top={28}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Stat value={monthSpend} label="Gastado" size={24} decimals={0} />
-            <Stat value={available} label="Disponible" size={24} decimals={0} />
-            <Pressable onPress={() => router.navigate('/insights')}>
-              <Stat value={pulso} label="Pulso" size={24} suffix="/100" />
-            </Pressable>
-          </View>
-
-          <View style={{ marginTop: 26 }}>
-            <LineChart data={monthSeries} width={300} height={42} stroke={1.1} dot fill color={C.ink} bgColor={C.bg} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              {[`1 ${monthName(now).toUpperCase().slice(0, 3)}`, `${now.getDate()} ${monthName(now).toUpperCase().slice(0, 3)}`, `${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()} ${monthName(now).toUpperCase().slice(0, 3)}`].map(l => (
-                <Text key={l} style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.9 }}>{l}</Text>
+        {/* Period section */}
+        <View style={{ paddingTop: 28 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Eyebrow>
+              {period === 'semana' ? 'Esta semana' : `Este mes · ${monthName(now)}`}
+            </Eyebrow>
+            <View style={{ flexDirection: 'row', gap: 18 }}>
+              {(['semana', 'mes'] as const).map(p => (
+                <Pressable key={p} onPress={() => setPeriod(p)} style={{ paddingVertical: 8 }}>
+                  <Text style={{
+                    fontFamily: fontMono, fontSize: 10, letterSpacing: 1,
+                    color: period === p ? C.ink : C.faint,
+                    textTransform: 'uppercase',
+                    borderBottomWidth: period === p ? 1 : 0,
+                    borderBottomColor: C.ink,
+                    paddingBottom: 2,
+                  }}>
+                    {p === 'semana' ? 'Semana' : 'Mes'}
+                  </Text>
+                </Pressable>
               ))}
             </View>
           </View>
 
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            {[
+              { value: displaySpend, label: 'Gastado' },
+              { value: displayAvailable, label: 'Disponible' },
+              { value: income, label: 'Ingreso' },
+            ].map(s => (
+              <View key={s.label}>
+                <TickerAmount value={s.value} size={24} decimals={0} />
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
+                  {s.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
           <View style={{ marginTop: 22 }}>
-            <ProgressBar value={monthPct} />
+            <ProgressBar value={displayPct} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
               <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.5 }}>
-                {Math.round(monthPct * 100)}% del presupuesto
+                {Math.round(displayPct * 100)}% del presupuesto
               </Text>
               <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
-                {fmt(monthBudget, { decimals: 0, compact: true })} max
+                {fmt(displayBudget, { decimals: 0, compact: true })} max
               </Text>
             </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Cuotas + Recurrentes */}
+      <View style={{ paddingHorizontal: 24 }}>
+        <Hairline style={{ marginTop: 28 }} />
+        <Section top={26}>
+          <View style={{ flexDirection: 'row', gap: 22 }}>
+            <Pressable style={{ flex: 1 }} onPress={() => router.push('/installments')}>
+              <Eyebrow>Cuotas · {installments.length}</Eyebrow>
+              <View style={{ marginTop: 12 }}>
+                <TickerAmount value={installmentsMonthly} size={26} decimals={0} />
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
+                  por mes
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 4, marginTop: 16 }}>
+                {installments.map((it, j) => (
+                  <View key={j} style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', gap: 1.5 }}>
+                      {Array.from({ length: it.total }).map((_, k) => (
+                        <View key={k} style={{ flex: 1, height: 2, backgroundColor: k < it.paid ? C.ink : C.hairline2 }} />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Pressable>
+
+            <Pressable style={{ flex: 1 }} onPress={() => router.push('/recurring')}>
+              <Eyebrow>Recurrentes · {recurring.length}</Eyebrow>
+              <View style={{ marginTop: 12 }}>
+                <TickerAmount value={recurringMonthly} size={26} decimals={0} />
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
+                  por mes
+                </Text>
+              </View>
+              <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.7, marginTop: 16, lineHeight: 18 }}>
+                {recurring.slice(0, 2).map(r => `próx · ${r.label} ${r.nextDue}`).join('\n')}
+              </Text>
+            </Pressable>
           </View>
         </Section>
       </View>
@@ -227,117 +290,33 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
+      {/* Movimientos */}
       <View style={{ paddingHorizontal: 24 }}>
-        <Hairline style={{ marginTop: 28 }} />
-
-        {/* Categorías */}
-        <Section title="Categorías" right={monthName(now)} top={26}>
-          {categories.slice(0, 5).map((c, i, arr) => (
-            <View key={c.label}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}>
-                <BlockGlyph kind={c.glyph} size={14} color={C.ink} />
-                <Text style={{ flex: 1, fontFamily: fontBody, fontSize: 14, fontWeight: '500', color: C.ink, letterSpacing: -0.2 }}>
-                  {c.label}
-                </Text>
-                <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.5, width: 34, textAlign: 'right' }}>
-                  {Math.round(c.share * 100)}%
-                </Text>
-                <Text style={{ fontFamily: fontDisplay, fontSize: 13, fontWeight: '500', letterSpacing: -0.5, color: C.ink, width: 74, textAlign: 'right', fontVariant: ['tabular-nums'] }}>
-                  {fmt(c.value, { decimals: 0 })}
-                </Text>
-              </View>
-              {i < arr.length - 1 && <Hairline />}
-            </View>
-          ))}
-        </Section>
-
-        <Hairline style={{ marginTop: 28 }} />
-
-        {/* Cuotas + Recurrentes */}
-        <Section top={26}>
-          <View style={{ flexDirection: 'row', gap: 22 }}>
-            <Pressable style={{ flex: 1 }} onPress={() => router.push('/installments')}>
-              <Eyebrow>Cuotas · {installments.length}</Eyebrow>
-              <View style={{ marginTop: 12 }}>
-                <Stat value={installmentsMonthly} label="por mes" size={26} decimals={0} />
-              </View>
-              <View style={{ flexDirection: 'row', gap: 4, marginTop: 16 }}>
-                {installments.map((it, j) => (
-                  <View key={j} style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', gap: 1.5 }}>
-                      {Array.from({ length: it.total }).map((_, k) => (
-                        <View key={k} style={{ flex: 1, height: 2, backgroundColor: k < it.paid ? C.ink : C.hairline2 }} />
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </Pressable>
-
-            <Pressable style={{ flex: 1 }} onPress={() => router.navigate('/transactions')}>
-              <Eyebrow>Recurrentes · {recurring.length}</Eyebrow>
-              <View style={{ marginTop: 12 }}>
-                <Stat value={recurringMonthly} label="por mes" size={26} decimals={0} />
-              </View>
-              <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.7, marginTop: 16, lineHeight: 18 }}>
-                {recurring.slice(0, 2).map(r => `próx · ${r.label} ${r.nextDue}`).join('\n')}
-              </Text>
-            </Pressable>
-          </View>
-        </Section>
-
-        {/* Objetivos — solo si hay alguno */}
-        {goals.length > 0 && (
-          <>
-            <Hairline style={{ marginTop: 28 }} />
-            <Section top={26}>
-              <Pressable onPress={() => router.push('/goals')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Eyebrow>Objetivos · {goals.length}</Eyebrow>
-                <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Ver →</Text>
-              </Pressable>
-              <View style={{ marginTop: 14, gap: 10 }}>
-                {goals.slice(0, 3).map(g => (
-                  <View key={g.id}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, letterSpacing: -0.2 }}>
-                        {g.label}
-                      </Text>
-                      <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.4, fontVariant: ['tabular-nums'] }}>
-                        {Math.round(g.pct * 100)}%
-                      </Text>
-                    </View>
-                    <View style={{ height: 2, backgroundColor: C.hairline2, borderRadius: 99, overflow: 'hidden' }}>
-                      <View style={{ height: '100%', width: `${Math.round(g.pct * 100)}%`, backgroundColor: C.ink, borderRadius: 99 }} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </Section>
-          </>
-        )}
-
-        <Hairline style={{ marginTop: 28 }} />
-
-        {/* Hoy */}
-        <Section
-          title="Hoy"
-          right={<Pressable onPress={() => router.navigate('/transactions')}><Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Todo →</Text></Pressable>}
-          top={26}
-        >
-          {todayTxs.length === 0 ? (
-            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, paddingVertical: 16 }}>
-              Sin movimientos hoy
+        <View style={{ marginTop: 28 }}>
+          <Eyebrow right={`${filteredTxs.length} mov`}>
+            {period === 'semana' ? 'Esta semana' : 'Este mes'}
+          </Eyebrow>
+          {filteredTxs.length === 0 ? (
+            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, paddingVertical: 16 }}>
+              Sin movimientos
             </Text>
           ) : (
-            todayTxs.slice(0, 5).map((tx, i, arr) => (
-              <View key={tx.id}>
-                <TxRow tx={tx} />
-                {i < arr.length - 1 && <Hairline />}
-              </View>
-            ))
+            <>
+              {filteredTxs.map((tx, i, arr) => (
+                <View key={tx.id}>
+                  <TxRow tx={tx} />
+                  {i < arr.length - 1 && <Hairline />}
+                </View>
+              ))}
+              <Pressable onPress={() => router.push('/transactions')} style={{ paddingVertical: 12, alignItems: 'center' }}>
+                <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Ver todo →</Text>
+              </Pressable>
+            </>
           )}
-        </Section>
+        </View>
       </View>
+
+      {/* Objetivos are shown inline in the hero balance row */}
     </ScrollView>
   );
 }

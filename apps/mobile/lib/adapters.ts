@@ -48,6 +48,7 @@ export interface RecurringUI {
   nextDue: string;
   glyph: GlyphKind;
   category: string;
+  paid: boolean;
 }
 
 export interface CategoryUI {
@@ -68,6 +69,7 @@ export interface GoalUI {
 
 export interface TxGroupUI {
   date: string;
+  isoDate: string;
   total: number;
   txs: TransactionUI[];
 }
@@ -80,60 +82,56 @@ export interface StatsUI {
   available: number;
   monthSeries: number[];
   netWorth12mo: number[];
-  pulso: number;
-  pulsoMood: string;
   categories: CategoryUI[];
+  todayBuckets: { label: string; amount: number }[];
+  todaySpending: number;
+  weekDaily: { day: string; amount: number }[];
+  weekSpending: number;
 }
 
 // ── Glyph mapping ────────────────────────────────────────────────
 
 const CATEGORY_GLYPH_MAP: Record<string, GlyphKind> = {
-  casa:           'square',
-  hogar:          'square',
-  alquiler:       'square',
-  vivienda:       'square',
-  comida:         'circle',
-  alimentos:      'circle',
-  supermercado:   'circle',
-  restaurante:    'circle',
-  transporte:     'line',
-  movilidad:      'line',
-  suscripciones:  'ring',
-  subscripcion:   'ring',
-  ocio:           'arc',
-  entretenimiento:'arc',
-  salud:          'cross',
-  medico:         'cross',
-  educacion:      'diamond',
-  aprendizaje:    'diamond',
-  tecnologia:     'diamond',
-  electronica:    'diamond',
-  ropa:           'half',
-  indumentaria:   'half',
-  viajes:         'arc',
-  viaje:          'arc',
-  servicios:      'line',
-  impuestos:      'square',
-  ahorro:         'dot',
-  inversion:      'dot',
-  ingresos:       'dot',
-  freelance:      'dot',
-  regalos:        'cross',
-  mascotas:       'circle',
-  otros:          'dot',
+  casa:           'Home',
+  hogar:          'Home',
+  alquiler:       'Home',
+  vivienda:       'Home',
+  comida:         'Coffee',
+  alimentos:      'Coffee',
+  supermercado:   'Coffee',
+  restaurante:    'Coffee',
+  transporte:     'Car',
+  movilidad:      'Car',
+  suscripciones:  'CreditCard',
+  subscripcion:   'CreditCard',
+  ocio:           'Music',
+  entretenimiento:'Music',
+  salud:          'Heart',
+  medico:         'Heart',
+  educacion:      'Book',
+  aprendizaje:    'Book',
+  tecnologia:     'DeviceLaptop',
+  electronica:    'DeviceLaptop',
+  ropa:           'ShoppingBag',
+  indumentaria:   'ShoppingBag',
+  viajes:         'Plane',
+  viaje:          'Plane',
+  servicios:      'Building',
+  impuestos:      'Building',
+  ahorro:         'TrendingUp',
+  inversion:      'TrendingUp',
+  ingresos:       'Coins',
+  freelance:      'Briefcase',
+  regalos:        'Heart',
+  mascotas:       'Dog',
+  otros:          'Globe',
 };
 
 export function deriveGlyph(category: string): GlyphKind {
   const key = category.toLowerCase().trim();
-  return CATEGORY_GLYPH_MAP[key] ?? 'dot';
+  return CATEGORY_GLYPH_MAP[key] ?? 'Globe';
 }
 
-export function derivePulsoMood(pulso: number): string {
-  if (pulso >= 80) return 'Tranquilo';
-  if (pulso >= 60) return 'Estable';
-  if (pulso >= 40) return 'Atención';
-  return 'Alerta';
-}
 
 // ── Adapters ─────────────────────────────────────────────────────
 
@@ -143,7 +141,7 @@ export function adaptBlock(b: ApiBlock): BlockUI {
     label:  b.name,
     spent:  b.spent,
     budget: b.budget,
-    glyph:  (b.icon as GlyphKind) ?? 'square',
+    glyph:  (b.icon as GlyphKind) ?? 'Home',
     txs:    b.txs,
     note:   b.goal ?? '',
   };
@@ -156,7 +154,7 @@ export function adaptInstallment(i: ApiInstallment): InstallmentUI {
     monthly: i.monthly,
     paid:    i.paid,
     total:   i.total,
-    glyph:   'square',
+    glyph:   'Home',
     nextDue: i.nextDue,
   };
 }
@@ -171,12 +169,14 @@ export function adaptRecurring(r: ApiRecurring): RecurringUI {
     nextDue:  r.nextDue,
     glyph:    deriveGlyph(r.category),
     category: r.category,
+    paid:     r.paid,
   };
 }
 
 export function adaptTxGroup(g: TxGroup): TxGroupUI {
   return {
     date:  g.date,
+    isoDate: g.isoDate,
     total: g.total,
     txs:   g.txs.map(t => ({
       id:          t.id,
@@ -220,8 +220,10 @@ export function adaptStats(s: StatsResponse): StatsUI {
     available:    s.monthly.available,
     monthSeries:  s.dailySeries,
     netWorth12mo,
-    pulso:        s.pulso,
-    pulsoMood:    derivePulsoMood(s.pulso),
     categories:   s.categories.map(adaptCategory),
+    todayBuckets: s.todayStats.buckets,
+    todaySpending: s.todayStats.spending,
+    weekDaily:    s.weekStats.daily,
+    weekSpending: s.weekStats.spending,
   };
 }

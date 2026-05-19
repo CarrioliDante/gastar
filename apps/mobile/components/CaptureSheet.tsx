@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, Modal, Dimensions, TextInput,
 } from 'react-native';
@@ -9,11 +9,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBlocks, useCreateTransaction } from '../lib/hooks';
+import { useBlocks, useCategories, useCreateTransaction } from '../lib/hooks';
 import { adaptBlock, type BlockUI } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { BlockGlyph } from './ui/BlockGlyph';
 import type { GlyphKind } from '../lib/data';
+import { useAppStore } from '../store/app';
 
 interface CaptureSheetProps {
   open: boolean;
@@ -22,22 +23,22 @@ interface CaptureSheetProps {
   onSave?: (data: { type: string; amount: number; category: string; block: string }) => void;
 }
 
-const EXPENSE_CATS = [
-  { id: 'comida',     label: 'Comida',     glyph: 'circle'  as GlyphKind },
-  { id: 'casa',       label: 'Casa',       glyph: 'square'  as GlyphKind },
-  { id: 'transporte', label: 'Transporte', glyph: 'line'    as GlyphKind },
-  { id: 'ocio',       label: 'Ocio',       glyph: 'arc'     as GlyphKind },
-  { id: 'subs',       label: 'Subs',       glyph: 'ring'    as GlyphKind },
-  { id: 'salud',      label: 'Salud',      glyph: 'cross'   as GlyphKind },
+const DEFAULT_EXPENSE = [
+  { id: 'comida',     label: 'Comida',     glyph: 'Coffee'     as GlyphKind },
+  { id: 'casa',       label: 'Casa',       glyph: 'Home'       as GlyphKind },
+  { id: 'transporte', label: 'Transporte', glyph: 'Car'        as GlyphKind },
+  { id: 'ocio',       label: 'Ocio',       glyph: 'Music'      as GlyphKind },
+  { id: 'subs',       label: 'Subs',       glyph: 'CreditCard' as GlyphKind },
+  { id: 'salud',      label: 'Salud',      glyph: 'Heart'      as GlyphKind },
 ];
 
-const INCOME_CATS = [
-  { id: 'salario',    label: 'Salario',    glyph: 'dot'      as GlyphKind },
-  { id: 'freelance',  label: 'Freelance',  glyph: 'half'     as GlyphKind },
-  { id: 'devolucion', label: 'Devolución', glyph: 'arc'      as GlyphKind },
-  { id: 'invest',     label: 'Inversión',  glyph: 'triangle' as GlyphKind },
-  { id: 'regalo',     label: 'Regalo',     glyph: 'ring'     as GlyphKind },
-  { id: 'otros',      label: 'Otros',      glyph: 'dot'      as GlyphKind },
+const DEFAULT_INCOME = [
+  { id: 'salario',    label: 'Salario',    glyph: 'Coins'      as GlyphKind },
+  { id: 'freelance',  label: 'Freelance',  glyph: 'Briefcase'  as GlyphKind },
+  { id: 'devolucion', label: 'Devolución', glyph: 'Coins'      as GlyphKind },
+  { id: 'invest',     label: 'Inversión',  glyph: 'TrendingUp' as GlyphKind },
+  { id: 'regalo',     label: 'Regalo',     glyph: 'Heart'      as GlyphKind },
+  { id: 'otros',      label: 'Otros',      glyph: 'Globe'      as GlyphKind },
 ];
 
 const KEYS = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
@@ -56,15 +57,27 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   const [type, setType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState(EXPENSE_CATS[0].id);
+  const [category, setCategory] = useState('comida');
   const [block, setBlock] = useState<string>('');
 
+  const { setLastCaptureType } = useAppStore();
   const qc = useQueryClient();
   const savedAtRef = useRef<number>(0);
 
   const { data: apiBlocks } = useBlocks();
+  const { data: apiCategories } = useCategories();
   const blocks: BlockUI[] = (apiBlocks ?? []).map(adaptBlock);
   const createTx = useCreateTransaction();
+
+  const cats = useMemo(() => {
+    const src = type === 'expense'
+      ? apiCategories?.expenses
+      : apiCategories?.incomes;
+    if (src && src.length > 0) {
+      return src.map(c => ({ ...c, glyph: c.glyph as GlyphKind }));
+    }
+    return (type === 'expense' ? DEFAULT_EXPENSE : DEFAULT_INCOME);
+  }, [type, apiCategories]);
 
   useEffect(() => {
     if (blocks.length > 0 && !block) {
@@ -89,13 +102,14 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
     return () => { unsub(); clearTimeout(fallback); };
   }, [saved]);
 
-  const cats = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
+  useEffect(() => {
+    if (cats.length > 0) {
+      setCategory(prev => cats.some(c => c.id === prev) ? prev : cats[0].id);
+    }
+  }, [type, cats]);
+
   const isExp = type === 'expense';
   const selectedBlock = blocks.find(b => b.id === block);
-
-  useEffect(() => {
-    setCategory(cats[0].id);
-  }, [type]);
 
   useEffect(() => {
     if (open) {
@@ -239,7 +253,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
                 borderRadius: 10,
               }} />
               {([{ id: 'expense', label: 'Gasto', sym: '−' }, { id: 'income', label: 'Ingreso', sym: '+' }] as const).map(o => (
-                <Pressable key={o.id} onPress={() => setType(o.id)} style={{ flex: 1, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Pressable key={o.id} onPress={() => { setType(o.id); setLastCaptureType(o.id); }} style={{ flex: 1, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <Text style={{ fontFamily: fontDisplay, fontSize: 16, color: type === o.id ? C.bg : C.ink, fontWeight: '400' }}>{o.sym}</Text>
                   <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: type === o.id ? C.bg : C.ink }}>{o.label}</Text>
                 </Pressable>
@@ -314,7 +328,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <BlockGlyph kind={selectedBlock?.glyph || 'circle'} size={16} color={C.ink} />
+                    <BlockGlyph kind={selectedBlock?.glyph || 'Home'} size={16} color={C.ink} />
                     <View>
                       <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.1, textTransform: 'uppercase' }}>Bloque</Text>
                       <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, marginTop: 2 }}>

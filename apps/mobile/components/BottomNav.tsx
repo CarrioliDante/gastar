@@ -3,6 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Rect, Circle, Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
+import { useAppStore } from '../store/app';
 
 interface NavState {
   index: number;
@@ -68,6 +69,7 @@ export function BottomNav({ state, navigation, onCapture }: BottomNavProps) {
   const { C, isDark, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const activeRoute = state.routes[state.index]?.name ?? 'home';
+  const lastCaptureType = useAppStore((s) => s.lastCaptureType);
 
   const before = TABS.slice(0, 2);
   const after = TABS.slice(2);
@@ -119,39 +121,30 @@ export function BottomNav({ state, navigation, onCapture }: BottomNavProps) {
           );
         })}
 
-        {/* Capture FABs */}
+        {/* Capture FAB — dynamic icon based on last capture type */}
         <View style={{ flexDirection: 'row', gap: 5, marginHorizontal: 4 }}>
           <Pressable
-            onPress={() => onCapture('expense')}
-            style={({ pressed }) => ({
-              width: 46, height: 46, borderRadius: 99,
-              backgroundColor: C.ink,
-              alignItems: 'center', justifyContent: 'center',
-              opacity: pressed ? 0.75 : 1,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 5,
-            })}
+            onPress={() => onCapture(lastCaptureType)}
+            style={({ pressed }) => {
+              const fill = lastCaptureType === 'expense';
+              return {
+                width: 46, height: 46, borderRadius: 99,
+                backgroundColor: fill ? C.ink : C.bg,
+                alignItems: 'center', justifyContent: 'center',
+                borderWidth: fill ? 0 : 1,
+                borderColor: fill ? undefined : C.ink,
+                opacity: pressed ? 0.75 : 1,
+                ...(fill
+                  ? { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }
+                  : {}),
+              };
+            }}
           >
             <Svg width={16} height={16} viewBox="0 0 16 16">
-              <Line x1={3} y1={8} x2={13} y2={8} stroke={C.bg} strokeWidth={1.8} strokeLinecap="round" />
-            </Svg>
-          </Pressable>
-          <Pressable
-            onPress={() => onCapture('income')}
-            style={({ pressed }) => ({
-              width: 46, height: 46, borderRadius: 99,
-              backgroundColor: C.bg,
-              alignItems: 'center', justifyContent: 'center',
-              borderWidth: 1, borderColor: C.ink,
-              opacity: pressed ? 0.75 : 1,
-            })}
-          >
-            <Svg width={16} height={16} viewBox="0 0 16 16">
-              <Line x1={3} y1={8} x2={13} y2={8} stroke={C.ink} strokeWidth={1.8} strokeLinecap="round" />
-              <Line x1={8} y1={3} x2={8} y2={13} stroke={C.ink} strokeWidth={1.8} strokeLinecap="round" />
+              <Line x1={3} y1={8} x2={13} y2={8} stroke={lastCaptureType === 'expense' ? C.bg : C.ink} strokeWidth={1.8} strokeLinecap="round" />
+              {lastCaptureType === 'income' && (
+                <Line x1={8} y1={3} x2={8} y2={13} stroke={C.ink} strokeWidth={1.8} strokeLinecap="round" />
+              )}
             </Svg>
           </Pressable>
         </View>

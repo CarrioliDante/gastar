@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   apiFetch,
+  saveCategories,
   type StatsResponse,
   type TransactionsResponse,
   type Block,
@@ -8,6 +9,7 @@ import {
   type Recurring,
   type UserProfile,
   type Goal,
+  type CategoryItem,
 } from '../api';
 import {
   adaptStats,
@@ -102,6 +104,24 @@ export function useUser() {
   });
 }
 
+export function useCategories() {
+  const { isChecking } = useAuthStore();
+  return useQuery({
+    queryKey: ['categories'],
+    queryFn: () => apiFetch<{ expenses: CategoryItem[]; incomes: CategoryItem[] }>('/categories'),
+    enabled: !isChecking,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveCategories() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (list: CategoryItem[]) => saveCategories(list),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
 export function useCreateTransaction() {
   const qc = useQueryClient();
   return useMutation({
@@ -129,6 +149,132 @@ export function useCreateBlock() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['blocks'] });
       qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+// ── Installment mutations ─────────────────────────────────────────
+
+export function useCreateInstallment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      monthlyAmount: number;
+      totalInstallments: number;
+      paidInstallments?: number;
+      nextDueDate?: string;
+      startedAt?: string;
+    }) => apiFetch('/installments', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['installments'] });
+        qc.invalidateQueries({ queryKey: ['stats'] });
+      }, 1200);
+    },
+  });
+}
+
+export function useUpdateInstallment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      id: string;
+      name?: string;
+      monthlyAmount?: number;
+      paidInstallments?: number;
+      nextDueDate?: string;
+    }) => apiFetch('/installments', { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function usePayInstallment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch('/installments/pay', { method: 'POST', body: JSON.stringify({ id }) }),
+    onSuccess: () => {
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['installments'] });
+        qc.invalidateQueries({ queryKey: ['stats'] });
+        qc.invalidateQueries({ queryKey: ['transactions'] });
+      }, 1200);
+    },
+  });
+}
+
+export function useDeleteInstallment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/installments?id=${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+// ── Recurring mutations ───────────────────────────────────────────
+
+export function useCreateRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      amount: number;
+      category: string;
+      frequency: string;
+      dayOfMonth?: number;
+      blockId?: string;
+    }) => apiFetch('/recurring', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['recurring'] });
+        qc.invalidateQueries({ queryKey: ['stats'] });
+      }, 1200);
+    },
+  });
+}
+
+export function usePayRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch('/recurring/pay', { method: 'POST', body: JSON.stringify({ id }) }),
+    onSuccess: () => {
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['recurring'] });
+        qc.invalidateQueries({ queryKey: ['stats'] });
+        qc.invalidateQueries({ queryKey: ['transactions'] });
+      }, 1200);
+    },
+  });
+}
+
+export function useDeleteRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/recurring?id=${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recurring'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useToggleRecurringPause() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch('/recurring/pause', { method: 'POST', body: JSON.stringify({ id }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recurring'] });
     },
   });
 }
@@ -180,7 +326,7 @@ export function useDashboard() {
               label:       t.name,
               meta:        `${t.category} · ${t.time}`,
               amount:      t.amount,
-              glyph:       'dot' as const,
+              glyph:       'Home' as const,
               installment: undefined,
               blockId:     t.blockId,
             })) ?? [],

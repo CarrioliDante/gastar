@@ -16,7 +16,7 @@ export function TxRow({ tx, dense = false }: TxRowProps) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: dense ? 12 : 14 }}>
       <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <BlockGlyph kind={tx.glyph || 'circle'} size={16} color={C.ink} />
+        <BlockGlyph kind={tx.glyph || 'Home'} size={16} color={C.ink} />
       </View>
 
       <View style={{ flex: 1, minWidth: 0 }}>

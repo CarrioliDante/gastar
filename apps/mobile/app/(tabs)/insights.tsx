@@ -7,15 +7,11 @@ import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
 import { useInsights } from '../../lib/hooks';
 import { fmt } from '../../lib/format';
+import { TickerAmount } from '../../components/ui/TickerAmount';
 import { Section, Eyebrow, Hairline } from '../../components/ui/primitives';
-import { LineChart, BarChart, Pulso } from '../../components/ui/charts';
+import { BarChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { ListRow } from '../../components/ui/ListRow';
-
-function monthAbbr(d: Date): string {
-  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  return months[d.getMonth()];
-}
 
 function monthName(d: Date): string {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -51,22 +47,13 @@ export default function InsightsScreen() {
   }
 
   const { stats, installments, recurring, recurringMonthly, patterns } = data ?? {
-    stats: { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], pulso: 0, pulsoMood: '', categories: [] as any[] },
+    stats: { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], categories: [], todayBuckets: [], todaySpending: 0, weekDaily: [], weekSpending: 0 },
     installments: [] as any[], recurring: [] as any[], recurringMonthly: 0,
     patterns: [{ value: '—', label: 'día de más gasto' }, { value: '—', label: 'hora pico' }, { value: '0', label: 'días con movimientos' }, { value: '—', label: 'categoría principal' }],
   };
-  const { monthSeries, categories, netWorth12mo, pulso, pulsoMood, monthSpend } = stats;
+  const { monthSeries, categories, monthSpend } = stats;
   const totalCats = categories.reduce((s, c) => s + c.value, 0);
-  const nwPct = netWorth12mo.length >= 2 && netWorth12mo[0] !== 0
-    ? Math.round((netWorth12mo[netWorth12mo.length - 1] / netWorth12mo[0] - 1) * 100)
-    : 0;
   const avgDaily = daysInMonth > 0 ? Math.round(monthSpend / daysInMonth) : 0;
-
-  // Generate month labels for net worth chart
-  const monthLabels = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
-    return monthAbbr(d);
-  });
 
   return (
     <ScrollView
@@ -94,41 +81,14 @@ export default function InsightsScreen() {
         </View>
       )}
 
-      {/* Pulso hero */}
-      <View style={{ paddingTop: isError ? 16 : 28, alignItems: 'center' }}>
-        <Eyebrow>Pulso Financiero · {monthName(now)}</Eyebrow>
-        <View style={{ marginTop: 14, marginBottom: 4 }}>
-          <Pulso value={pulso} size={140} showLabel color={C.ink} trackColor={C.hairline2} inkColor={C.ink} />
-        </View>
-        <Text style={{ fontFamily: fontBody, fontSize: 14, color: C.ink, letterSpacing: -0.2, fontWeight: '500' }}>
-          {pulsoMood}
-        </Text>
-        <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.6, marginTop: 6 }}>
-          ahorro · adherencia · consistencia
-        </Text>
-      </View>
-
-      <Hairline style={{ marginTop: 28 }} />
-
-      {/* Net worth 12 months */}
-      <Section title="Patrimonio neto · 12 meses" right={`${nwPct >= 0 ? '+' : ''}${nwPct}%`} top={26}>
-        <LineChart data={netWorth12mo} width={300} height={92} stroke={1.2} fill dot color={C.ink} bgColor={C.bg} />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-          {[0, 3, 6, 9, 11].map(i => (
-            <Text key={i} style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-              {monthLabels[i] ?? ''}
-            </Text>
-          ))}
-        </View>
-      </Section>
+      <View style={{ paddingTop: isError ? 16 : 28 }} />
 
       <Hairline style={{ marginTop: 28 }} />
 
       {/* Daily spend */}
       <Section title={`Gasto diario · ${monthName(now)}`} right={`prom · ${fmt(avgDaily, { decimals: 0, compact: true })}`} top={26}>
-        <Text style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: '500', letterSpacing: -1, color: C.ink, marginBottom: 18, fontVariant: ['tabular-nums'] }}>
-          AR$ {fmt(avgDaily, { decimals: 0 })}
-        </Text>
+        <TickerAmount value={avgDaily} size={28} decimals={0} code="AR$" />
+        <View style={{ marginBottom: 18 }} />
         <BarChart data={monthSeries} width={300} height={62} gap={3} color={C.ink} trackColor={C.hairline2} />
       </Section>
 
@@ -164,7 +124,7 @@ export default function InsightsScreen() {
           </Svg>
 
           {/* Legend */}
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, gap: 0 }}>
             {categories.slice(0, 4).map((c, i, arr) => (
               <View key={i}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, gap: 8 }}>

@@ -45,7 +45,8 @@ export interface StatsResponse {
   dailySeries: number[];
   netWorth24mo: number[];
   categories: { name: string; amount: number; share: number }[];
-  pulso: number;
+  todayStats: { spending: number; buckets: { label: string; amount: number }[] };
+  weekStats: { spending: number; daily: { day: string; amount: number }[] };
 }
 
 export interface TxGroup {
@@ -76,6 +77,7 @@ export interface Installment {
 export interface Recurring {
   id: string; name: string; amount: number;
   category: string; freq: string; nextDue: string; blockId?: string;
+  paid: boolean;
 }
 
 export interface UserProfile {
@@ -86,6 +88,21 @@ export interface Goal {
   id: string; name: string;
   target: number; current: number;
   deadline: string | null;
+}
+
+export interface CategoryItem {
+  id: string;
+  label: string;
+  glyph: string;
+  type: 'expense' | 'income';
+}
+
+export async function fetchCategories(): Promise<{ expenses: CategoryItem[]; incomes: CategoryItem[] }> {
+  return apiFetch('/categories');
+}
+
+export async function saveCategories(categories: CategoryItem[]) {
+  return apiFetch('/categories', { method: 'PUT', body: JSON.stringify({ categories }) });
 }
 
 // Health check — no auth required

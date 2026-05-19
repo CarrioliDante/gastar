@@ -3,14 +3,13 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
 import { useGoals } from '../lib/hooks';
 import { adaptGoal } from '../lib/adapters';
 import { fmt } from '../lib/format';
-import { Hairline, Eyebrow } from '../components/ui/primitives';
+import { Hairline } from '../components/ui/primitives';
 import { RadialRing } from '../components/ui/charts';
-import { BlockGlyph } from '../components/ui/BlockGlyph';
 
 export default function GoalsScreen() {
   const { C, fontBody, fontDisplay, fontMono, currencyCode } = useTheme();
@@ -50,10 +49,10 @@ export default function GoalsScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-            {goals.length} {goals.length === 1 ? 'objetivo' : 'objetivos'}
+            Metas
           </Text>
           <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
-            Objetivos
+            Ahorro
           </Text>
         </View>
         <Pressable onPress={() => router.back()} style={{
@@ -62,7 +61,8 @@ export default function GoalsScreen() {
           alignItems: 'center', justifyContent: 'center',
         }}>
           <Svg width={13} height={13} viewBox="0 0 14 14">
-            <Path d="M9 2L4 7l5 5" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <Circle cx="7" cy="7" r="6" stroke={C.ink} strokeWidth={1.4} fill="none" />
+            <Circle cx="7" cy="7" r="2" fill={C.ink} />
           </Svg>
         </Pressable>
       </View>
@@ -85,66 +85,74 @@ export default function GoalsScreen() {
         </View>
       )}
 
-      {/* Overview hero */}
+      {/* Metrics header */}
       {goals.length > 0 && (
         <>
-          <View style={{ alignItems: 'center', paddingTop: isError ? 16 : 28, paddingBottom: 28 }}>
-            <View style={{ position: 'relative', width: 140, height: 140 }}>
-              <RadialRing value={overallPct} size={140} stroke={2} color={C.ink} trackColor={C.hairline2} />
-              <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
-                <BlockGlyph kind="dot" size={18} color={C.ink} />
-                <Text style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: '500', letterSpacing: -1.5, marginTop: 8, color: C.ink, fontVariant: ['tabular-nums'] }}>
-                  {Math.round(overallPct * 100)}<Text style={{ fontSize: 14, color: C.faint }}>%</Text>
+          {/* Two stat blocks */}
+          <View style={{ paddingTop: isError ? 16 : 28, paddingBottom: 24 }}>
+            <View style={{ flexDirection: 'row', gap: 32, alignItems: 'flex-start' }}>
+              <View>
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Ahorrado vs metas
+                </Text>
+                <Text style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: '500', letterSpacing: -1.2, color: C.ink, fontVariant: ['tabular-nums'] }}>
+                  {currencyCode} {fmt(totalCurrent, { decimals: 0, compact: true })}
+                </Text>
+              </View>
+              <View>
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Meta total · {currencyCode} {fmt(totalTarget, { decimals: 0, compact: true })}  —  {Math.round(overallPct * 100)}% del total
+                </Text>
+                <Text style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: '500', letterSpacing: -1.2, color: C.faint, fontVariant: ['tabular-nums'] }}>
+                  {currencyCode} {fmt(totalTarget, { decimals: 0, compact: true })}
                 </Text>
               </View>
             </View>
-            <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, marginTop: 20, color: C.ink, fontVariant: ['tabular-nums'] }}>
-              {currencyCode} {fmt(totalCurrent, { decimals: 0, compact: true })}
-            </Text>
-            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, marginTop: 6 }}>
-              de {currencyCode} {fmt(totalTarget, { decimals: 0, compact: true })} total
-            </Text>
+
+            {/* Progress bar */}
+            <View style={{ height: 2, backgroundColor: C.hairline, borderRadius: 99, overflow: 'hidden', marginTop: 20 }}>
+              <View style={{ height: '100%', width: `${Math.round(overallPct * 100)}%`, backgroundColor: C.ink, borderRadius: 99 }} />
+            </View>
           </View>
 
           <Hairline />
 
-          {/* Goals list */}
+          {/* Goal cards — single column */}
           {goals.map((g, i, arr) => (
             <View key={g.id}>
               <View style={{ paddingVertical: 20 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink, marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+                  {/* Small donut */}
+                  <View style={{ flexShrink: 0 }}>
+                    <RadialRing value={g.pct} size={52} stroke={1.6} color={C.ink} trackColor={C.hairline2} />
+                    <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontFamily: fontDisplay, fontSize: 11, fontWeight: '500', letterSpacing: -0.3, color: C.ink, fontVariant: ['tabular-nums'] }}>
+                        {Math.round(g.pct * 100)}%
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Info */}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', letterSpacing: -0.2, color: C.ink, marginBottom: 3 }}>
                       {g.label}
                     </Text>
+                    <Text style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: '500', letterSpacing: -0.5, color: C.ink, fontVariant: ['tabular-nums'] }}>
+                      {fmt(g.current, { decimals: 0, compact: true })}
+                      <Text style={{ fontSize: 12, color: C.faint, fontWeight: '400' }}>
+                        {' '}/ {fmt(g.target, { decimals: 0, compact: true })}
+                      </Text>
+                    </Text>
                     {g.deadline && (
-                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5 }}>
+                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 4 }}>
                         Límite · {g.deadline}
                       </Text>
                     )}
+                    {/* Progress bar */}
+                    <View style={{ height: 2, backgroundColor: C.hairline, borderRadius: 99, overflow: 'hidden', marginTop: 10 }}>
+                      <View style={{ height: '100%', width: `${Math.round(g.pct * 100)}%`, backgroundColor: C.ink, borderRadius: 99 }} />
+                    </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', letterSpacing: -0.6, color: C.ink, fontVariant: ['tabular-nums'] }}>
-                      {fmt(g.current, { decimals: 0, compact: true })}
-                    </Text>
-                    <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, marginTop: 3, fontVariant: ['tabular-nums'] }}>
-                      / {fmt(g.target, { decimals: 0, compact: true })}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Progress bar */}
-                <View style={{ height: 3, backgroundColor: C.hairline2, borderRadius: 99, overflow: 'hidden' }}>
-                  <View style={{ height: '100%', width: `${Math.round(g.pct * 100)}%`, backgroundColor: C.ink, borderRadius: 99 }} />
-                </View>
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.5 }}>
-                    {Math.round(g.pct * 100)}% completado
-                  </Text>
-                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
-                    Faltan {fmt(g.target - g.current, { decimals: 0, compact: true })}
-                  </Text>
                 </View>
               </View>
               {i < arr.length - 1 && <Hairline />}

@@ -81,12 +81,54 @@ export async function GET(req: NextRequest) {
     return Math.round(running);
   });
 
-  // Pulso: 60% from savings ratio, 40% from budget adherence
-  const savingsRatio  = monthIncome > 0 ? (monthIncome - monthSpend) / monthIncome : 0;
-  const budgetRatio   = monthlyBudget > 0 ? 1 - monthSpend / monthlyBudget : 0;
-  const pulso = Math.round(Math.max(0, Math.min(100,
-    Math.max(0, savingsRatio) * 60 + Math.max(0, budgetRatio) * 40,
-  )));
+  // Today stats — bucket by 4h intervals
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayTx = await db.transaction.findMany({
+    where: { userId, date: { gte: startOfToday }, amount: { lt: 0 } },
+    select: { amount: true, date: true },
+  });
+  const bucketDefs = [
+    { label: "08:00", start: 0, end: 8 },
+    { label: "12:00", start: 8, end: 12 },
+    { label: "16:00", start: 12, end: 16 },
+    { label: "20:00", start: 16, end: 20 },
+    { label: "24:00", start: 20, end: 24 },
+  ];
+  const todayBuckets = bucketDefs.map(b => {
+    const amount = todayTx
+      .filter(t => t.date.getHours() >= b.start && t.date.getHours() < b.end)
+      .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    return { label: b.label, amount: Math.round(amount) };
+  });
+  const todaySpending = todayTx.reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+
+  // Week stats — daily spending Mon..Sun
+  const dayOfWeek = now.getDay();
+  const monday = new Date(startOfToday);
+  monday.setDate(monday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const weekTx = await db.transaction.findMany({
+    where: { userId, date: { gte: monday }, amount: { lt: 0 } },
+    select: { amount: true, date: true },
+  });
+  const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const dayMap = new Map<number, number>();
+  for (const t of weekTx) {
+    const d = t.date.getDay();
+    dayMap.set(d, (dayMap.get(d) ?? 0) + Math.abs(Number(t.amount)));
+  }
+  const todayDay = now.getDay();
+  const weekDaily = [1, 2, 3, 4, 5, 6, 0]
+    .filter(d => {
+      // Only include days up to today
+      if (d === todayDay) return true;
+      if (todayDay === 0) return d <= 6; // Sunday: include all
+      return d <= todayDay && !(todayDay < 6 && d === 0); // exclude future Sunday
+    })
+    .map(d => ({
+      day: dayNames[d],
+      amount: Math.round(dayMap.get(d) ?? 0),
+    }));
+  const weekSpending = weekTx.reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
   return NextResponse.json({
     balance,
@@ -99,6 +141,7 @@ export async function GET(req: NextRequest) {
     dailySeries,
     netWorth24mo,
     categories,
-    pulso,
+    todayStats: { spending: Math.round(todaySpending), buckets: todayBuckets },
+    weekStats:  { spending: Math.round(weekSpending), daily: weekDaily },
   });
 }

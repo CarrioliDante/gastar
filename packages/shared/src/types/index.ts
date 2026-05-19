@@ -68,3 +68,23 @@ export interface User {
   email: string;
   name?: string;
 }
+
+export interface TodayBucket {
+  label: string;
+  amount: number;
+}
+
+export interface WeekDay {
+  day: string;
+  amount: number;
+}
+
+export interface TodayStats {
+  spending: number;
+  buckets: TodayBucket[];
+}
+
+export interface WeekStats {
+  spending: number;
+  daily: WeekDay[];
+}

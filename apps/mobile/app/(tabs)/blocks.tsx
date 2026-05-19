@@ -14,7 +14,9 @@ import { ListRow } from '../../components/ui/ListRow';
 import { TxRow } from '../../components/ui/TxRow';
 import type { GlyphKind } from '../../lib/data';
 
-const GLYPHS: GlyphKind[] = ['circle', 'square', 'diamond', 'arc', 'line', 'cross', 'ring', 'triangle', 'dot', 'half', 'bar', 'grid'];
+const GLYPHS: GlyphKind[] = ['Home', 'Building', 'Key', 'Bulb', 'Flame', 'Droplet', 'Car', 'Bike', 'Plane', 'Train', 'Bus', 'GasStation', 'Heart', 'Activity', 'Barbell', 'Apple', 'FirstAidKit', 'Run', 'Coffee', 'ToolsKitchen2', 'ShoppingBag', 'Pizza', 'Coins', 'CreditCard', 'Briefcase', 'TrendingUp', 'Music', 'Book', 'Movie', 'Camera', 'Users', 'Dog', 'Globe', 'Map', 'DeviceMobile', 'DeviceLaptop'];
+
+const QUICK_ICONS: GlyphKind[] = ['Home', 'Car', 'ToolsKitchen2', 'CreditCard', 'TrendingUp'];
 
 function monthName(d: Date): string {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -140,8 +142,9 @@ function BlockDetail({ block, onBack }: { block: BlockUI; onBack: () => void }) 
 function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState<GlyphKind>('circle');
+  const [icon, setIcon] = useState<GlyphKind>('Home');
   const [budgetStr, setBudgetStr] = useState('');
+  const [showAll, setShowAll] = useState(false);
   const createBlock = useCreateBlock();
 
   const budget = parseInt(budgetStr.replace(/\D/g, ''), 10) || 0;
@@ -151,7 +154,7 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
     if (!canSave) return;
     createBlock.mutate(
       { name: name.trim(), icon, budget },
-      { onSuccess: () => { setName(''); setBudgetStr(''); setIcon('circle'); onClose(); } },
+      { onSuccess: () => { setName(''); setBudgetStr(''); setIcon('Home'); onClose(); } },
     );
   };
 
@@ -161,9 +164,53 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
     <Modal transparent animationType="fade" visible={open} onRequestClose={onClose}>
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' }}>
         <Pressable onPress={() => {}} style={{ backgroundColor: C.bg, borderRadius: 20, padding: 24, width: 320, borderWidth: 1, borderColor: C.hairline }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.6, color: C.ink, marginBottom: 22 }}>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.6, color: C.ink, marginBottom: 12 }}>
             Nuevo bloque
           </Text>
+
+          {/* Quick icons */}
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>Ícono</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+            {QUICK_ICONS.map(kind => (
+              <Pressable key={kind} onPress={() => setIcon(kind)}
+                style={{
+                  width: 42, height: 42, borderRadius: 10,
+                  backgroundColor: icon === kind ? C.ink : C.surface,
+                  borderWidth: 1, borderColor: icon === kind ? C.ink : C.hairline,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                <BlockGlyph kind={kind} size={18} color={icon === kind ? C.inverse : C.ink} />
+              </Pressable>
+            ))}
+            <Pressable onPress={() => setShowAll(!showAll)}
+              style={{
+                width: 42, height: 42, borderRadius: 10,
+                backgroundColor: showAll ? C.ink : C.surface,
+                borderWidth: 1, borderColor: showAll ? C.ink : C.hairline,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: showAll ? C.inverse : C.faint }}>
+                +
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Collapsible full icon grid */}
+          {showAll && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {GLYPHS.map(g => (
+                <Pressable key={g} onPress={() => { setIcon(g); setShowAll(false); }}
+                  style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    backgroundColor: icon === g ? C.ink : C.surface,
+                    borderWidth: 1, borderColor: icon === g ? C.ink : C.hairline,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <BlockGlyph kind={g} size={14} color={icon === g ? C.inverse : C.ink} />
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>Nombre</Text>
           <TextInput
@@ -184,22 +231,6 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
             keyboardType="numeric"
             style={{ fontFamily: fontDisplay, fontSize: 16, color: C.ink, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, marginBottom: 18 }}
           />
-
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Ícono</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 22 }}>
-            {GLYPHS.map(g => (
-              <Pressable key={g} onPress={() => setIcon(g)}
-                style={{
-                  width: 34, height: 34, borderRadius: 8,
-                  backgroundColor: icon === g ? C.ink : C.surface,
-                  borderWidth: 1, borderColor: icon === g ? C.ink : C.hairline,
-                  alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <BlockGlyph kind={g} size={15} color={icon === g ? C.bg : C.ink} />
-              </Pressable>
-            ))}
-          </View>
 
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Pressable onPress={onClose} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline }}>

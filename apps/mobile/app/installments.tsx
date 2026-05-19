@@ -1,20 +1,46 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
 import { useInstallments } from '../lib/hooks';
+import {
+  useCreateInstallment,
+  useUpdateInstallment,
+  usePayInstallment,
+  useDeleteInstallment,
+} from '../lib/hooks';
 import { adaptInstallment } from '../lib/adapters';
 import { fmt } from '../lib/format';
-import { Hairline, Eyebrow } from '../components/ui/primitives';
+import { Hairline, Stat } from '../components/ui/primitives';
 import { BlockGlyph } from '../components/ui/BlockGlyph';
 
-function monthName(d: Date): string {
-  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  return months[d.getMonth()];
-}
+
+const CHEVRON_LEFT = (color: string) => (
+  <Svg width={13} height={13} viewBox="0 0 14 14">
+    <Path d="M9 2L4 7l5 5" stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const PLUS = (color: string) => (
+  <Svg width={13} height={13} viewBox="0 0 14 14">
+    <Path d="M7 2v10M2 7h10" stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const PENCIL = (color: string) => (
+  <Svg width={12} height={12} viewBox="0 0 16 16">
+    <Path d="M11 2l3 3-9 9H2v-3z" stroke={color} strokeWidth={1.3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const TRASH = (color: string) => (
+  <Svg width={12} height={12} viewBox="0 0 16 16">
+    <Path d="M2 4h12M5 4V2.5A.5.5 0 015.5 2h3a.5.5 0 01.5.5V4M12 6l-.5 7.5a1 1 0 01-1 .9h-5a1 1 0 01-1-.9L4 6" stroke={color} strokeWidth={1.3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
 
 export default function InstallmentsScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
@@ -24,6 +50,23 @@ export default function InstallmentsScreen() {
   const { data: apiData, isLoading, isError } = useInstallments();
   const [refreshing, setRefreshing] = useState(false);
 
+  const createInstallment = useCreateInstallment();
+  const updateInstallment = useUpdateInstallment();
+  const payInstallment = usePayInstallment();
+  const deleteInstallment = useDeleteInstallment();
+
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formTotal, setFormTotal] = useState('');
+  const [formMonthly, setFormMonthly] = useState('');
+  const [formStart, setFormStart] = useState('');
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editMonthly, setEditMonthly] = useState('');
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await qc.invalidateQueries({ queryKey: ['installments'] });
@@ -31,8 +74,81 @@ export default function InstallmentsScreen() {
   }, [qc]);
 
   const now = new Date();
-  const installments = (apiData ?? []).map(adaptInstallment);
+  const rawInstallments = apiData ?? [];
+  const installments = rawInstallments.map(adaptInstallment);
   const totalMonthly = installments.reduce((s, i) => s + i.monthly, 0);
+  const totalPending = installments.reduce((s, i) => s + i.monthly * (i.total - i.paid), 0);
+  const activeCount = installments.filter(i => i.paid < i.total).length;
+
+  const monthAbbrs = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sep.', 'oct.', 'nov.', 'dic.'];
+  const currentMonthIdx = now.getMonth();
+  function paidThisPeriod(nextDue: string): boolean {
+    const str = nextDue.toLowerCase();
+    for (let idx = 0; idx < monthAbbrs.length; idx++) {
+      if (str.includes(monthAbbrs[idx])) return idx !== currentMonthIdx;
+    }
+    return false;
+  }
+
+  const handleCreate = async () => {
+    const name = formName.trim();
+    const total = parseInt(formTotal, 10);
+    const monthly = parseFloat(formMonthly);
+    if (!name || isNaN(total) || isNaN(monthly)) return;
+
+    try {
+      await createInstallment.mutateAsync({
+        name,
+        monthlyAmount: monthly,
+        totalInstallments: total,
+        startedAt: formStart || undefined,
+      });
+      setShowForm(false);
+      setFormName('');
+      setFormTotal('');
+      setFormMonthly('');
+      setFormStart('');
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    }
+  };
+
+  const handlePay = (id: string) => {
+    Alert.alert('Pagar cuota', '¿Registrar esta cuota como pagada?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Pagar', style: 'default', onPress: () => payInstallment.mutate(id) },
+    ]);
+  };
+
+  const handleDelete = (id: string, label: string) => {
+    Alert.alert('Eliminar', `¿Eliminar "${label}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => deleteInstallment.mutate(id) },
+    ]);
+  };
+
+  const startEdit = (it: { id: string; label: string; monthly: number }) => {
+    setEditingId(it.id);
+    setEditName(it.label);
+    setEditMonthly(String(it.monthly));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    const name = editName.trim();
+    const monthly = parseFloat(editMonthly);
+    if (!name || isNaN(monthly)) return;
+
+    try {
+      await updateInstallment.mutateAsync({ id: editingId, name, monthlyAmount: monthly });
+      setEditingId(null);
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    }
+  };
+
+  const savingForm = createInstallment.isPending;
+  const savingEdit = updateInstallment.isPending;
 
   if (isLoading && !apiData) {
     return (
@@ -52,23 +168,41 @@ export default function InstallmentsScreen() {
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
-          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-            {installments.length} activas
-          </Text>
           <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
             Cuotas
           </Text>
         </View>
-        <Pressable onPress={() => router.back()} style={{
-          width: 34, height: 34, borderRadius: 99,
-          backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Svg width={13} height={13} viewBox="0 0 14 14">
-            <Path d="M9 2L4 7l5 5" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable onPress={() => setShowForm(v => !v)} style={{
+            width: 34, height: 34, borderRadius: 99,
+            backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {showForm ? CHEVRON_LEFT(C.ink) : PLUS(C.ink)}
+          </Pressable>
+          <Pressable onPress={() => router.back()} style={{
+            width: 34, height: 34, borderRadius: 99,
+            backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {CHEVRON_LEFT(C.ink)}
+          </Pressable>
+        </View>
       </View>
+
+      {installments.length > 0 && (
+        <View style={{ flexDirection: 'row', gap: 12, paddingVertical: 20 }}>
+          <View style={{ flex: 1 }}>
+            <Stat value={totalMonthly} label="Por mes" decimals={0} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Stat value={totalPending} label="Pendiente total" decimals={0} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Stat value={activeCount} label="Activas" decimals={0} />
+          </View>
+        </View>
+      )}
 
       {isError && (
         <View style={{ marginTop: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.hairline }}>
@@ -76,29 +210,69 @@ export default function InstallmentsScreen() {
         </View>
       )}
 
-      {/* Summary */}
-      {installments.length > 0 && (
-        <View style={{ paddingTop: isError ? 18 : 28, paddingBottom: 20 }}>
-          <Eyebrow right={monthName(now)}>Total mensual</Eyebrow>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 36, fontWeight: '500', letterSpacing: -1.5, marginTop: 14, color: C.ink, fontVariant: ['tabular-nums'] }}>
-            {fmt(totalMonthly, { decimals: 0 })}
-          </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.5, marginTop: 8 }}>
-            {installments.length} {installments.length === 1 ? 'cuota activa' : 'cuotas activas'}
-          </Text>
+      {/* Create form */}
+      {showForm && (
+        <View style={{ marginTop: 16, marginBottom: 8, backgroundColor: C.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.hairline, gap: 10 }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>Nueva cuota</Text>
+          <TextInput
+            value={formName}
+            onChangeText={setFormName}
+            placeholder="Nombre"
+            placeholderTextColor={C.faint}
+            style={{ fontFamily: fontBody, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+          />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TextInput
+              value={formTotal}
+              onChangeText={setFormTotal}
+              placeholder="Cant. cuotas"
+              placeholderTextColor={C.faint}
+              keyboardType="number-pad"
+              style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+            />
+            <TextInput
+              value={formMonthly}
+              onChangeText={setFormMonthly}
+              placeholder="Monto mensual"
+              placeholderTextColor={C.faint}
+              keyboardType="decimal-pad"
+              style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+            />
+          </View>
+          <TextInput
+            value={formStart}
+            onChangeText={setFormStart}
+            placeholder="Inicio (YYYY-MM-DD, opcional)"
+            placeholderTextColor={C.faint}
+            style={{ fontFamily: fontMono, fontSize: 12, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+          />
+          <Pressable
+            onPress={handleCreate}
+            disabled={savingForm}
+            style={{
+              backgroundColor: C.ink, borderRadius: 8, paddingVertical: 10, alignItems: 'center',
+              opacity: savingForm ? 0.5 : 1,
+            }}
+          >
+            {savingForm ? (
+              <ActivityIndicator size="small" color={C.inverse} />
+            ) : (
+              <Text style={{ fontFamily: fontMono, fontSize: 11, fontWeight: '600', color: C.inverse, letterSpacing: 0.8, textTransform: 'uppercase' }}>Crear</Text>
+            )}
+          </Pressable>
         </View>
       )}
 
       <Hairline />
 
       {/* Empty state */}
-      {installments.length === 0 && (
+      {installments.length === 0 && !showForm && (
         <View style={{ paddingTop: 48, alignItems: 'center', gap: 10 }}>
           <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
             Sin cuotas activas
           </Text>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, textAlign: 'center', lineHeight: 18 }}>
-            Las cuotas aparecen acá{'\n'}cuando las registrás desde el dashboard
+            Tocá + para crear{'\n'}tu primera cuota
           </Text>
         </View>
       )}
@@ -107,6 +281,8 @@ export default function InstallmentsScreen() {
       {installments.map((it, i, arr) => {
         const remaining = it.total - it.paid;
         const pct = it.total > 0 ? it.paid / it.total : 0;
+        const isEditing = editingId === it.id;
+
         return (
           <View key={it.id}>
             <View style={{ paddingVertical: 20 }}>
@@ -115,18 +291,35 @@ export default function InstallmentsScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                   <BlockGlyph kind={it.glyph} size={18} color={C.ink} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink }}>
-                      {it.label}
-                    </Text>
+                    {isEditing ? (
+                      <TextInput
+                        value={editName}
+                        onChangeText={setEditName}
+                        style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', color: C.ink, backgroundColor: C.bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: C.hairline }}
+                      />
+                    ) : (
+                      <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink }}>
+                        {it.label}
+                      </Text>
+                    )}
                     <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, marginTop: 3 }}>
                       {it.paid}/{it.total} pagadas · próx {it.nextDue}
                     </Text>
                   </View>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', letterSpacing: -0.6, color: C.ink, fontVariant: ['tabular-nums'] }}>
-                    {fmt(it.monthly, { decimals: 0 })}
-                  </Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editMonthly}
+                      onChangeText={setEditMonthly}
+                      keyboardType="decimal-pad"
+                      style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', color: C.ink, backgroundColor: C.bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: C.hairline, textAlign: 'right', fontVariant: ['tabular-nums'] }}
+                    />
+                  ) : (
+                    <Text style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', letterSpacing: -0.6, color: C.ink, fontVariant: ['tabular-nums'] }}>
+                      {fmt(it.monthly, { decimals: 0 })}
+                    </Text>
+                  )}
                   <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, marginTop: 3 }}>
                     /mes · {remaining} {remaining === 1 ? 'restante' : 'restantes'}
                   </Text>
@@ -134,14 +327,12 @@ export default function InstallmentsScreen() {
               </View>
 
               {/* Progress dots */}
-              <View style={{ flexDirection: 'row', gap: 3, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
                 {Array.from({ length: it.total }).map((_, j) => (
                   <View
                     key={j}
                     style={{
-                      width: Math.min(24, Math.floor((300 - (it.total - 1) * 3) / it.total)),
-                      height: 4,
-                      borderRadius: 99,
+                      flex: 1, height: 4, borderRadius: 99,
                       backgroundColor: j < it.paid ? C.ink : C.hairline2,
                     }}
                   />
@@ -155,6 +346,52 @@ export default function InstallmentsScreen() {
                 <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
                   {fmt(it.monthly * remaining, { decimals: 0, compact: true })} restante total
                 </Text>
+              </View>
+
+              {/* Actions row */}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 14, marginTop: 14 }}>
+                {isEditing ? (
+                  <>
+                    <Pressable onPress={() => setEditingId(null)}>
+                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.8, textTransform: 'uppercase' }}>Cancel</Text>
+                    </Pressable>
+                    <Pressable onPress={handleSaveEdit} disabled={savingEdit}>
+                      {savingEdit ? (
+                        <ActivityIndicator size="small" color={C.ink} />
+                      ) : (
+                        <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.ink, letterSpacing: 0.8, textTransform: 'uppercase' }}>Guardar</Text>
+                      )}
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Pressable onPress={() => startEdit(it)}>
+                      {PENCIL(C.faint)}
+                    </Pressable>
+                    {remaining === 0 ? (
+                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                        Completo
+                      </Text>
+                    ) : paidThisPeriod(it.nextDue) ? (
+                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                        Pagada
+                      </Text>
+                    ) : (
+                      <Pressable onPress={() => handlePay(it.id)} disabled={payInstallment.isPending}>
+                        <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.ink, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                          {payInstallment.isPending ? '···' : 'Pagar'}
+                        </Text>
+                      </Pressable>
+                    )}
+                    <Pressable onPress={() => handleDelete(it.id, it.label)} disabled={deleteInstallment.isPending}>
+                      {deleteInstallment.isPending ? (
+                        <ActivityIndicator size="small" color={C.faint} />
+                      ) : (
+                        TRASH(C.faint)
+                      )}
+                    </Pressable>
+                  </>
+                )}
               </View>
             </View>
             {i < arr.length - 1 && <Hairline />}

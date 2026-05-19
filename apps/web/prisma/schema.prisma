@@ -98,6 +98,7 @@ model RecurringExpense {
   blockId     String?
   note        String?
   pausedAt    DateTime?
+  lastPaidAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
