@@ -87,7 +87,7 @@ interface BarChartProps {
 
 export function BarChart({ data, width, height = 60, gap = 3, color, trackColor }: BarChartProps) {
   if (!data || data.length === 0) return null;
-  const max = Math.max(...data);
+  const max = Math.max(1, ...data);
   const n = data.length;
   const barW = (width - gap * (n - 1)) / n;
 

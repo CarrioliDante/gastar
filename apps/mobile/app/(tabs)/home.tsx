@@ -1,18 +1,19 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../hooks/useTheme';
 import { useDashboard, useUser, useGoals } from '../../lib/hooks';
+import { useAppStore } from '../../store/app';
 import { adaptGoal } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
-import { Stat, Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
+import { Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
 import { TickerAmount } from '../../components/ui/TickerAmount';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
-import Svg, { Circle } from 'react-native-svg';
 import { TxRow } from '../../components/ui/TxRow';
 import { LoadingLogo } from '../../components/ui/LoadingLogo';
+import { RadialRing } from '../../components/ui/charts';
 
 function weekdayName(d: Date): string {
   const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -35,6 +36,17 @@ export default function HomeScreen() {
   const goals = (goalsData ?? []).map(adaptGoal);
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<'semana' | 'mes'>('mes');
+  const [viewKey, setViewKey] = useState(0);
+  const activeTabIndex = useAppStore(s => s.activeTabIndex);
+  const lastAnimRef = useRef(0);
+
+  useEffect(() => {
+    if (activeTabIndex !== 0) return;
+    const now = Date.now();
+    if (now - lastAnimRef.current < 3000) return;
+    lastAnimRef.current = now;
+    setViewKey(k => k + 1);
+  }, [activeTabIndex]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -66,10 +78,10 @@ export default function HomeScreen() {
   const recurring = data?.recurring ?? [];
   const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, weekSpending = 0 } = stats;
   const monthPct = monthBudget > 0 ? Math.min(1, monthSpend / monthBudget) : 0;
-  const available = monthBudget - monthSpend;
+  const available = monthBudget > 0 ? monthBudget - monthSpend : Math.max(0, income - monthSpend);
   const weekSpend = weekSpending ?? 0;
   const weekBudget = Math.round(monthBudget / 4.3);
-  const weekAvailable = weekBudget - weekSpend;
+  const weekAvailable = weekBudget > 0 ? weekBudget - weekSpend : stats.available;
   const displaySpend = period === 'semana' ? weekSpend : monthSpend;
   const displayBudget = period === 'semana' ? weekBudget : monthBudget;
   const displayAvailable = period === 'semana' ? weekAvailable : available;
@@ -125,34 +137,22 @@ export default function HomeScreen() {
 
         {/* Hero balance + Ahorro */}
         <View style={{ paddingTop: isError ? 18 : 36, paddingBottom: 14 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-            <View style={{ flex: 1 }}>
-              <Eyebrow>Balance total</Eyebrow>
-              <TickerAmount value={balance} size={48} code="AR$" decimals={2} weight="500" />
-            </View>
-            {goals.length > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16 }}>
-                <Svg width={36} height={36} viewBox="0 0 36 36">
-                  <Circle cx={18} cy={18} r={14} fill="none" stroke={C.hairline} strokeWidth={3} />
-                  <Circle cx={18} cy={18} r={14} fill="none" stroke={C.ink} strokeWidth={3}
-                    strokeDasharray={`${totalPct * 88} 88`} strokeLinecap="round"
-                    rotation={-90} originX={18} originY={18} />
-                </Svg>
-                <View>
-                  <Text style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: '500', color: C.ink }}>
-                    {fmt(totalSaved, { decimals: 0, compact: true })}
-                  </Text>
-                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint }}>
-                    {goals.length === 1 ? goals[0].label : `${goals.length} metas`}
-                  </Text>
-                </View>
+          <Eyebrow>Balance total</Eyebrow>
+          <TickerAmount value={balance} size={48} code="AR$" decimals={2} weight="500" triggerKey={viewKey} />
+          {goals.length > 0 && (
+            <Pressable onPress={() => router.push('/goals')} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <RadialRing value={totalPct} size={24} stroke={1.5} color={C.ink} trackColor={C.hairline2} />
+                <Text style={{ fontFamily: fontMono, fontSize: 12, color: C.faint, letterSpacing: 0.5 }}>
+                  {'Ahorro · ' + fmt(totalSaved, { decimals: 0, compact: true }) + '  ·  ' + (goals.length === 1 ? goals[0].label : `${goals.length} metas`) + '  ›'}
+                </Text>
               </View>
-            )}
-          </View>
+            </Pressable>
+          )}
         </View>
 
         {/* Period section */}
-        <View style={{ paddingTop: 28 }}>
+        <View style={{ paddingTop: 38 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Eyebrow>
               {period === 'semana' ? 'Esta semana' : `Este mes · ${monthName(now)}`}
@@ -175,14 +175,14 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             {[
               { value: displaySpend, label: 'Gastado' },
               { value: displayAvailable, label: 'Disponible' },
               { value: income, label: 'Ingreso' },
             ].map(s => (
-              <View key={s.label}>
-                <TickerAmount value={s.value} size={24} decimals={0} />
+              <View key={s.label} style={{ flex: 1 }}>
+                <TickerAmount key={period + '-' + s.label} value={s.value} size={20} decimals={0} triggerKey={viewKey} />
                 <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
                   {s.label}
                 </Text>
@@ -206,34 +206,32 @@ export default function HomeScreen() {
 
       {/* Cuotas + Recurrentes */}
       <View style={{ paddingHorizontal: 24 }}>
-        <Hairline style={{ marginTop: 28 }} />
-        <Section top={26}>
+        <Hairline style={{ marginTop: 36 }} />
+        <Section top={28}>
           <View style={{ flexDirection: 'row', gap: 22 }}>
             <Pressable style={{ flex: 1 }} onPress={() => router.push('/installments')}>
               <Eyebrow>Cuotas · {installments.length}</Eyebrow>
               <View style={{ marginTop: 12 }}>
-                <TickerAmount value={installmentsMonthly} size={26} decimals={0} />
+                <TickerAmount value={installmentsMonthly} size={26} decimals={0} triggerKey={viewKey} />
                 <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
                   por mes
                 </Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: 4, marginTop: 16 }}>
-                {installments.map((it, j) => (
-                  <View key={j} style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', gap: 1.5 }}>
-                      {Array.from({ length: it.total }).map((_, k) => (
-                        <View key={k} style={{ flex: 1, height: 2, backgroundColor: k < it.paid ? C.ink : C.hairline2 }} />
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
+              {installments.length === 0 ? (
+                <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.7, marginTop: 16, lineHeight: 18 }}>
+                  Sin cuotas
+                </Text>
+              ) : (
+                <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.7, marginTop: 16, lineHeight: 18 }}>
+                  {installments.slice(0, 2).map(it => `próx · ${it.label}  ${it.nextDue}`).join('\n')}
+                </Text>
+              )}
             </Pressable>
 
             <Pressable style={{ flex: 1 }} onPress={() => router.push('/recurring')}>
               <Eyebrow>Recurrentes · {recurring.length}</Eyebrow>
               <View style={{ marginTop: 12 }}>
-                <TickerAmount value={recurringMonthly} size={26} decimals={0} />
+                <TickerAmount value={recurringMonthly} size={26} decimals={0} triggerKey={viewKey} />
                 <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
                   por mes
                 </Text>
@@ -247,7 +245,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Bloques — horizontal scroll */}
-      <Hairline style={{ marginTop: 28, marginHorizontal: 24 }} />
+      <Hairline style={{ marginTop: 36, marginHorizontal: 24 }} />
       <View style={{ paddingTop: 26 }}>
         <View style={{ paddingHorizontal: 24, marginBottom: 14 }}>
           <Eyebrow right={`${blocks.length} activos`}>Bloques de vida</Eyebrow>

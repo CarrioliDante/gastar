@@ -130,9 +130,12 @@ interface SidebarProps {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  activeTabIndex?: number;
+  onNavigateTab?: (name: string) => void;
+
 }
 
-export function Sidebar({ isOpen, onOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onOpen, onClose, activeTabIndex = 0, onNavigateTab }: SidebarProps) {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -205,10 +208,12 @@ export function Sidebar({ isOpen, onOpen, onClose }: SidebarProps) {
   const userName = user?.name ?? user?.email?.split('@')[0] ?? '';
   const initial = userName.charAt(0).toUpperCase();
 
+  const TAB_IDS = ['home', 'transactions', 'blocks', 'insights'];
+
   const isActive = (href: string): boolean => {
     const target = href.split('/').pop() ?? '';
     if (href.startsWith('/(tabs)')) {
-      return segments[segments.length - 1] === target;
+      return TAB_IDS[activeTabIndex] === target;
     }
     return (segments as string[]).includes(target);
   };
@@ -217,7 +222,12 @@ export function Sidebar({ isOpen, onOpen, onClose }: SidebarProps) {
     translateX.value = withTiming(-PANEL_WIDTH, { duration: 200 });
     backdropOpacity.value = withTiming(0, { duration: 200 });
     onClose();
-    router.navigate(href as any);
+    if (href.startsWith('/(tabs)') && onNavigateTab) {
+      const tabId = href.split('/').pop() ?? '';
+      onNavigateTab(tabId);
+    } else {
+      router.navigate(href as any);
+    }
   };
 
   const handleLogout = async () => {

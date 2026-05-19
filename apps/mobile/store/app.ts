@@ -34,6 +34,8 @@ interface AppStore {
   setLastCaptureType: (type: 'expense' | 'income') => void;
   openCapture: (type: 'expense' | 'income') => void;
   closeCapture: () => void;
+  activeTabIndex: number;
+  setActiveTabIndex: (i: number) => void;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -53,6 +55,8 @@ export const useAppStore = create<AppStore>()(
       setLastCaptureType: (type) => set({ lastCaptureType: type }),
       openCapture: (type) => set({ captureOpen: true, captureType: type }),
       closeCapture: () => set({ captureOpen: false }),
+      activeTabIndex: 0,
+      setActiveTabIndex: (i) => set({ activeTabIndex: i }),
     }),
     {
       name: 'gastar-app-prefs',

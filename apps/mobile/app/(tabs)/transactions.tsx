@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useTheme } from '../../hooks/useTheme';
-import { useTransactions } from '../../lib/hooks';
+import { useTransactions, useDeleteTransaction } from '../../lib/hooks';
 import { adaptTxGroup } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Hairline } from '../../components/ui/primitives';
@@ -43,6 +43,7 @@ export default function TransactionsScreen() {
   const [selectedMonth, setSelectedMonth] = useState(() => toMonthKey(new Date()));
   const isCurrentMonth = selectedMonth === toMonthKey(new Date());
   const { data: apiData, isLoading, isError } = useTransactions(undefined, selectedMonth);
+  const del = useDeleteTransaction();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -216,7 +217,17 @@ export default function TransactionsScreen() {
           </View>
           {g.txs.map((tx, i, arr) => (
             <View key={tx.id}>
-              <TxRow tx={tx} />
+              <Pressable
+                onLongPress={() => {
+                  Alert.alert('Eliminar movimiento', tx.label, [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Eliminar', style: 'destructive', onPress: () => del.mutate(tx.id) },
+                  ]);
+                }}
+                delayLongPress={300}
+              >
+                <TxRow tx={tx} />
+              </Pressable>
               {i < arr.length - 1 && <Hairline />}
             </View>
           ))}

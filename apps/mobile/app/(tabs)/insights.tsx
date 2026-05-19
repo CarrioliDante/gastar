@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
 import { useInsights } from '../../lib/hooks';
+import { useAppStore } from '../../store/app';
 import { fmt } from '../../lib/format';
 import { TickerAmount } from '../../components/ui/TickerAmount';
 import { Section, Eyebrow, Hairline } from '../../components/ui/primitives';
@@ -25,6 +26,17 @@ export default function InsightsScreen() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useInsights();
   const [refreshing, setRefreshing] = useState(false);
+  const [viewKey, setViewKey] = useState(0);
+  const activeTabIndex = useAppStore(s => s.activeTabIndex);
+  const lastAnimRef = useRef(0);
+
+  useEffect(() => {
+    if (activeTabIndex !== 3) return;
+    const now = Date.now();
+    if (now - lastAnimRef.current < 3000) return;
+    lastAnimRef.current = now;
+    setViewKey(k => k + 1);
+  }, [activeTabIndex]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -87,7 +99,7 @@ export default function InsightsScreen() {
 
       {/* Daily spend */}
       <Section title={`Gasto diario · ${monthName(now)}`} right={`prom · ${fmt(avgDaily, { decimals: 0, compact: true })}`} top={26}>
-        <TickerAmount value={avgDaily} size={28} decimals={0} code="AR$" />
+        <TickerAmount value={avgDaily} size={28} decimals={0} code="AR$" triggerKey={viewKey} />
         <View style={{ marginBottom: 18 }} />
         <BarChart data={monthSeries} width={300} height={62} gap={3} color={C.ink} trackColor={C.hairline2} />
       </Section>
@@ -106,7 +118,8 @@ export default function InsightsScreen() {
               return categories.map((cat, i) => {
                 const pct = totalCats > 0 ? cat.value / totalCats : 0;
                 const len = circ * pct;
-                const opacity = Math.max(0.12, 1 - i * 0.13);
+                const OPACITIES = [1, 0.65, 0.38, 0.2, 0.1, 0.05];
+                const opacity = OPACITIES[i] ?? 0.05;
                 const el = (
                   <Circle key={i}
                     cx={54} cy={54} r={r}
@@ -129,7 +142,7 @@ export default function InsightsScreen() {
               <View key={i}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, gap: 8 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                    <View style={{ width: 6, height: 6, backgroundColor: C.ink, opacity: Math.max(0.15, 1 - i * 0.13) }} />
+                    <View style={{ width: 6, height: 6, backgroundColor: C.ink, opacity: ([1, 0.65, 0.38, 0.2] as number[])[i] ?? 0.2 }} />
                     <Text numberOfLines={1} style={{ fontFamily: fontBody, fontSize: 12, fontWeight: '500', letterSpacing: -0.1, color: C.ink }}>
                       {c.label}
                     </Text>
