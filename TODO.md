@@ -1,12 +1,10 @@
 # Gastar — Roadmap
 
-> Actualizado 2026-05-18. Fases ordenadas por dependencia y prioridad.
+> Actualizado 2026-05-19. Orden: primero frontend, luego funcionalidad.
 
 ---
 
 ## Fase 1 — Flujo crítico ✅
-
-Cosas que un usuario nuevo encuentra rotas o incompletas.
 
 ### 1.1 Error handling en forms
 - [x] QuickExpense — mostrar mensaje de error visible cuando falla la server action
@@ -17,13 +15,13 @@ Cosas que un usuario nuevo encuentra rotas o incompletas.
 - [x] FK validation en `blockId` (mobile API + server action web)
 - [ ] Mobile CaptureSheet — mostrar errores de mutation
 
-### 1.2 Editar Block
+### 1.2 Editar Block ✅
 - [x] Server action `updateBlock(id, { name, budget, icon })`
 - [x] EditBlockModal reutiliza estructura de Create
 - [x] Optimistic update + rollback en cache
 - [x] Error handling en el modal
 
-### 1.3 Empty states
+### 1.3 Empty states ✅
 - [x] Dashboard: Bloques, Cuotas, Recurrentes con copy + CTA
 - [x] Transactions vacío — copy + CTA
 - [x] Blocks vacío — CTA
@@ -35,145 +33,261 @@ Cosas que un usuario nuevo encuentra rotas o incompletas.
 ## Fase 2 — Dashboard zen ✅
 
 ### 2.1 Simplificar vista inicio
-- [x] Eliminado "Sincronizado", stats "Pulso" y "Disponible"
 - [x] Balance 96px protagonista absoluto
-- [x] Sparkline reemplazado por gráfico de barras de gasto mensual (6 meses)
-- [x] 4 secciones con ritmo visual consistente (Bloques, Gasto mensual, Cuotas, Recurrentes)
-- [x] Category breakdown solo visible sin bloques
+- [x] Gráfico de barras de gasto mensual (6 meses)
+- [x] 4 secciones con ritmo visual consistente
 - [x] Formato de moneda unificado con `useCurrency`
-- [x] Whitespace y tipografía revisados
 
 ---
 
-## Fase 3 — CRUD completo
+## Fase 3 — Dashboard harmonizado web + mobile ✅
 
-### 3.1 Anotar ingreso desde header
-- [x] Shortcut `⌘⇧N` en web — ya existe en `keyboard-shortcuts.tsx`
+Rediseño completo del dashboard con estructura editorial compartida.
+
+### 3.1 Estructura final (ambas plataformas) ✅
+1. Balance hero con ahorro a la derecha (pie chart + total)
+2. Selector `Semana / Mes` — underline style, sin "Hoy"
+3. % presupuesto (barra de progreso fina)
+4. Stats: Gastado · Disponible · Ingreso (actualizan con período)
+5. Cuotas → Recurrentes
+6. Bloques de Vida (horizontal scroll cards en web)
+7. Movimientos (limitado a 5, link "Ver todo →")
+8. SIN gráfico de barras en dashboard principal
+
+### 3.2 Cambios realizados ✅
+- [x] Selector de período unificado (underline style) en dashboard y Lectura
+- [x] Stats semanales reales (weekSpend, weekBudget = monthBudget / 4.3)
+- [x] Ahorro a la derecha del balance con donut + total + nombre/nº metas
+- [x] Block cards: 142px ancho fijo, borde separador, sin fondos ni sombras
+- [x] Eliminado: gráfico de barras del dashboard, "Hoy", net worth mini chart
+- [x] Quitado: Runway estimado, Zen Monday Digest, Pulso financiero
+- [x] Quitado: "Tu semana en silencio" banner mobile
+
+### 3.3 Mobile específico ✅
+- [x] Misma estructura que web
+- [x] Quitado botón hamburguesa sidebar del header
+- [x] Quitados "Objetivos" del fondo del home
+- [x] Sidebar con pan gesture (sigue el dedo, withTiming 200ms snap)
+- [x] Swipe entre tabs con paths explícitos + try/catch
+- [x] FAB unificado: un solo botón +/− dinámico según último tipo
+- [x] Gesture conflict fix: `failOffsetY` en swipe horizontal
+
+### 3.4 Fixes funcionales ✅
+- [x] Fix editar cuota — AnimatePresence + motion.div con height animation
+- [x] Cuota pagada este mes — ocultar "Pagar", mostrar "Pagada" (nextDue month > current month)
+- [x] Recurrente pagada este período — ídem, con `lastPaidAt` en schema
+- [x] Presupuesto mobile — `displayPct` usa `displaySpend / displayBudget`
+
+---
+
+## Fase 4 — Sistema de íconos ✅
+
+### 4.1 Unificación Tabler ✅
+- [x] 36 íconos Tabler (`@tabler/icons-react` v3) como único sistema
+- [x] Tipos: `TablerGlyphKind` con 36 valores categorizados
+- [x] `GlyphKind = TablerGlyphKind` (sin geometrías)
+- [x] Categorías: Vivienda, Transporte, Salud, Comida/Compras, Trabajo/Ocio, Social/Tech
+- [x] Web: `BlockGlyph` renderiza Tabler icons vía `@tabler/icons-react`
+- [x] Mobile: `BlockGlyph` renderiza SVG paths de Tabler vía `react-native-svg` (`tabler-icons.ts`)
+- [x] `create-block-modal.tsx` web: 5 íconos rápidos + "+" para picker completo
+- [x] Mobile `blocks.tsx`: 5 íconos rápidos + "+" para picker, sin bloques pre-armados
+- [x] Picker colapsable: grid 6-columnas categorizado con los 36
+- [x] Sin geometrías ni formas inventadas en ningún lado
+
+---
+
+## Fase 5 — Vistas dedicadas ✅
+
+### 5.1 Vista Cuotas ✅
+Formato:
+```
+Cuotas
+[POR MES: $X]  [PENDIENTE TOTAL: $Y]  [ACTIVAS: N]
+
+Lista con barras segmentadas por cuota (cuadraditos)
+Botón "Pagar cuota" solo si no pagada este mes
+```
+- [x] Web: header 3 stats, barras segmentadas, "Pagada" badge, edit con AnimatePresence
+- [x] Mobile: header 3 stats, barras segmentadas, CRUD completo
+
+### 5.2 Vista Recurrentes ✅
+Formato:
+```
+Recurrentes
+[POR MES: $X]  [SUSCRIPCIONES: N]  [SERVICIOS: N]
+
+Agrupadas por categoría:
+— Suscripciones (Subs, Suscripciones, Subscripcion)
+— Servicios (Casa, Servicios, Vivienda)
+— Otros
+```
+- [x] Web: header 3 stats, agrupación por categoría, "Pagado" badge, pause/delete
+- [x] Mobile: header 3 stats, agrupación, CRUD completo
+- [x] Schema: `lastPaidAt` en RecurringExpense para tracking de pago
+
+### 5.3 Vista Ahorro ✅
+Formato:
+```
+Ahorro
+[AHORRADO VS METAS — $X] ——— [META TOTAL · $Y · 21% DEL TOTAL]
+
+Cards en filas de 2 (web) / 1 columna (mobile)
+Cada card: donut ring 52px, nombre, current/target, deadline, progreso
+```
+- [x] Web: header 2 bloques + progress bar, grid 2-columnas
+- [x] Mobile: header 2 bloques + progress bar, lista single column
+- [x] Donut rings con `AnimatedNumber`
+
+---
+
+## Fase 6 — CRUD completo
+
+### 6.1 Anotar ingreso desde header
+- [x] Shortcut `⌘⇧N` en web
 - [ ] Tooltip visible en el botón del header
 
-### 3.2 Editar cuota existente (Installments) ✅
+### 6.2 Editar cuota existente ✅
 - [x] Server action `updateInstallment(id, { name, monthlyAmount, paidInstallments })`
 - [x] Form inline de edición en la lista de Installments
 
-### 3.3 Pausar / reanudar Recurring ✅
-- [x] Server action `toggleRecurringPause(id)` — escribe `pausedAt`
-- [x] Botón en fila de la lista (campo `pausedAt` ya existe en schema)
+### 6.3 Pausar / reanudar Recurring ✅
+- [x] Server action `toggleRecurringPause(id)`
+- [x] Botón en fila de la lista
 
-### 3.4 Editar meta de ahorro (Goals) ✅
+### 6.4 Editar meta de ahorro ✅
 - [x] Server action `updateSavingsGoal(id, { name, targetAmount, deadline })`
 - [x] Form inline de edición en Goals
 
-### 3.5 Detalle de transacciones por bloque ✅
-- [x] Query `getTransactionsByBlock(blockId, userId)` en `lib/queries/`
-- [x] Reemplazar trend sintético en el panel derecho de Blocks con lista real
+### 6.5 Detalle de transacciones por bloque ✅
+- [x] Query `getTransactionsByBlock(blockId, userId)`
+- [x] Reemplazar trend sintético en panel Blocks con lista real
 
-### 3.6 Settings — cambiar nombre de usuario ✅
-- [x] `supabase.auth.updateUser({ data: { full_name } })` en server action
-- [x] Campo editable inline en Settings (avatar section)
-
----
-
-## Fase 4 — Mobile: paridad funcional
-
-### 4.1 Arreglar conexión a datos
-- [x] API bridge funcional — 7 endpoints + auth JWT
-- [x] React Query hooks para todas las entidades
-- [ ] Mobile POST endpoints para installments, recurring, goals
-
-### 4.2 Pantallas faltantes
-- [ ] Calendar — no existe screen
-- [ ] Goals — no existe screen, tipo definido pero sin uso
-- [ ] Installments — solo summary en Insights, sin pantalla dedicada
-- [ ] Recurring — solo summary en Insights, sin pantalla dedicada
-- [ ] Transaction detail — rows no son tappeables
-
-### 4.3 FAB simplificado
-- [x] Dos botones fijos: Expense (−) e Income (+)
-
-### 4.4 Mutations faltantes en mobile
-- [x] Crear transacción (CaptureSheet funcional)
-- [x] Crear Block (CreateBlockModal inline)
-- [ ] Editar transacción
-- [ ] Eliminar transacción
-- [ ] Editar / archivar Block
-- [ ] Crear Installment
-- [ ] Pagar / eliminar Installment
-- [ ] Crear Recurring
-- [ ] Pagar / eliminar Recurring
-- [ ] Crear / contribuir / eliminar Goal
-- [ ] Error states en mutations
-
-### 4.5 UX mobile pendiente
-- [ ] Empty states en lista de transacciones y bloques
-- [ ] Nombre y nota en CaptureSheet (hoy solo usa categoría)
-- [ ] Date picker para transacciones
-- [ ] Error boundary global
-- [ ] Swipe actions en filas
-
-### 4.6 Paridad visual con webapp
-- [ ] **Glyphs**: mobile tiene 12 geométricos, web tiene 36 Tabler Icons — expandir
-- [ ] **Charts**: mobile no tiene AreaChart, RadarChart, Donut (web sí)
-- [ ] **Animaciones**: mobile solo en auth/preboot, cero en tab screens (web tiene en cada página)
-- [ ] **Filtros**: mobile no tiene month filter, category filter, text search, column sort
-- [ ] **Settings**: mobile no tiene presupuesto mensual ni currency picker
-- [ ] **Export**: mobile no tiene CSV export
+### 6.6 Settings — cambiar nombre de usuario ✅
+- [x] `supabase.auth.updateUser({ data: { full_name } })`
+- [x] Campo editable inline en Settings
 
 ---
 
-## Fase 5 — Features de producto
+## Fase 7 — Lectura / Insights
 
-### 5.1 Smart categorization ✅
+### 7.1 Web Lectura ✅
+- [x] Selector de período underline: Semana, Mes, 6 meses, 1 año
+- [x] Eliminado Pulso financiero
+- [x] Patrimonio neto = balance + suma ahorros
+- [x] Donut de distribución de gastos por categoría (opacidades corregidas)
+- [x] Gasto diario con velas + línea de promedio
+- [x] Scroll funcional, sin difuminados
+- [x] Vista semana = mismo layout que mes
+
+### 7.2 Mobile Lectura ✅
+- [x] Quitado LineChart de patrimonio neto
+- [x] TickerAmount en números clave
+- [x] Donut distribución, installments, recurring, patterns preservados
+
+---
+
+## Fase 8 — Categorías editables ✅
+
+- [x] `CustomCategory` interface (id, label, glyph, type)
+- [x] `getCustomCategories(userId)` — lee de `UserSetting` KV, fallback a defaults
+- [x] `saveCustomCategories(userId, categories)` — upsert en `UserSetting`
+- [x] API: `GET/PUT /api/mobile/categories`
+- [x] `useCategories()` + `useSaveCategories()` hooks mobile
+- [x] Web settings: editor de categorías con nombre + glyph picker + restaurar defaults
+- [x] Mobile settings: editor inline + guardar cambios + restaurar defaults
+- [x] `CaptureSheet.tsx` usa categorías custom (con fallback a defaults)
+
+---
+
+## Fase 9 — Mobile navegación y UX ✅
+
+### 9.1 Sidebar ✅
+- [x] Pan gesture (sigue el dedo, no spring caricaturesco)
+- [x] `withTiming` 200ms snap al soltar
+- [x] Edge gesture desde borde izquierdo para abrir
+- [x] Panel gesture para cerrar arrastrando
+- [x] Links: Inicio, Movimientos, Bloques, Lectura, Cuotas, Recurrentes, Objetivos, Ajustes
+- [x] Backdrop overlay con tap para cerrar
+
+### 9.2 Swipe entre tabs ✅
+- [x] `SwipeableTabView` con `Gesture.Pan()`
+- [x] Paths explícitos (no template literals)
+- [x] try/catch para prevenir crashes
+- [x] `failOffsetY` para no interferir con scroll vertical
+
+### 9.3 FAB unificado ✅
+- [x] Un solo botón +/− en BottomNav
+- [x] `lastCaptureType` en app store
+- [x] Icono dinámico: − (gasto) / + (ingreso)
+
+### 9.4 CRUD cuotas y recurrentes en mobile ✅
+- [x] API endpoints: POST/PUT/DELETE + /pay + /pause
+- [x] Mutation hooks: create, update, pay, delete, pause
+- [x] Pantalla installments.tsx con crear/editar/pagar/eliminar
+- [x] Pantalla recurring.tsx con crear/editar/pagar/pausar/eliminar
+
+---
+
+## Fase 10 — UX / Animaciones ✅
+
+### 10.1 Números animados ✅
+- [x] Web: `AnimatedNumber` en Stat, dashboard stats, cuotas, recurrentes, bloques, Lectura
+- [x] Mobile: `TickerAmount` (slit-flap) en balance, stats, Lectura
+- [x] `Stat` component web usa `AnimatedNumber` internamente
+
+### 10.2 Selector underline unificado ✅
+- [x] Dashboard, Lectura: texto + border-bottom, sin fondos sólidos
+- [x] Mobile: mismo estilo con `borderBottomWidth` + `Pressable`
+- [x] Reutilizado en todas las vistas con selector de período
+
+### 10.3 Toggle animaciones ✅
+- [x] Web: CSS class `.no-animations` global, toggle en settings
+- [x] Mobile: `animationsEnabled` en store, toggle en settings
+
+---
+
+## Fase 11 — Features de producto
+
+### 11.1 Smart categorization ✅
 - [x] `lib/categorization.ts` — 50+ patrones regex en 8 categorías
-- [x] Auto-selección client-side en QuickExpense (sin sobreescribir elección manual)
-- [x] Badge "auto" en el chip seleccionado cuando la categoría es inferida
+- [x] Auto-selección en QuickExpense con badge "auto"
 
-### 5.2 Runway calculator ✅
-- [x] Cálculo client-side en dashboard-shell — avg últimos 3 meses vs balance.total
-- [x] Widget en Dashboard con runway en meses + promedio mensual
-
-### 5.3 Zen Monday Digest ✅
-- [x] Banner lunes en Dashboard con resumen semanal (spending + top category)
-- [x] Lógica: solo visible el lunes, `UserSetting` `zenDigestDate` para no repetir
-- [x] Dismiss con × → server action persiste la fecha, state local oculta inmediato
-
-### 5.4 Dólar blue / MEP
+### 11.2 Dólar blue / MEP
 - [ ] Fetch cotización desde `dolarapi.com` (API pública, sin auth)
 - [ ] Doble balance en el hero — moneda local + equivalente USD
-- [ ] Convertir stats principales a USD en secondary label
 - [ ] Cache con `unstable_cache` + revalidate cada 1 hora
 
-### 5.5 Emergency fund widget
+### 11.3 Emergency fund widget
 - [ ] Cálculo: saldo Goals / promedio gasto mensual = N meses
 - [ ] Widget en Dashboard o Insights
 
 ---
 
-## Fase 6 — Analytics
+## Fase 12 — Analytics
 
-### 6.1 Comparativa mes anterior
-- [ ] Query delta % en stats principales de Insights
-- [ ] UI: badge `+X%` o `−X%` junto a cada stat
+### 12.1 Comparativa período anterior
+- [ ] Query delta % respecto al período anterior (mes anterior, semana anterior, ayer)
+- [ ] Badge `+X%` o `−X%` junto a stats principales
 
-### 6.2 Split-flap balance
+### 12.2 Split-flap balance
 - [ ] Componente `SplitFlap` — anima cada dígito individualmente
-- [ ] Integrar en el balance hero del Dashboard
+- [ ] Integrar en el balance hero del dashboard
 
 ---
 
-## Fase 7 — Auth OAuth
+## Fase 13 — Auth OAuth
 
-### 7.1 Google
+### 13.1 Google
 - [ ] Habilitar provider en Supabase Dashboard
 - [ ] Botón "Continuar con Google" en `/login` y `/signup`
-- [ ] `supabase.auth.signInWithOAuth({ provider: 'google' })`
 
-### 7.2 Apple
+### 13.2 Apple
 - [ ] Requiere Apple Developer account + Service ID
 - [ ] Botón "Continuar con Apple" en iOS
 
 ---
 
-## Fase 8 — Infraestructura
+## Fase 14 — Infraestructura
 
 - [ ] **RLS en Supabase** — capa extra sobre filtrado `userId`
 - [ ] **Connection pooler** — configurar en Supabase Dashboard
@@ -184,36 +298,79 @@ Cosas que un usuario nuevo encuentra rotas o incompletas.
 
 ---
 
-## Fase 9 — Mobile avanzado
+## Fase 15 — Mobile avanzado
 
 - [ ] **Offline-first** — React Query offline + MMKV + Zustand persist
 - [ ] **Push notifications** — Expo Push Notifications para vencimientos
-- [ ] **Calendar view mobile** — vista mensual de transacciones + vencimientos
 - [ ] **Error handling en forms mobile** — auth (signup, login) y CaptureSheet
+
+---
+
+## Fase 16 — Fixes visuales pendientes
+
+### 16.1 Botones editoriales
+- [ ] Todos los botones de acción con estilo editorial (texto + underline, sin fondos surface)
+- [ ] Cards de métricas en Recurrentes reemplazadas por editorial (sin `borderRadius` ni `boxShadow`)
+
+### 16.2 Bloques de vida en dashboard web
+- [ ] Ajustar a diseño de referencia (`screens.jsx`): 142px cards, separadores, sin fondos
+- [ ] En bloques con techo/tope: mostrar ícono dentro del pie chart
+
+### 16.3 Icon picker refinamiento
+- [ ] Al seleccionar ícono, cerrar el picker automáticamente
+- [ ] El botón "+" debe transformarse en el ícono elegido
+
+### 16.4 Lectura
+- [ ] Fix fade/opacidad trabada en vista lectura
+- [ ] Scroll completo en todas las secciones
+
+---
+
+## Fase 17 — Fixes funcionales pendientes
+
+### 17.1 Cuotas con fecha de inicio
+- [ ] Crear cuota con fecha de inicio anterior → reflejar pagos pasados en calendario
+- [ ] Marcar automáticamente como pagadas las cuotas de meses anteriores a hoy
+
+### 17.2 Vista Movimientos
+- [ ] Selector nativo de meses (nuestro, no nativo del browser)
+- [ ] Arreglar filtro por "Cuotas" y por "Recurrentes"
+
+### 17.3 Vista Bloques
+- [ ] Al anotar en un bloque seleccionado, la transacción tarda en aparecer → fix cache invalidation
+
+### 17.4 Fix ancho en edición inline
+- [ ] Cuotas: al editar, el ancho de los contenedores se expande — usar ancho fijo
+- [ ] Recurrentes: mismo fix
+
+### 17.5 Metas y bloques
+- [ ] Ver metas de ahorro completadas
+- [ ] Ver bloques archivados
+- [ ] Revivir bloques archivados
 
 ---
 
 ## Backlog
 
-Features válidos sin prioridad acordada aún.
-
 - [ ] **Import CSV** — extracto de banco (Mercado Pago, BBVA, Galicia)
 - [ ] **Quincena mode** — ciclos de 15 días para salario quincenal (LATAM)
 - [ ] **Historial de cuotas pagadas** — transacciones generadas por cada cuota
-- [ ] **Ícono en Recurring** — campo `icon` opcional en `RecurringExpense`
 - [ ] **Font picker** — persiste preferencia (web)
-- [ ] Cuota sin interés con inflación real (requiere API externa)
+- [ ] **Pulso financiero** — posible regreso con análisis combinado de gastos e ingresos
+- [ ] Cuota sin interés con inflación real
 - [ ] Split expenses (multi-usuario)
 - [ ] Salary anticipation curve
 - [ ] Retirement calculator
 - [ ] Collaborative budgets / shared household
+- [ ] Calendario nativo para cuotas (modal nativo, no input date browser)
+- [ ] Desactivar animaciones individualmente (ya está el toggle global)
 
 ---
 
 ## Archivo — Completado
 
 <details>
-<summary>Ver completados (2026-05-13 → 2026-05-18)</summary>
+<summary>Ver completados (2026-05-13 → 2026-05-19)</summary>
 
 ### Infraestructura
 - [x] Monorepo pnpm (web + landing + mobile + shared)
@@ -221,42 +378,49 @@ Features válidos sin prioridad acordada aún.
 - [x] Auth email/password con Supabase SSR (cookie-based)
 - [x] Separación de datos por usuario (`userId` en todos los modelos)
 - [x] Server Actions + TanStack Query v5 + optimistic updates
-- [x] Mobile API bridge — 7 endpoints + JWT Bearer auth
+- [x] Mobile API bridge — 7+ endpoints + auth JWT
 - [x] Capa de queries: `lib/queries/`, hooks centralizados, `staleTime: 0`
 - [x] Keyboard shortcuts (`⌘N` gasto, `⌘⇧N` ingreso, `⌘K` comando)
 
 ### Web — Features
-- [x] Dashboard completo — balance hero 96px, stats, blocks grid, cuotas, recurrentes, gráfico de barras mensual
-- [x] Transactions — historial agrupado por fecha, filtros (mes, categoría, texto, tipo), delete inline
-- [x] Blocks — grid editorial, panel derecho con editar/archivar, Create Block con picker de 36 glyphs Tabler
-- [x] Insights — pie chart, area chart, bar chart, radar, pulso financiero
-- [x] Calendar — vista mensual con datos reales (cuotas + recurrentes)
-- [x] Goals — crear, contribuir, eliminar metas de ahorro
-- [x] Installments — crear, pagar, eliminar cuotas
-- [x] Recurring — crear, marcar pagado, eliminar recurrentes
-- [x] Settings — presupuesto mensual, tema, moneda, export CSV, logout
+- [x] Dashboard completo — balance hero, stats, blocks grid, cuotas, recurrentes
+- [x] Dashboard harmonizado web + mobile — selector Semana/Mes, ahorro derecha, orden editorial
+- [x] Transactions — historial agrupado por fecha, filtros, delete inline
+- [x] Blocks — grid editorial, panel derecho, Create Block con picker 36 íconos Tabler
+- [x] Insights — donut, area chart, bar chart, patrones, daily spend candles
+- [x] Calendar — vista mensual con datos reales
+- [x] Goals — crear, contribuir, editar, eliminar metas
+- [x] Installments — crear, pagar, editar, eliminar cuotas con barras segmentadas
+- [x] Recurring — crear, pagar, pausar, eliminar recurrentes agrupadas por categoría
+- [x] Settings — presupuesto, tema, moneda, nombre, categorías, animaciones, export CSV, logout
 - [x] Landing page — hero, features, pricing, FAQ, dark mode
 - [x] Dark mode completo — CSS tokens + ThemeProvider + toggle
-- [x] CSV export funcional
-- [x] 36 glyphs Tabler — migración completa, `GlyphKind` unificado
-- [x] Sistema de animaciones — spring presets, ScrollReveal, AnimatedNumber, RevealText, PageTransition
-- [x] Error handling en todos las forms de creación (QuickExpense, Block, Installment, Recurring, Goals)
-- [x] FK validation en `blockId` (mobile API + server action web)
-- [x] Empty states con copy + CTA en dashboard y páginas dedicadas
+- [x] 36 íconos Tabler unificados — `GlyphKind`, `BlockGlyph`, picker categorizado
+- [x] Sistema de animaciones — spring presets, ScrollReveal, AnimatedNumber, RevealText
+- [x] Smart categorization — `lib/categorization.ts`, auto-selección en QuickExpense
+- [x] Categorías editables — custom en UserSetting, UI en settings web + mobile
+- [x] Toggle animaciones global — CSS class `.no-animations` + setting
 
 ### Mobile — Features
 - [x] Scaffolding Expo + NativeWind + Supabase JWT auth + Zustand store
-- [x] React Query hooks — transactions, blocks, installments, recurring, stats, user
+- [x] React Query hooks — transactions, blocks, installments, recurring, stats, user, categories
+- [x] Dashboard harmonizado con web — misma estructura, selector underline, ahorro derecha
 - [x] Todas las pantallas con datos reales (home, transactions, blocks, insights, settings)
+- [x] Goals, Installments, Recurring screens con CRUD completo
+- [x] Vistas Cuotas/Recurrentes con headers de métricas y agrupación
 - [x] Animación PreBoot → Login (zoom ease-out, sin flicker)
 - [x] Loading state con respiración del círculo negro
-- [x] Bottom nav 4 tabs simétricas + FAB (expense/income)
-- [x] Settings fuera de tabs (`app/settings.tsx`, acceso desde header)
+- [x] Bottom nav 4 tabs + FAB unificado (+/− dinámico)
+- [x] Settings fuera de tabs con categorías editables + toggle animaciones
 - [x] Login + onboarding 4-step flow
-- [x] CaptureSheet funcional (crear transacción con keypad, categorías, bloque)
-- [x] CreateBlockModal inline en blocks.tsx
+- [x] CaptureSheet con categorías custom (custom o defaults)
+- [x] CreateBlockModal con 5 íconos rápidos + picker Tabler
 - [x] Pull-to-refresh en pantallas principales
 - [x] Light/dark theme + 3 font options
 - [x] Chunked SecureStore para JWTs grandes
+- [x] Sidebar con pan gesture (finger-following, no spring)
+- [x] Swipe entre tabs con Gesture.Pan + failOffsetY
+- [x] 36 íconos Tabler vía SVG paths en `tabler-icons.ts`
+- [x] Slit-flap numbers (TickerAmount) en stats principales
 
 </details>

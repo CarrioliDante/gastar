@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { useRecurring } from "@/hooks/queries";
 import { useCreateRecurring, usePayRecurring, useDeleteRecurring, usePauseRecurring } from "@/hooks/mutations";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
+import { Stat } from "@/components/ui/primitives";
+import { AnimatedNumber } from "@/components/motion/animated-number";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
 import { springGentle } from "@/components/motion/presets";
 import type { RecurringRow } from "@/hooks/queries";
+
+// ── Category mapping ─────────────────────────────────────────────
 
 const CATS = ["Casa", "Salud", "Suscripciones", "Transporte", "Educación", "Tecnología", "Otros"];
 const FREQS: { id: string; label: string }[] = [
@@ -17,7 +21,21 @@ const FREQS: { id: string; label: string }[] = [
   { id: "bimonthly", label: "Bimestral" },
   { id: "yearly",    label: "Anual" },
 ];
-const FREQ_DAYS: Record<string, number> = { weekly: 7, monthly: 30, bimonthly: 60, yearly: 365 };
+
+function groupKey(category: string): string {
+  const c = category.toLowerCase().trim();
+  if (c === "suscripciones" || c === "subs" || c === "subscripcion") return "Suscripciones";
+  if (c === "casa" || c === "servicios" || c === "vivienda") return "Servicios";
+  return "Otros";
+}
+
+const GROUP_ORDER = ["Suscripciones", "Servicios", "Otros"];
+
+function countByGroup(items: RecurringRow[], group: string): number {
+  return items.filter(i => !i.paused && groupKey(i.category) === group).length;
+}
+
+// ── Styles ────────────────────────────────────────────────────────
 
 const fieldStyle: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: 8,
@@ -30,6 +48,8 @@ const labelStyle: React.CSSProperties = {
   fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em",
   textTransform: "uppercase", marginBottom: 6,
 };
+
+// ── AddForm ───────────────────────────────────────────────────────
 
 function AddForm({ onDone }: { onDone: () => void }) {
   const [freq, setFreq] = useState("monthly");
@@ -111,6 +131,8 @@ function AddForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+// ── Single row ───────────────────────────────────────────────────
+
 function RecurringRowItem({ item }: { item: RecurringRow }) {
   const { format } = useCurrency();
   const pay = usePayRecurring();
@@ -119,9 +141,9 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
 
   const freqLabel = FREQS.find(f => f.id === item.frequency)?.label ?? item.frequency;
   const daysUntil = Math.ceil((item.nextDueDateMs - Date.now()) / (1000 * 60 * 60 * 24));
-  const urgent = !item.paused && daysUntil <= 5;
+  const urgent = !item.paused && !item.paidThisPeriod && daysUntil <= 5;
   const isOpt = item.id.startsWith("opt-");
-  const debitLabel = item.dayOfMonth ? `${freqLabel} · el ${item.dayOfMonth}` : freqLabel;
+  const showPaid = item.paidThisPeriod && !item.paused;
 
   return (
     <div className="row-hover" style={{
@@ -137,7 +159,12 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>{item.name}</div>
         <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
-          {item.category} · {debitLabel}
+          {item.category} ·{" "}
+          {showPaid ? (
+            <span style={{ color: "var(--ink)" }}>Pagado</span>
+          ) : (
+            <>próx {item.nextDueDate}</>
+          )}
         </div>
       </div>
 
@@ -147,7 +174,7 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
         fontWeight: urgent ? 500 : 400,
         flexShrink: 0,
       }}>
-        {item.paused ? "Pausado" : daysUntil <= 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : item.nextDueDate}
+        {item.paused ? "Pausado" : showPaid ? "Pagado" : daysUntil <= 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : item.nextDueDate}
       </div>
 
       <div className="display tnum" style={{
@@ -163,11 +190,11 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
           disabled={isOpt || pay.isPending}
           title="Marcar como pagado"
           style={{
-            padding: "6px 12px", borderRadius: 7, border: "none",
+            padding: "4px 8px", background: "none", border: "none",
             cursor: isOpt || pay.isPending ? "default" : "pointer",
-            background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
-            color: "var(--mute)", letterSpacing: "-0.005em", flexShrink: 0,
-            boxShadow: "inset 0 0 0 1px var(--hairline)", transition: "all 120ms ease",
+            fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+            color: "var(--mute)", flexShrink: 0,
+            borderBottom: "1px solid transparent",
           }}>
           Pagar
         </button>
@@ -178,11 +205,11 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
         disabled={isOpt || pause.isPending}
         title={item.paused ? "Reanudar" : "Pausar"}
         style={{
-          padding: "6px 12px", borderRadius: 7, border: "none",
+          padding: "4px 8px", background: "none", border: "none",
           cursor: isOpt || pause.isPending ? "default" : "pointer",
-          background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
-          color: "var(--mute)", letterSpacing: "-0.005em", flexShrink: 0,
-          boxShadow: "inset 0 0 0 1px var(--hairline)", transition: "all 120ms ease",
+          fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+          color: "var(--mute)", flexShrink: 0,
+          borderBottom: "1px solid transparent",
         }}>
         {item.paused ? "Reanudar" : "Pausar"}
       </button>
@@ -192,17 +219,40 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
         disabled={isOpt || del.isPending}
         title="Eliminar"
         style={{
-          background: "none", border: "none", cursor: isOpt || del.isPending ? "default" : "pointer",
-          color: "var(--whisper)", fontSize: 18, lineHeight: 1, padding: "0 4px",
-          flexShrink: 0, transition: "color 120ms ease",
-        }}
-        onMouseEnter={e => !isOpt && !del.isPending && (e.currentTarget.style.color = "var(--faint)")}
-        onMouseLeave={e => (e.currentTarget.style.color = "var(--whisper)")}>
+          padding: "4px 8px", background: "none", border: "none",
+          cursor: isOpt || del.isPending ? "default" : "pointer",
+          fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+          color: "var(--mute)", flexShrink: 0,
+        }}>
         ×
       </button>
     </div>
   );
 }
+
+// ── Group section ────────────────────────────────────────────────
+
+function GroupSection({ title, items }: { title: string; items: RecurringRow[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        paddingTop: 20, paddingBottom: 2,
+      }}>
+        <div style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "var(--font-mono, monospace)", fontWeight: 500 }}>
+          {title}
+        </div>
+        <div style={{
+          height: 1, flex: 1, background: "var(--hairline)",
+        }} />
+      </div>
+      {items.map(item => <RecurringRowItem key={item.id} item={item} />)}
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────
 
 export function RecurringClient({ initialItems }: { initialItems: RecurringRow[] }) {
   const [adding, setAdding] = useState(false);
@@ -210,50 +260,64 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
   const { format } = useCurrency();
 
   const list = items ?? [];
-  const totalMonthly = list.reduce((s, i) => {
-    if (i.paused) return s;
-    const mult = i.frequency === "weekly" ? 4.3 : i.frequency === "bimonthly" ? 0.5 : i.frequency === "yearly" ? 1 / 12 : 1;
-    return s + i.amount * mult;
-  }, 0);
+
+  // Compute metrics
+  const activeItems = useMemo(() => list.filter(i => !i.paused), [list]);
+  const totalMonthly = useMemo(() =>
+    activeItems.reduce((s, i) => {
+      const mult = i.frequency === "weekly" ? 4.3 : i.frequency === "bimonthly" ? 0.5 : i.frequency === "yearly" ? 1 / 12 : 1;
+      return s + i.amount * mult;
+    }, 0),
+  [activeItems]);
+  const subsCount = useMemo(() => countByGroup(list, "Suscripciones"), [list]);
+  const servicesCount = useMemo(() => countByGroup(list, "Servicios"), [list]);
+
+  // Group items
+  const groups = useMemo(() => {
+    const acc: Record<string, RecurringRow[]> = { Suscripciones: [], Servicios: [], Otros: [] };
+    for (const item of list) {
+      const g = groupKey(item.category);
+      acc[g].push(item);
+    }
+    return acc;
+  }, [list]);
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
-      <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-        <div>
-          <motion.div
-            className="mono"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springGentle, delay: 0.05 }}
-            style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
-          >
-            Compromisos
-          </motion.div>
-          <motion.h1
-            className="display"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springGentle, delay: 0.1 }}
-            style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
-          >
-            Recurrentes
-          </motion.h1>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          {totalMonthly > 0 && (
-            <>
-              <div className="display tnum" style={{ fontSize: 24, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.04em" }}>
-                {format(Math.round(totalMonthly))}
-              </div>
-              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
-                EQUIVALENTE MENSUAL
-              </div>
-            </>
-          )}
-        </div>
+      {/* Title row */}
+      <header style={{ paddingBottom: 20, borderBottom: "1px solid var(--hairline)" }}>
+        <motion.div
+          className="mono"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.05 }}
+          style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
+        >
+          Recurrentes
+        </motion.div>
+        <motion.h1
+          className="display"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.1 }}
+          style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
+        >
+          Recurrentes
+        </motion.h1>
       </header>
 
-      <div style={{ marginTop: 8 }}>
+      {/* Metrics row */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        paddingTop: 24, paddingBottom: 8,
+      }}>
+        <Stat value={Math.round(totalMonthly)} label="Por mes" prefix="$" decimals={0} />
+        <Stat value={subsCount} label="Suscripciones" decimals={0} />
+        <Stat value={servicesCount} label="Servicios" decimals={0} />
+      </div>
+
+      {/* Add button / form */}
+      <div style={{ marginTop: 16 }}>
         {adding && <AddForm onDone={() => setAdding(false)} />}
 
         {!adding && (
@@ -270,20 +334,26 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
             Agregar gasto recurrente
           </button>
         )}
-
-        {list.length === 0 && !adding ? (
-          <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", padding: "80px 0", gap: 16,
-          }}>
-            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
-              Sin gastos recurrentes. Registrá alquiler, suscripciones o servicios.
-            </div>
-          </div>
-        ) : (
-          list.map(item => <RecurringRowItem key={item.id} item={item} />)
-        )}
       </div>
+
+      {/* Empty state */}
+      {list.length === 0 && !adding ? (
+        <div style={{
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", padding: "80px 0", gap: 16,
+        }}>
+          <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
+            Sin gastos recurrentes. Registrá alquiler, suscripciones o servicios.
+          </div>
+        </div>
+      ) : (
+        /* Grouped list */
+        <>
+          {GROUP_ORDER.map(g => (
+            <GroupSection key={g} title={g} items={groups[g]} />
+          ))}
+        </>
+      )}
     </div>
   );
 }

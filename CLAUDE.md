@@ -50,8 +50,8 @@ Web dashboard uses a completely separate auth pattern: Supabase SSR (cookie-base
 sessions via `src/lib/supabase/server.ts`). Both coexist in the same Next.js app.
 
 Web mutations go through Server Actions (`src/app/actions/`).
-Mobile mutations go through `POST /api/mobile/transactions` only — all other
-mobile endpoints are read-only GETs.
+Mobile mutations: `transactions` (POST), `installments` (POST/PATCH/DELETE), `recurring`
+(POST/PATCH/DELETE). All other mobile endpoints are read-only GETs.
 
 ### Web Client Data Layer
 
@@ -79,6 +79,9 @@ Always use `staleTime: 0` for financial data — never cache stale amounts.
 | Mobile React Query hooks   | `apps/mobile/lib/hooks/index.ts`                  |
 | Mobile auth store          | `apps/mobile/store/auth.ts`                       |
 | Mobile app store           | `apps/mobile/store/app.ts`                        |
+| Mobile recurring screen    | `apps/mobile/app/recurring.tsx`                   |
+| Mobile sidebar             | `apps/mobile/components/Sidebar.tsx`              |
+| Mobile swipeable tabs      | `apps/mobile/components/SwipeableTabView.tsx`     |
 | Mobile theme tokens        | `apps/mobile/lib/theme.ts`                        |
 | Mobile formatters          | `apps/mobile/lib/format.ts`                       |
 | Mobile static/fallback data| `apps/mobile/lib/data.ts`                         |
@@ -106,6 +109,7 @@ Supabase auth directly in page files.
 **Mobile**: Expo Router v6 file-based routing. Route groups: `(auth)`, `(tabs)`.
 NativeWind for styling (Tailwind classes on RN views). Zustand for global state,
 React Query for server state. UI primitives in `components/ui/`.
+Mutation hooks in `lib/hooks/index.ts` follow the pattern: `useCreateX`, `useUpdateX`, `useDeleteX`, `usePayX`, `useToggleXPause`.
 
 **Shared**: Any type crossing the web/mobile boundary belongs in `packages/shared/src/types/`.
 Types in `apps/mobile/lib/api.ts` are mobile-local API response shapes — consolidate

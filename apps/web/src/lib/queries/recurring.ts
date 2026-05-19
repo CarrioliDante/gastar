@@ -8,6 +8,8 @@ export const getRecurringExpenses = cache(async (userId: string) => {
     orderBy: [{ pausedAt: "asc" }, { nextDueDate: "asc" }],
   });
 
+  const now = new Date();
+
   return rows.map(r => ({
     id: r.id, name: r.name,
     amount: Number(r.amount),
@@ -17,6 +19,10 @@ export const getRecurringExpenses = cache(async (userId: string) => {
     nextDueDate: r.nextDueDate.toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
     nextDueDateMs: r.nextDueDate.getTime(),
     paused: r.pausedAt !== null,
+    paidThisPeriod:
+      r.lastPaidAt !== null &&
+      r.lastPaidAt.getMonth() === now.getMonth() &&
+      r.lastPaidAt.getFullYear() === now.getFullYear(),
     blockId: r.blockId ?? undefined,
     note: r.note ?? undefined,
   }));

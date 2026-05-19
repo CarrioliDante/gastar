@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { requireUser } from "@/lib/dal";
 import { getDashboardStats } from "@/lib/queries/stats";
+import { getSavingsGoals } from "@/lib/queries/goals";
 import { getRecentTransactions } from "@/lib/queries/transactions";
 import { getActiveInstallments } from "@/lib/queries/installments";
 import { getBlocks } from "@/lib/queries/blocks";
@@ -8,12 +9,13 @@ import { getRecurringExpenses } from "@/lib/queries/recurring";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 async function DashboardData({ userId, userName }: { userId: string; userName: string }) {
-  const [stats, transactions, installments, blocks, recurring] = await Promise.all([
+  const [stats, transactions, installments, blocks, recurring, goals] = await Promise.all([
     getDashboardStats(userId),
     getRecentTransactions(userId),
     getActiveInstallments(userId),
     getBlocks(userId),
     getRecurringExpenses(userId),
+    getSavingsGoals(userId),
   ]);
 
   return (
@@ -24,6 +26,7 @@ async function DashboardData({ userId, userName }: { userId: string; userName: s
       initialInstallments={installments}
       initialBlocks={blocks}
       initialRecurring={recurring}
+      initialGoals={goals}
     />
   );
 }

@@ -1,43 +1,44 @@
 import { requireUser } from "@/lib/dal";
 import { getDashboardStats } from "@/lib/queries/stats";
 import { getAllTransactions } from "@/lib/queries/transactions";
-import { getActiveInstallments } from "@/lib/queries/installments";
+import { getSavingsGoals } from "@/lib/queries/goals";
 import { InsightsClient } from "./insights-client";
-
-function calcPulso(monthly: { income: number; spending: number; savings: number; savingsGoal: number }, installmentMonthly: number, txCount: number): {
-  score: number;
-  components: { label: string; value: number; weight: number }[];
-  mood: string;
-} {
-  const savingsRate  = monthly.income > 0 ? Math.min(1, monthly.savings / monthly.income) : 0;
-  const budgetAdherence = monthly.income > 0 ? Math.max(0, 1 - monthly.spending / (monthly.income * 0.8)) : 0;
-  const dailyConsistency = Math.min(1, txCount / 20); // 20+ tx/month = full score
-  const instHealth  = monthly.income > 0 ? Math.max(0, 1 - (installmentMonthly / monthly.income) * 3) : 1;
-
-  const components = [
-    { label: "Tasa de ahorro",       value: savingsRate,       weight: 0.35 },
-    { label: "Adherencia presupuesto",value: budgetAdherence,  weight: 0.30 },
-    { label: "Consistencia de registro", value: dailyConsistency, weight: 0.20 },
-    { label: "Cuotas saludables",    value: instHealth,         weight: 0.15 },
-  ];
-
-  const score = Math.round(components.reduce((s, c) => s + c.value * c.weight, 0) * 100);
-
-  const mood = score >= 80 ? "Excelente" : score >= 65 ? "Tranquilo" : score >= 45 ? "Atento" : "Bajo presión";
-
-  return { score, components, mood };
-}
 
 export default async function InsightsPage() {
   const user = await requireUser();
-  const [stats, transactions, installments] = await Promise.all([
+  const [stats, transactions, savingsGoals] = await Promise.all([
     getDashboardStats(user.id),
     getAllTransactions(user.id),
-    getActiveInstallments(user.id),
+    getSavingsGoals(user.id),
   ]);
 
-  const installmentMonthly = installments.reduce((s, i) => s + i.monthly, 0);
-  const pulso = calcPulso(stats.monthly, installmentMonthly, transactions.length);
+  const { weekStats } = stats;
+
+  // Patrimonio neto = balance total + ahorro acumulado en metas
+  const savingsTotal = savingsGoals.reduce((s, g) => s + g.currentAmount, 0);
+  const patrimonioNeto = stats.balance.total + savingsTotal;
+
+  // Gasto diario del mes actual
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  const dailySpendingMap = new Map<number, number>();
+  for (const t of transactions) {
+    const isoDate = (t as any).isoDate as string | undefined;
+    if (!isoDate) continue;
+    const d = new Date(isoDate + "T00:00:00");
+    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.amount < 0) {
+      const day = d.getDate();
+      dailySpendingMap.set(day, (dailySpendingMap.get(day) ?? 0) + Math.abs(t.amount));
+    }
+  }
+
+  const dailySeries = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    return { day, amount: Math.round(dailySpendingMap.get(day) ?? 0) };
+  });
 
   return (
     <InsightsClient
@@ -46,7 +47,9 @@ export default async function InsightsPage() {
       incomeTrend={stats.incomeTrend}
       categories={stats.categories}
       transactions={transactions}
-      pulso={pulso}
+      weekStats={weekStats}
+      patrimonioNeto={patrimonioNeto}
+      dailySeries={dailySeries}
     />
   );
 }

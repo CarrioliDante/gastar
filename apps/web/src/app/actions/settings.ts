@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
+import { saveCustomCategories } from "@/lib/custom-categories";
 
 export async function setMonthlyBudget(formData: FormData) {
   const user = await requireUser();
@@ -20,14 +21,11 @@ export async function setMonthlyBudget(formData: FormData) {
   revalidateTag(`user:${user.id}`, "default");
 }
 
-export async function dismissZenDigest() {
+export async function updateCustomCategories(
+  categories: { id: string; label: string; glyph: string; type: "expense" | "income" }[],
+) {
   const user = await requireUser();
-  const today = new Date().toISOString().slice(0, 10);
-  await db.userSetting.upsert({
-    where: { userId_key: { userId: user.id, key: "zenDigestDate" } },
-    update: { value: today },
-    create: { userId: user.id, key: "zenDigestDate", value: today },
-  });
+  await saveCustomCategories(user.id, categories);
   revalidateTag(`user:${user.id}`, "default");
 }
 

@@ -34,7 +34,8 @@ function GoalCard({ goal }: { goal: GoalRow }) {
   const del = useDeleteGoal();
   const upd = useUpdateGoal();
 
-  const r = 28, c = 2 * Math.PI * r;
+  const r = 22;
+  const c = 2 * Math.PI * r;
   const isOpt = goal.id.startsWith("opt-");
 
   const handleContribute = (e: React.SyntheticEvent) => {
@@ -103,52 +104,42 @@ function GoalCard({ goal }: { goal: GoalRow }) {
   }
 
   return (
-    <div style={{ padding: "28px 0 24px", borderBottom: "1px solid var(--hairline)", opacity: isOpt ? 0.55 : 1 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
+    <div style={{ padding: "24px 0", borderBottom: "1px solid var(--hairline)", opacity: isOpt ? 0.55 : 1 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
         {/* Radial ring */}
         <div style={{ position: "relative", flexShrink: 0 }}>
-          <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
-            <circle cx={32} cy={32} r={r} fill="none" stroke="var(--hairline2)" strokeWidth={1.6} />
-            <circle cx={32} cy={32} r={r} fill="none" stroke="var(--ink)" strokeWidth={1.6}
+          <svg width={52} height={52} style={{ transform: "rotate(-90deg)" }}>
+            <circle cx={26} cy={26} r={r} fill="none" stroke="var(--hairline2)" strokeWidth={1.6} />
+            <circle cx={26} cy={26} r={r} fill="none" stroke="var(--ink)" strokeWidth={1.6}
               strokeLinecap="round" strokeDasharray={c}
               strokeDashoffset={c * (1 - goal.pct / 100)}
               style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(.2,.7,.1,1)" }} />
           </svg>
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span className="display tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>
+            <span className="display tnum" style={{ fontSize: 11, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>
               {goal.pct}%
             </span>
           </div>
         </div>
 
         {/* Info */}
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
-            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em" }}>{goal.name}</div>
-            {goal.deadline && (
-              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                {goal.deadline}
-              </div>
-            )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em", marginBottom: 3 }}>
+            {goal.name}
           </div>
-
-          <div style={{ display: "flex", gap: 24, alignItems: "baseline", marginBottom: 14 }}>
-            {[
-              { value: goal.currentAmount, label: "Ahorrado" },
-              { value: goal.targetAmount,  label: "Meta",     faint: true },
-              { value: goal.remaining,     label: "Falta",    faint: true },
-            ].map(({ value, label, faint }) => (
-              <div key={label}>
-                <div className="display tnum" style={{ fontSize: 22, fontWeight: faint ? 400 : 500, color: faint ? "var(--faint)" : "var(--ink)", letterSpacing: "-0.035em" }}>
-                  {format(value)}
-                </div>
-                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
-              </div>
-            ))}
+          <div className="display tnum" style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.03em" }}>
+            {format(goal.currentAmount)}
+            <span style={{ color: "var(--faint)", fontSize: 12, fontWeight: 400 }}>
+              {" "}/ {format(goal.targetAmount)}
+            </span>
           </div>
-
+          {goal.deadline && (
+            <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
+              Límite · {goal.deadline}
+            </div>
+          )}
           {/* Progress bar */}
-          <div style={{ height: 2, background: "var(--hairline)", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{ height: 2, background: "var(--hairline)", borderRadius: 99, overflow: "hidden", marginTop: 10 }}>
             <div style={{
               height: "100%", width: `${goal.pct}%`,
               background: "var(--ink)", borderRadius: 99,
@@ -158,11 +149,11 @@ function GoalCard({ goal }: { goal: GoalRow }) {
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start" }}>
           <button onClick={() => setContributing(v => !v)} style={{
-            padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer",
+            padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer",
             background: "var(--ink)", color: "var(--inverse)",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500, letterSpacing: "-0.005em",
+            fontFamily: "inherit", fontSize: 11, fontWeight: 500, letterSpacing: "-0.005em",
           }}>
             + Aportar
           </button>
@@ -170,35 +161,35 @@ function GoalCard({ goal }: { goal: GoalRow }) {
             onClick={() => !isOpt && setEditing(true)}
             disabled={isOpt}
             style={{
-              padding: "7px 12px", borderRadius: 7, border: "none",
+              padding: "6px 10px", borderRadius: 6, border: "none",
               cursor: isOpt ? "default" : "pointer",
               background: "var(--surface)", color: "var(--mute)",
               boxShadow: "inset 0 0 0 1px var(--hairline)",
-              fontFamily: "inherit", fontSize: 12,
+              fontFamily: "inherit", fontSize: 11,
             }}
           >Editar</button>
           <button
             onClick={() => !isOpt && del.mutate(goal.id)}
             disabled={isOpt || del.isPending}
             style={{
-              padding: "7px 10px", borderRadius: 7, border: "none",
+              padding: "6px 8px", borderRadius: 6, border: "none",
               cursor: isOpt || del.isPending ? "default" : "pointer",
               background: "none", color: "var(--faint)",
               boxShadow: "inset 0 0 0 1px var(--hairline)",
-              fontFamily: "inherit", fontSize: 12,
+              fontFamily: "inherit", fontSize: 11,
             }}
           >×</button>
         </div>
       </div>
 
       {contributing && (
-        <form onSubmit={handleContribute} style={{ marginTop: 16, display: "flex", gap: 10, alignItems: "flex-end" }}>
+        <form onSubmit={handleContribute} style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "flex-end" }}>
           <div style={{ flex: 1 }}>
             <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
               Monto a aportar
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ color: "var(--faint)", fontSize: 18 }}>$</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ color: "var(--faint)", fontSize: 16 }}>$</span>
               <AmountInput
                 value={amount} onChange={setAmount}
                 placeholder="0" required autoFocus
@@ -278,45 +269,82 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
   const list = goals ?? [];
   const totalSaved  = list.reduce((s, g) => s + g.currentAmount, 0);
   const totalTarget = list.reduce((s, g) => s + g.targetAmount, 0);
+  const overallPct  = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
-      <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-        <div>
-          <motion.div
-            className="mono"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springGentle, delay: 0.05 }}
-            style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
-          >
-            Crecimiento
-          </motion.div>
-          <motion.h1
-            className="display"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springGentle, delay: 0.1 }}
-            style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
-          >
-            Metas de ahorro
-          </motion.h1>
-        </div>
-        {totalTarget > 0 && (
-          <div style={{ textAlign: "right" }}>
-            <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.04em" }}>
-              {format(totalSaved)}
-              <span style={{ color: "var(--faint)", fontSize: 14, fontWeight: 400 }}>
-                {" "}/ {format(totalTarget)}
-              </span>
-            </div>
-            <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
-              TOTAL AHORRADO
-            </div>
-          </div>
-        )}
+      <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)" }}>
+        <motion.div
+          className="mono"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.05 }}
+          style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}
+        >
+          Metas
+        </motion.div>
+        <motion.h1
+          className="display"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.1 }}
+          style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)", lineHeight: 1 }}
+        >
+          Ahorro
+        </motion.h1>
       </header>
 
+      {/* Metrics header */}
+      {totalTarget > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.15 }}
+          style={{ padding: "28px 0", borderBottom: "1px solid var(--hairline)" }}
+        >
+          <div style={{ display: "flex", gap: 56, alignItems: "flex-start" }}>
+            <div>
+              <div className="mono" style={{
+                fontSize: 9, color: "var(--mute)", letterSpacing: "0.14em",
+                textTransform: "uppercase", marginBottom: 8,
+              }}>
+                Ahorrado vs metas
+              </div>
+              <div className="display tnum" style={{
+                fontSize: 32, fontWeight: 500, color: "var(--ink)",
+                letterSpacing: "-0.04em", lineHeight: 1,
+              }}>
+                {format(totalSaved)}
+              </div>
+            </div>
+            <div>
+              <div className="mono" style={{
+                fontSize: 9, color: "var(--mute)", letterSpacing: "0.14em",
+                textTransform: "uppercase", marginBottom: 8,
+              }}>
+                Meta total · {format(totalTarget)}  —  {overallPct}% del total
+              </div>
+              <div className="display tnum" style={{
+                fontSize: 32, fontWeight: 500, color: "var(--faint)",
+                letterSpacing: "-0.04em", lineHeight: 1,
+              }}>
+                {format(totalTarget)}
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ height: 2, background: "var(--hairline)", borderRadius: 99, overflow: "hidden", marginTop: 20 }}>
+            <div style={{
+              height: "100%", width: `${overallPct}%`,
+              background: "var(--ink)", borderRadius: 99,
+              transition: "width 0.8s cubic-bezier(.2,.7,.1,1)",
+            }} />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Goal grid */}
       <div style={{ marginTop: 8 }}>
         {adding && <AddGoalForm onDone={() => setAdding(false)} />}
 
@@ -345,7 +373,12 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
             </div>
           </div>
         ) : (
-          list.map(g => <GoalCard key={g.id} goal={g} />)
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr",
+            gap: "0 40px",
+          }}>
+            {list.map(g => <GoalCard key={g.id} goal={g} />)}
+          </div>
         )}
       </div>
     </div>

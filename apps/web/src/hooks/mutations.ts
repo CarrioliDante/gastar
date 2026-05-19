@@ -263,6 +263,7 @@ export function useCreateRecurring() {
         paused: false,
         blockId: undefined,
         note: undefined,
+        paidThisPeriod: false,
       };
 
       qc.setQueryData<RecurringRow[]>(qk.recurring, (old) =>
@@ -304,6 +305,7 @@ export function usePayRecurring() {
             ...r,
             nextDueDateMs: nextMs,
             nextDueDate: new Date(nextMs).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+            paidThisPeriod: true,
           };
         })
       );

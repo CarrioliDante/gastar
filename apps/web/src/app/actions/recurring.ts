@@ -76,7 +76,7 @@ export async function markRecurringPaid(id: string) {
           blockId: rec.blockId,
         },
       }),
-      db.recurringExpense.update({ where: { id }, data: { nextDueDate: next } }),
+      db.recurringExpense.update({ where: { id }, data: { nextDueDate: next, lastPaidAt: new Date() } }),
     ]);
     revalidateTag(`user:${user.id}`, "default");
   } catch (err) {

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { useUIStore } from "@/stores/ui";
 import { useCurrency } from "@/hooks/use-currency";
-import { useDashboardStats, useRecentTransactions, useInstallments, useBlocks, useRecurring } from "@/hooks/queries";
+import { useDashboardStats, useRecentTransactions, useInstallments, useBlocks, useRecurring, useGoals } from "@/hooks/queries";
 import { usePayInstallment, usePayRecurring } from "@/hooks/mutations";
-import type { InstallmentRow, RecurringRow, BlockRow } from "@/hooks/queries";
+import type { InstallmentRow, RecurringRow, BlockRow, GoalRow } from "@/hooks/queries";
 import {
   BlockGlyph,
   Hairline,
@@ -23,7 +23,7 @@ import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { RevealWords } from "@/components/motion/text-reveal";
 import { springGentle } from "@/components/motion/presets";
-import { dismissZenDigest } from "@/app/actions/settings";
+
 import type { BalanceData, MonthlyStats, Category } from "@gastar/shared";
 
 interface Props {
@@ -33,6 +33,7 @@ interface Props {
   initialInstallments: InstallmentRow[];
   initialBlocks: BlockRow[];
   initialRecurring: RecurringRow[];
+  initialGoals: GoalRow[];
 }
 
 const BLOCK_GLYPHS: GlyphKind[] = ["Home", "Car", "Heart", "Coffee", "Briefcase", "Users"];
@@ -52,6 +53,18 @@ function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
   const total = inst.total_installments;
   const isOpt = inst.id.startsWith("opt-");
   const isDone = inst.remaining === 0;
+
+  const monthAbbrs = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const currentMonthIdx = new Date().getMonth();
+  const nextDueStr = inst.next_due.toLowerCase();
+  let nextDueMonthIdx = -1;
+  for (const abbr of monthAbbrs) {
+    if (nextDueStr.startsWith(abbr)) {
+      nextDueMonthIdx = monthAbbrs.indexOf(abbr);
+      break;
+    }
+  }
+  const paidThisPeriod = nextDueMonthIdx >= 0 && nextDueMonthIdx !== currentMonthIdx;
 
   return (
     <div>
@@ -79,23 +92,25 @@ function InstRow({ inst, isLast }: { inst: InstallmentRow; isLast: boolean }) {
             <div className="tnum display" style={{
               fontSize: 13, fontWeight: 500, letterSpacing: "-0.015em", color: "var(--ink)",
             }}>
-              {formatCurrency(inst.monthly, true)}
+              <AnimatedNumber value={inst.monthly} prefix="$" />
             </div>
-            {!isOpt && !isDone && (
+            {!isOpt && !isDone && !paidThisPeriod && (
               <button
                 onClick={() => pay.mutate(inst.id)}
                 disabled={pay.isPending}
                 style={{
-                  padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer",
-                  background: pay.isPending ? "var(--surface)" : "var(--hairline2)",
-                  color: pay.isPending ? "var(--faint)" : "var(--ink)",
-                  fontFamily: "inherit", fontSize: 10, fontWeight: 500,
-                  letterSpacing: "-0.005em", whiteSpace: "nowrap",
-                  transition: "all 120ms ease",
+                  padding: "3px 6px", background: "none", border: "none", cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                  color: "var(--mute)", borderBottom: "1px solid var(--hairline)",
                 }}
               >
                 {pay.isPending ? "..." : "Pagar"}
               </button>
+            )}
+            {!isOpt && !isDone && paidThisPeriod && (
+              <span className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em" }}>
+                Pagado
+              </span>
             )}
             {isDone && (
               <span className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em" }}>
@@ -126,6 +141,18 @@ function RecRow({ r, isLast }: { r: RecurringRow; isLast: boolean }) {
   const freqLabel = FREQ_LABEL[r.frequency] ?? r.frequency;
   const isOpt = r.id.startsWith("opt-");
 
+  const monthAbbrs = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const currentMonthIdx = new Date().getMonth();
+  const nextDueStr = r.nextDueDate.toLowerCase();
+  let nextDueMonthIdx = -1;
+  for (const abbr of monthAbbrs) {
+    if (nextDueStr.startsWith(abbr)) {
+      nextDueMonthIdx = monthAbbrs.indexOf(abbr);
+      break;
+    }
+  }
+  const paidThisPeriod = nextDueMonthIdx >= 0 && nextDueMonthIdx !== currentMonthIdx;
+
   return (
     <div>
       <div style={{ opacity: isOpt ? 0.55 : 1 }}>
@@ -134,23 +161,27 @@ function RecRow({ r, isLast }: { r: RecurringRow; isLast: boolean }) {
             glyph={glyphKind}
             label={r.name}
             meta={`${freqLabel} · próx ${r.nextDueDate}`}
-            right={formatCurrency(r.amount, true)}
+            right={<AnimatedNumber value={r.amount} prefix="$" />}
           />
-          {!isOpt && (
+          {!isOpt && !paidThisPeriod && (
             <button
               onClick={() => pay.mutate(r.id)}
               disabled={pay.isPending}
               style={{
-                padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer",
-                background: pay.isPending ? "var(--surface)" : "var(--hairline2)",
-                color: pay.isPending ? "var(--faint)" : "var(--ink)",
-                fontFamily: "inherit", fontSize: 10, fontWeight: 500,
-                letterSpacing: "-0.005em", whiteSpace: "nowrap",
-                transition: "all 120ms ease", flexShrink: 0,
+                padding: "3px 6px", background: "none", border: "none", cursor: "pointer",
+                fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                color: "var(--mute)", borderBottom: "1px solid var(--hairline)",
               }}
             >
               {pay.isPending ? "..." : "Pagar"}
             </button>
+          )}
+          {!isOpt && paidThisPeriod && (
+            <span className="mono" style={{
+              fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", flexShrink: 0,
+            }}>
+              Pagado
+            </span>
           )}
         </div>
       </div>
@@ -166,6 +197,7 @@ export function DashboardShell({
   initialInstallments,
   initialBlocks,
   initialRecurring,
+  initialGoals,
 }: Props) {
   const { openCapture } = useUIStore();
   const { format: formatCurrency } = useCurrency();
@@ -175,6 +207,7 @@ export function DashboardShell({
   const { data: installments }        = useInstallments(initialInstallments);
   const { data: blocks }              = useBlocks(initialBlocks);
   const { data: recurring }           = useRecurring(initialRecurring);
+  const { data: goals }               = useGoals(initialGoals);
 
   const balance      = stats?.balance ?? { total: 0, currency: "USD", change: 0 } as BalanceData;
   const monthly      = stats?.monthly ?? { income: 0, spending: 0, savings: 0, savingsGoal: 5000 } as MonthlyStats;
@@ -192,36 +225,67 @@ export function DashboardShell({
   const currentMonthCap  = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
   const monthBudget  = monthly.savingsGoal > 0 ? monthly.savingsGoal : monthly.spending || 1;
-  const monthPctRaw  = monthly.spending / monthBudget;
-  const monthPct     = Math.min(1, monthPctRaw);
-  const isOverBudget = monthPctRaw > 1;
-  const overBy       = isOverBudget ? monthly.spending - monthBudget : 0;
 
   const recurringByDue = (recurring ?? [])
     .filter(r => !r.paused)
     .sort((a, b) => a.nextDueDateMs - b.nextDueDateMs)
     .slice(0, 5);
 
-  const weeklyDigest = stats?.weeklyDigest ?? { spending: 0, topCategory: null, show: false };
-  const [digestVisible, setDigestVisible] = useState(weeklyDigest.show);
+  const [period, setPeriod] = useState<"semana" | "mes">("mes");
 
-  const handleDismissDigest = async () => {
-    setDigestVisible(false);
-    await dismissZenDigest();
-  };
+  const weekStats   = stats?.weekStats  ?? { spending: 0, daily: [] };
+  const goalList = goals ?? [];
+  const totalSaved = goalList.reduce((s, g) => s + g.currentAmount, 0);
+  const totalTarget = goalList.reduce((s, g) => s + g.targetAmount, 0);
+  const totalPct = totalTarget > 0 ? Math.min(1, totalSaved / totalTarget) : 0;
 
-  // Runway: last 3 months avg spending vs total balance
-  const last3Spending = spendingTrend.slice(-3).map(p => p.amount);
-  const avgMonthlySpending = last3Spending.length > 0
-    ? last3Spending.reduce((s, v) => s + v, 0) / last3Spending.length
-    : 0;
-  const runwayMonths = avgMonthlySpending > 0 && balance.total > 0
-    ? Math.floor(balance.total / avgMonthlySpending)
-    : null;
+  const weekBudget = Math.round(monthBudget / 4.3);
+  const weekSpend = weekStats?.spending ?? 0;
+  const weekAvailable = weekBudget - weekSpend;
+
+  const displaySpend = period === 'semana' ? weekSpend : monthly.spending;
+  const displayBudget = period === 'semana' ? weekBudget : monthBudget;
+  const displayAvailable = period === 'semana' ? weekAvailable : (monthBudget - monthly.spending);
+  const displayIncome = monthly.income;
+
+  const displayPctRaw = displaySpend / (displayBudget || 1);
+  const displayPct = Math.min(1, displayPctRaw);
+  const displayIsOverBudget = displayPctRaw > 1;
+  const displayOverBy = displayIsOverBudget ? displaySpend - displayBudget : 0;
 
   const txList = transactions ?? [];
   const instList = installments ?? [];
   const blockList = blocks ?? [];
+
+  const getMonday = () => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const filterByPeriod = (txs: typeof txList, p: string) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (p === "hoy") {
+      return txs.filter(tx => {
+        const txDate = new Date((tx as any).isoDate + "T00:00:00");
+        return txDate.getTime() === today.getTime();
+      });
+    }
+    if (p === "semana") {
+      const monday = getMonday();
+      return txs.filter(tx => new Date((tx as any).isoDate) >= monday);
+    }
+    return txs.filter(tx => {
+      const d = new Date((tx as any).isoDate);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  };
+
+  const filteredTx = filterByPeriod(txList, period);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -286,75 +350,72 @@ export function DashboardShell({
       {/* ── Scrollable content ── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0 40px 100px" }}>
 
-        {/* ── Hero balance ── */}
+        {/* ── Hero balance + Ahorro ── */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...springGentle, delay: 0.4 }}
-          style={{ paddingTop: 52 }}
+          style={{ paddingTop: 52, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >
-          <Eyebrow>Balance total</Eyebrow>
-          <div style={{ marginTop: 20 }}>
-            <span className="display tnum" style={{
-              fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
-            }}>
-              <AnimatedNumber value={balance.total} decimals={2} />
-            </span>
-          </div>
-        </motion.div>
-
-        {/* ── Zen Monday Digest ── */}
-        {digestVisible && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={springGentle}
-            style={{
-              marginTop: 28,
-              padding: "14px 18px",
-              borderRadius: 10,
-              background: "var(--surface)",
-              border: "1px solid var(--hairline)",
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="mono" style={{
-                fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em",
-                textTransform: "uppercase", flexShrink: 0,
+          <div>
+            <Eyebrow>Balance total</Eyebrow>
+            <div style={{ marginTop: 20 }}>
+              <span className="display tnum" style={{
+                fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
               }}>
-                Esta semana
-              </div>
-              <div style={{ fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
-                Gastaste {formatCurrency(weeklyDigest.spending, true)}
-                {weeklyDigest.topCategory && (
-                  <span style={{ color: "var(--mute)" }}> · mayor gasto en {weeklyDigest.topCategory}</span>
-                )}
+                <AnimatedNumber value={balance.total} decimals={2} />
+              </span>
+            </div>
+          </div>
+          {goalList.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="40" height="40" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="16" fill="none" stroke="var(--hairline)" strokeWidth="3" />
+                <circle cx="20" cy="20" r="16" fill="none" stroke="var(--ink)" strokeWidth="3"
+                  strokeDasharray={`${totalPct * 100} 100`} strokeLinecap="round"
+                  transform="rotate(-90 20 20)" />
+                <text x="20" y="23" textAnchor="middle" className="mono" fontSize="8" fill="var(--ink)">
+                  {Math.round(totalPct * 100)}%
+                </text>
+              </svg>
+              <div>
+                <div className="tnum display" style={{ fontSize: 18, fontWeight: 500, color: 'var(--ink)', letterSpacing: '-0.03em' }}>
+                  {formatCurrency(totalSaved, true)}
+                </div>
+                <div className="mono" style={{ fontSize: 9, color: 'var(--faint)', letterSpacing: '0.06em' }}>
+                  {goalList.length === 1 ? goalList[0].name : `${goalList.length} metas`}
+                </div>
               </div>
             </div>
-            <button
-              onClick={handleDismissDigest}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                color: "var(--whisper)", fontSize: 18, lineHeight: 1, padding: "0 2px",
-                flexShrink: 0, transition: "color 120ms ease",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--faint)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--whisper)")}
-            >
-              ×
-            </button>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
 
-        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 40 }} />
-
-        {/* ── Este mes ── */}
+        {/* ── Period section ── */}
         <ScrollReveal direction="up" distance={24}>
           <div style={{ paddingTop: 48 }}>
-            <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 24 }}>
-              Este mes · {currentMonthCap}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 24 }}>
+              <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                {period === "semana" ? "Últimos 7 días" : `Este mes · ${currentMonthCap}`}
+              </div>
+              <div style={{ display: 'flex', gap: 18 }}>
+                {(['semana', 'mes'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className="mono"
+                    style={{
+                      padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: period === p ? 'var(--ink)' : 'var(--faint)',
+                      borderBottom: period === p ? '1px solid var(--ink)' : '1px solid transparent',
+                      transition: 'all 200ms ease',
+                    }}
+                  >
+                    {p === 'semana' ? 'Semana' : 'Mes'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Gastado — prominent with progress bar */}
@@ -363,17 +424,17 @@ export function DashboardShell({
                 <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase" }}>
                   Gastado
                 </div>
-                {isOverBudget && (
+                {displayIsOverBudget && (
                   <div className="mono" style={{ fontSize: 10, color: "var(--ink)", letterSpacing: "0.06em", fontWeight: 500 }}>
-                    +{formatCurrency(overBy, true)} sobre el presupuesto
+                    +<AnimatedNumber value={displayOverBy} prefix="$" /> sobre el presupuesto
                   </div>
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                 <div className="display tnum" style={{ fontSize: 48, fontWeight: 500, letterSpacing: "-0.05em", color: "var(--ink)", lineHeight: 1, display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span>{formatCurrency(monthly.spending, true)}</span>
+                  <AnimatedNumber value={displaySpend} prefix="$" />
                   <span style={{ color: "var(--faint)", fontSize: 20, fontWeight: 400, display: "flex", alignItems: "baseline", gap: 4 }}>
-                    / {formatCurrency(monthBudget, true)}
+                    / <AnimatedNumber value={displayBudget} prefix="$" />
                   </span>
                 </div>
                 <Link
@@ -388,7 +449,7 @@ export function DashboardShell({
                     fontSize: 32, fontWeight: 500, letterSpacing: "-0.03em",
                     color: "var(--ink)",
                   }}>
-                    {Math.round(monthPctRaw * 100)}%
+                    {Math.round(displayPctRaw * 100)}%
                   </div>
                   <div className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
                     PRESUPUESTO →
@@ -398,9 +459,9 @@ export function DashboardShell({
               <div style={{ height: 6, background: "var(--hairline2)", borderRadius: 99, overflow: "hidden" }}>
                 <motion.div
                   initial={{ width: "0%" }}
-                  animate={{ width: `${monthPct * 100}%` }}
+                  animate={{ width: `${displayPct * 100}%` }}
                   transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ height: "100%", background: isOverBudget ? "var(--ink)" : "var(--ink)", borderRadius: 99 }}
+                  style={{ height: "100%", background: displayIsOverBudget ? "var(--ink)" : "var(--ink)", borderRadius: 99 }}
                 />
               </div>
             </div>
@@ -410,11 +471,12 @@ export function DashboardShell({
               initial="hidden"
               animate="visible"
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } } }}
-              style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
             >
               {[
-                { value: monthly.income, label: "Ingreso", suffix: "" },
-                { value: monthly.savings, label: "Ahorrado", suffix: "" },
+                { value: displaySpend, label: "Gastado", suffix: "" },
+                { value: displayAvailable, label: "Disponible", suffix: "" },
+                { value: displayIncome, label: "Ingreso", suffix: "" },
               ].map(s => (
                 <motion.div key={s.label} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
                   <Stat value={s.value} label={s.label} size={28} suffix={s.suffix} />
@@ -431,322 +493,225 @@ export function DashboardShell({
                 <CategoryBreakdown categories={categories} />
               </div>
             )}
+
           </div>
         </ScrollReveal>
 
-        {/* ── Runway calculator ── */}
-        {runwayMonths !== null && (
-          <ScrollReveal direction="up" distance={16}>
-            <div style={{
-              marginTop: 40,
-              padding: "20px 24px",
-              borderRadius: 12,
-              background: "var(--surface)",
-              border: "1px solid var(--hairline)",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <div>
-                <div className="mono" style={{
-                  fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em",
-                  textTransform: "uppercase", marginBottom: 6,
-                }}>
-                  Runway estimado
-                </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                  <span className="display tnum" style={{
-                    fontSize: 28, fontWeight: 500, letterSpacing: "-0.04em", color: "var(--ink)",
-                  }}>
-                    {runwayMonths}
-                  </span>
-                  <span className="mono" style={{ fontSize: 12, color: "var(--mute)", letterSpacing: "0.04em" }}>
-                    meses
-                  </span>
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em" }}>
-                  A este ritmo de gasto tus ahorros alcanzan
-                </div>
-                <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
-                  Promedio: {formatCurrency(Math.round(avgMonthlySpending), true)}/mes
-                </div>
-              </div>
-            </div>
-          </ScrollReveal>
-        )}
+        {/* ── Two columns: Cuotas + Recurrentes ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, marginTop: 48 }}>
 
-        {/* ── Two columns: Bloques + Compromisos ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 40, marginTop: 48 }}>
-
-          {/* LEFT: Bloques de vida — horizontal cards */}
+          {/* LEFT: Cuotas activas */}
           <div>
             <div style={{
               display: "flex", alignItems: "baseline", justifyContent: "space-between",
               marginBottom: 16,
             }}>
               <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-                Bloques de vida
+                Cuotas
               </div>
-              {blockList.length > 0 && (
-                <Link href="/blocks" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
-                    {blockList.length} activos →
-                  </span>
-                </Link>
-              )}
+              <Link href="/installments" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+                <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
+                  {instList.length} activas →
+                </span>
+              </Link>
             </div>
-
-            {blockList.length === 0 ? (
-              <div style={{ padding: "16px 0", borderTop: "1px solid var(--hairline)", textAlign: "center" }}>
+            {instList.length === 0 ? (
+              <div style={{ padding: "16px 0", textAlign: "center" }}>
                 <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
-                  Sin bloques
+                  Sin cuotas activas
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 16 }}>
-                  Creá bloques de presupuesto para organizar tus gastos.
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 14 }}>
+                  Registrá compras en cuotas para hacerles seguimiento.
                 </div>
-                <Link href="/blocks" style={{
+                <Link href="/installments" style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "9px 18px 9px 14px", borderRadius: 8,
-                  background: "var(--ink)", color: "var(--inverse)", border: "none",
-                  fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+                  padding: "8px 16px 8px 12px", borderRadius: 8,
+                  background: "var(--surface)", color: "var(--ink)", border: "none",
+                  fontFamily: "inherit", fontSize: 12, fontWeight: 500,
                   cursor: "pointer", textDecoration: "none",
+                  boxShadow: "inset 0 0 0 1px var(--hairline)",
                 }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12">
-                    <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                  Crear bloque
+                  Ver cuotas →
                 </Link>
               </div>
             ) : (
               <motion.div
                 initial="hidden"
                 animate="visible"
-                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } }}
-                style={{ display: "flex", flexDirection: "column", gap: 0, borderTop: "1px solid var(--hairline)" }}
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.12 } } }}
               >
-                {blockList.slice(0, 4).map((block, i) => {
-                  const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
-                  const glyphKind: GlyphKind = BLOCK_GLYPHS[i % BLOCK_GLYPHS.length];
-                  return (
-                    <motion.div
-                      key={block.id}
-                      variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
-                      style={{ borderBottom: "1px solid var(--hairline)" }}
-                    >
-                      <Link href={`/blocks/${block.id}`} style={{
-                        display: "flex", alignItems: "flex-start", gap: 16,
-                        padding: "14px 0", cursor: "pointer", textDecoration: "none",
-                      }} className="row-hover">
-                        <BlockGlyph kind={glyphKind} size={22} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
-                            <div className="body-font" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>
-                              {block.name}
-                            </div>
-                            <span className="mono tnum" style={{ fontSize: 11, color: "var(--ink)", letterSpacing: "0.04em", fontWeight: 500 }}>
-                              {Math.round(pct * 100)}%
-                            </span>
-                          </div>
-                          {block.goal && (
-                            <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.04em", marginBottom: 10 }}>
-                              {block.goal}
-                            </div>
-                          )}
-                          <div style={{ height: 3, background: "var(--hairline2)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
-                            <motion.div
-                              initial={{ width: "0%" }}
-                              animate={{ width: `${pct * 100}%` }}
-                              transition={{ duration: 1.0, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                              style={{ height: "100%", background: "var(--ink)", borderRadius: 99 }}
-                            />
-                          </div>
-                          <div className="tnum mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.04em" }}>
-                            {formatCurrency(block.spent, true)} / {formatCurrency(block.budget, true)} · {block.expenses} mov
-                          </div>
-                        </div>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
+                {instList.slice(0, 4).map((inst, i, arr) => (
+                  <motion.div
+                    key={inst.id}
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+                  >
+                    <InstRow inst={inst} isLast={i === arr.length - 1} />
+                  </motion.div>
+                ))}
               </motion.div>
             )}
-
-            {/* Gasto mensual — bar chart */}
-            <div style={{ marginTop: 40 }}>
-              <div style={{
-                display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                marginBottom: 16,
-              }}>
-                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-                  Gasto mensual
-                </div>
-              </div>
-              {spendingTrend.length > 0 ? (() => {
-                const max = Math.max(...spendingTrend.map(x => x.amount), 1);
-                return (
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 88 }}>
-                    {spendingTrend.map((p, i) => {
-                      const h = Math.max(8, (p.amount / max) * 72);
-                      const isLast = i === spendingTrend.length - 1;
-                      return (
-                        <div key={p.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                          <span className="mono tnum" style={{
-                            fontSize: 9, color: isLast ? "var(--ink)" : "var(--faint)",
-                            letterSpacing: "0.04em", fontWeight: isLast ? 500 : 400,
-                          }}>
-                            {formatCurrency(p.amount, true)}
-                          </span>
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: h }}
-                            transition={{ duration: 0.7, delay: 0.5 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                            style={{
-                              width: "100%", maxWidth: 28, borderRadius: 3,
-                              background: isLast ? "var(--ink)" : "var(--hairline)",
-                              marginTop: "auto",
-                            }}
-                          />
-                          <span className="mono" style={{
-                            fontSize: 9, color: isLast ? "var(--mute)" : "var(--faint)", letterSpacing: "0.04em",
-                          }}>
-                            {p.month.slice(0, 3)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })() : (
-                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "20px 0", textAlign: "center" }}>
-                  Sin datos aún
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* RIGHT: Compromisos — Cuotas + Recurrentes stacked */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
-            {/* Cuotas activas */}
-            <div>
-              <div style={{
-                display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                marginBottom: 16,
-              }}>
-                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-                  Cuotas
+          {/* RIGHT: Recurrentes próximos */}
+          <div>
+            <div style={{
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              marginBottom: 16,
+            }}>
+              <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                Recurrentes
+              </div>
+              <Link href="/recurring" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+                <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
+                  {(recurring ?? []).filter(r => !r.paused).length} activos →
+                </span>
+              </Link>
+            </div>
+            {recurringByDue.length === 0 ? (
+              <div style={{ padding: "16px 0", textAlign: "center" }}>
+                <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
+                  Sin gastos recurrentes
                 </div>
-                <Link href="/installments" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
-                    {instList.length} activas →
-                  </span>
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 14 }}>
+                  Registrá suscripciones, alquiler o servicios que se repiten.
+                </div>
+                <Link href="/recurring" style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "8px 16px 8px 12px", borderRadius: 8,
+                  background: "var(--surface)", color: "var(--ink)", border: "none",
+                  fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+                  cursor: "pointer", textDecoration: "none",
+                  boxShadow: "inset 0 0 0 1px var(--hairline)",
+                }}>
+                  Ver recurrentes →
                 </Link>
               </div>
-              {instList.length === 0 ? (
-                <div style={{ padding: "16px 0", textAlign: "center" }}>
-                  <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
-                    Sin cuotas activas
-                  </div>
-                  <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 14 }}>
-                    Registrá compras en cuotas para hacerles seguimiento.
-                  </div>
-                  <Link href="/installments" style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    padding: "8px 16px 8px 12px", borderRadius: 8,
-                    background: "var(--surface)", color: "var(--ink)", border: "none",
-                    fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-                    cursor: "pointer", textDecoration: "none",
-                    boxShadow: "inset 0 0 0 1px var(--hairline)",
-                  }}>
-                    Ver cuotas →
-                  </Link>
-                </div>
-              ) : (
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.12 } } }}
-                >
-                  {instList.slice(0, 4).map((inst, i, arr) => (
-                    <motion.div
-                      key={inst.id}
-                      variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
-                    >
-                      <InstRow inst={inst} isLast={i === arr.length - 1} />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </div>
-
-            {/* Recurrentes próximos */}
-            <div>
-              <div style={{
-                display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                marginBottom: 16,
-              }}>
-                <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-                  Recurrentes
-                </div>
-                <Link href="/recurring" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
-                    {(recurring ?? []).filter(r => !r.paused).length} activos →
-                  </span>
-                </Link>
-              </div>
-              {recurringByDue.length === 0 ? (
-                <div style={{ padding: "16px 0", textAlign: "center" }}>
-                  <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
-                    Sin gastos recurrentes
-                  </div>
-                  <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 14 }}>
-                    Registrá suscripciones, alquiler o servicios que se repiten.
-                  </div>
-                  <Link href="/recurring" style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    padding: "8px 16px 8px 12px", borderRadius: 8,
-                    background: "var(--surface)", color: "var(--ink)", border: "none",
-                    fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-                    cursor: "pointer", textDecoration: "none",
-                    boxShadow: "inset 0 0 0 1px var(--hairline)",
-                  }}>
-                    Ver recurrentes →
-                  </Link>
-                </div>
-              ) : (
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.14 } } }}
-                >
-                  {recurringByDue.map((r, i, arr) => (
-                    <motion.div
-                      key={r.id}
-                      variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
-                    >
-                      <RecRow r={r} isLast={i === arr.length - 1} />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </div>
+            ) : (
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.14 } } }}
+              >
+                {recurringByDue.map((r, i, arr) => (
+                  <motion.div
+                    key={r.id}
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+                  >
+                    <RecRow r={r} isLast={i === arr.length - 1} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
           </div>
         </div>
 
-        {/* ── Hoy ── */}
+        {/* ── Bloques: Horizontal scroll ── */}
         <div style={{ marginTop: 48 }}>
           <div style={{
             display: "flex", alignItems: "baseline", justifyContent: "space-between",
             marginBottom: 16,
           }}>
             <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-              Hoy · {txList.length} {txList.length === 1 ? "movimiento" : "movimientos"}
+              Bloques de vida
+            </div>
+            {blockList.length > 0 && (
+              <Link href="/blocks" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
+                <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
+                  {blockList.length} activos →
+                </span>
+              </Link>
+            )}
+          </div>
+
+          {blockList.length === 0 ? (
+            <div style={{ padding: "16px 0", borderTop: "1px solid var(--hairline)", textAlign: "center" }}>
+              <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
+                Sin bloques
+              </div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 16 }}>
+                Creá bloques de presupuesto para organizar tus gastos.
+              </div>
+              <Link href="/blocks" style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "9px 18px 9px 14px", borderRadius: 8,
+                background: "var(--ink)", color: "var(--inverse)", border: "none",
+                fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+                cursor: "pointer", textDecoration: "none",
+              }}>
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                  <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+                Crear bloque
+              </Link>
+            </div>
+          ) : (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } }}
+              style={{
+                display: "flex", flexDirection: "row", overflowX: "auto",
+                scrollSnapType: "x mandatory", paddingBottom: 8,
+              }}
+            >
+              {blockList.slice(0, 8).map((block, i) => {
+                const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
+                const glyphKind: GlyphKind = BLOCK_GLYPHS[i % BLOCK_GLYPHS.length];
+                return (
+                  <Link
+                    key={block.id}
+                    href={`/blocks/${block.id}`}
+                    style={{
+                      flex: '0 0 142px', scrollSnapAlign: 'start',
+                      borderLeft: i === 0 ? 'none' : '1px solid var(--hairline)',
+                      paddingLeft: i === 0 ? 0 : 16,
+                      paddingRight: 16,
+                      textDecoration: 'none',
+                      boxSizing: 'border-box', minHeight: 116,
+                      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <BlockGlyph kind={glyphKind} size={20} />
+                      <span className="mono tnum" style={{ fontSize: 9, color: 'var(--faint)' }}>
+                        {Math.round(pct * 100)}%
+                      </span>
+                    </div>
+                    <div>
+                      <div className="body-font" style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: 'var(--ink)' }}>
+                        {block.name}
+                      </div>
+                      <div style={{ height: 1, background: 'var(--hairline)', marginBottom: 8, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct * 100}%`, height: 1, background: 'var(--ink)' }} />
+                      </div>
+                      <div className="tnum mono" style={{ fontSize: 9, color: 'var(--mute)' }}>
+                        <AnimatedNumber value={block.spent} prefix="$" />{' / '}
+                        <AnimatedNumber value={block.budget} prefix="$" />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
+
+        {/* ── Movimientos del período ── */}
+        <div style={{ marginTop: 48 }}>
+          <div style={{
+            display: "flex", alignItems: "baseline", justifyContent: "space-between",
+            marginBottom: 16,
+          }}>
+            <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+              {period === "semana" ? `Últimos 7 días · ${filteredTx.length} ${filteredTx.length === 1 ? "movimiento" : "movimientos"}`
+               : `Este mes · ${filteredTx.length} ${filteredTx.length === 1 ? "movimiento" : "movimientos"}`}
             </div>
             <Link href="/transactions" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
               <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>Ver todo →</span>
             </Link>
           </div>
-          {txList.length === 0 ? (
+          {filteredTx.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -754,10 +719,10 @@ export function DashboardShell({
               style={{ padding: "32px 0", borderTop: "1px solid var(--hairline)" }}
             >
               <div className="body-font" style={{ fontSize: 14, color: "var(--mute)", letterSpacing: "-0.005em", marginBottom: 8 }}>
-                Sin movimientos hoy
+                Sin movimientos
               </div>
               <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em", marginBottom: 16 }}>
-                Usá el botón Anotar o el atajo ⌘N para agregar tu primer gasto o ingreso.
+                No hay movimientos en este período.
               </div>
               <motion.button
                 onClick={() => openCapture("expense")}
@@ -786,7 +751,7 @@ export function DashboardShell({
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } } }}
               style={{ borderTop: "1px solid var(--hairline)" }}
             >
-              {txList.slice(0, 8).map((tx, i, arr) => {
+              {filteredTx.slice(0, 5).map((tx, i, arr) => {
                 const isOpt = tx.id.startsWith("opt-");
                 const glyphKind: GlyphKind = (CATEGORY_GLYPH[tx.category] as GlyphKind | undefined) ?? "Home";
                 return (

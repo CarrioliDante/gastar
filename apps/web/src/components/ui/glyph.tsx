@@ -1,8 +1,8 @@
 // Re-exports BlockGlyph from primitives for backward compat
-export { BlockGlyph as Glyph, toGlyphKind, type GlyphKind } from "@/components/ui/primitives";
+export { BlockGlyph as Glyph, toGlyphKind, type GlyphKind, type TablerGlyphKind } from "@/components/ui/primitives";
 
 // Map transaction category names → GlyphKind (Tabler icons)
-export const CATEGORY_GLYPH: Record<string, import("@/components/ui/primitives").GlyphKind> = {
+export const CATEGORY_GLYPH: Record<string, import("@/components/ui/primitives").TablerGlyphKind> = {
   // Comida
   Food:           "ToolsKitchen2",
   Comida:         "ToolsKitchen2",

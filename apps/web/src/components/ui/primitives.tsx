@@ -10,11 +10,12 @@ import {
   IconUsers, IconDog, IconGlobe, IconMap, IconDeviceMobile, IconDeviceLaptop,
   type Icon as TablerIcon,
 } from "@tabler/icons-react";
+import { AnimatedNumber } from "@/components/motion/animated-number";
 
 // ─────────────────────────────────────────────────────────────
 // BlockGlyph — Tabler icons (36 curated for life blocks)
 // ─────────────────────────────────────────────────────────────
-export type GlyphKind =
+export type TablerGlyphKind =
   // Vivienda
   | "Home" | "Building" | "Key" | "Bulb" | "Flame" | "Droplet"
   // Transporte
@@ -28,7 +29,9 @@ export type GlyphKind =
   // Social & Tech
   | "Users" | "Dog" | "Globe" | "Map" | "DeviceMobile" | "DeviceLaptop";
 
-const ICON_MAP: Record<GlyphKind, TablerIcon> = {
+export type GlyphKind = TablerGlyphKind;
+
+const ICON_MAP: Record<TablerGlyphKind, TablerIcon> = {
   Home: IconHome, Building: IconBuilding, Key: IconKey, Bulb: IconBulb, Flame: IconFlame, Droplet: IconDroplet,
   Car: IconCar, Bike: IconBike, Plane: IconPlane, Train: IconTrain, Bus: IconBus, GasStation: IconGasStation,
   Heart: IconHeart, Activity: IconActivity, Barbell: IconBarbell, Apple: IconApple, FirstAidKit: IconFirstAidKit, Run: IconRun,
@@ -38,16 +41,13 @@ const ICON_MAP: Record<GlyphKind, TablerIcon> = {
 };
 
 // Maps legacy icon names (old custom SVG values) to new GlyphKind
-const LEGACY: Record<string, GlyphKind> = {
+const LEGACY: Record<string, TablerGlyphKind> = {
   house: "Home", car: "Car", bike: "Bike", plane: "Plane", globe: "Globe", person: "Users",
-  circle: "Home", dot: "Home", square: "Home", diamond: "Home", arc: "Home",
-  line: "Home", cross: "Heart", half: "Home", ring: "Home", triangle: "Home",
-  bar: "Briefcase", grid: "Home",
 };
 
 export function toGlyphKind(icon: string): GlyphKind {
-  if (icon in ICON_MAP) return icon as GlyphKind;
-  return LEGACY[icon] ?? "Home";
+  if (icon in ICON_MAP) return icon as TablerGlyphKind;
+  return (LEGACY[icon]) ?? "Home";
 }
 
 export function BlockGlyph({
@@ -61,12 +61,13 @@ export function BlockGlyph({
   color?: string;
   stroke?: number;
 }) {
+  const glyphColor = color ?? "var(--ink)";
   const IconComponent = ICON_MAP[kind] ?? IconHome;
   return (
     <IconComponent
       size={size}
       stroke={stroke}
-      color={color ?? "var(--ink)"}
+      color={glyphColor}
       style={{ display: "block", flexShrink: 0 }}
     />
   );
@@ -387,7 +388,7 @@ export function Stat({
         <span>
           {isNeg && <span style={{ color: "var(--faint)" }}>−</span>}
           {sign && !isNeg && <span style={{ color: "var(--faint)" }}>+</span>}
-          {typeof value === "string" ? value : formatted}
+          {typeof value === "string" ? value : <AnimatedNumber value={absVal as number} decimals={decimals} />}
           {suffix && (
             <span style={{ color: "var(--faint)", fontSize: size * 0.45, fontWeight: 400 }}>{suffix}</span>
           )}

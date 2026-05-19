@@ -5,59 +5,91 @@ import { motion, AnimatePresence } from "motion/react";
 import { useCreateBlock } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { useNumberInput } from "@/hooks/use-number-input";
-import { BlockGlyph, type GlyphKind } from "@/components/ui/primitives";
+import { BlockGlyph, type TablerGlyphKind } from "@/components/ui/primitives";
 
-const ALL_GLYPHS: { kind: GlyphKind; label: string }[] = [
-  // Vivienda
-  { kind: "Home",          label: "Casa"      },
-  { kind: "Building",      label: "Edificio"  },
-  { kind: "Key",           label: "Llaves"    },
-  { kind: "Bulb",          label: "Luz"       },
-  { kind: "Flame",         label: "Gas"       },
-  { kind: "Droplet",       label: "Agua"      },
-  // Transporte
-  { kind: "Car",           label: "Auto"      },
-  { kind: "Bike",          label: "Bici"      },
-  { kind: "Plane",         label: "Vuelos"    },
-  { kind: "Train",         label: "Tren"      },
-  { kind: "Bus",           label: "Micro"     },
-  { kind: "GasStation",    label: "Nafta"     },
-  // Salud
-  { kind: "Heart",         label: "Salud"     },
-  { kind: "Activity",      label: "Actividad" },
-  { kind: "Barbell",       label: "Gym"       },
-  { kind: "Apple",         label: "Dieta"     },
-  { kind: "FirstAidKit",   label: "Médico"    },
-  { kind: "Run",           label: "Deporte"   },
-  // Comida & Compras
-  { kind: "Coffee",        label: "Café"      },
-  { kind: "ToolsKitchen2", label: "Cocina"    },
-  { kind: "ShoppingBag",   label: "Compras"   },
-  { kind: "Pizza",         label: "Comidas"   },
-  { kind: "Coins",         label: "Efectivo"  },
-  { kind: "CreditCard",    label: "Tarjeta"   },
-  // Trabajo & Ocio
-  { kind: "Briefcase",     label: "Trabajo"   },
-  { kind: "TrendingUp",    label: "Inversión" },
-  { kind: "Music",         label: "Música"    },
-  { kind: "Book",          label: "Libros"    },
-  { kind: "Movie",         label: "Cine"      },
-  { kind: "Camera",        label: "Fotos"     },
-  // Social & Tech
-  { kind: "Users",         label: "Familia"   },
-  { kind: "Dog",           label: "Mascota"   },
-  { kind: "Globe",         label: "Mundial"   },
-  { kind: "Map",           label: "Turismo"   },
-  { kind: "DeviceMobile",  label: "Celular"   },
-  { kind: "DeviceLaptop",  label: "Tech"      },
+interface IconCategory {
+  label: string;
+  icons: { kind: TablerGlyphKind; label: string }[];
+}
+
+const ICON_CATEGORIES: IconCategory[] = [
+  {
+    label: "Vivienda",
+    icons: [
+      { kind: "Home", label: "Home" },
+      { kind: "Building", label: "Building" },
+      { kind: "Key", label: "Key" },
+      { kind: "Bulb", label: "Bulb" },
+      { kind: "Flame", label: "Flame" },
+      { kind: "Droplet", label: "Droplet" },
+    ],
+  },
+  {
+    label: "Transporte",
+    icons: [
+      { kind: "Car", label: "Car" },
+      { kind: "Bike", label: "Bike" },
+      { kind: "Plane", label: "Plane" },
+      { kind: "Train", label: "Train" },
+      { kind: "Bus", label: "Bus" },
+      { kind: "GasStation", label: "Gas Station" },
+    ],
+  },
+  {
+    label: "Salud",
+    icons: [
+      { kind: "Heart", label: "Heart" },
+      { kind: "Activity", label: "Activity" },
+      { kind: "Barbell", label: "Barbell" },
+      { kind: "Apple", label: "Apple" },
+      { kind: "FirstAidKit", label: "First Aid" },
+      { kind: "Run", label: "Run" },
+    ],
+  },
+  {
+    label: "Comida y Compras",
+    icons: [
+      { kind: "Coffee", label: "Coffee" },
+      { kind: "ToolsKitchen2", label: "Kitchen" },
+      { kind: "ShoppingBag", label: "Shopping" },
+      { kind: "Pizza", label: "Pizza" },
+      { kind: "Coins", label: "Coins" },
+      { kind: "CreditCard", label: "Card" },
+    ],
+  },
+  {
+    label: "Trabajo y Ocio",
+    icons: [
+      { kind: "Briefcase", label: "Briefcase" },
+      { kind: "TrendingUp", label: "Trending" },
+      { kind: "Music", label: "Music" },
+      { kind: "Book", label: "Book" },
+      { kind: "Movie", label: "Movie" },
+      { kind: "Camera", label: "Camera" },
+    ],
+  },
+  {
+    label: "Social y Tech",
+    icons: [
+      { kind: "Users", label: "Users" },
+      { kind: "Dog", label: "Dog" },
+      { kind: "Globe", label: "Globe" },
+      { kind: "Map", label: "Map" },
+      { kind: "DeviceMobile", label: "Mobile" },
+      { kind: "DeviceLaptop", label: "Laptop" },
+    ],
+  },
 ];
 
+const QUICK_ICONS: TablerGlyphKind[] = ["Home", "Car", "ToolsKitchen2", "CreditCard", "TrendingUp"];
+
 export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [glyph, setGlyph]   = useState<GlyphKind>("Home");
+  const [glyph, setGlyph]   = useState<TablerGlyphKind>("Home");
   const [name, setName]     = useState("");
   const [budget, setBudget] = useState("");
   const [goal, setGoal]     = useState("");
   const [saved, setSaved]   = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const { symbol, currency } = useCurrency();
   const createBlock = useCreateBlock();
   const num = useNumberInput({ value: budget, onChange: setBudget, currency, decimals: 0 });
@@ -72,12 +104,17 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
 
   const canSave = name.trim().length > 0;
 
+  const createFd = (n: string, i: string, b: number) => {
+    const fd = new FormData();
+    fd.set("name", n);
+    fd.set("icon", i);
+    fd.set("budget", String(b));
+    return fd;
+  };
+
   const save = () => {
     if (!canSave) return;
-    const fd = new FormData();
-    fd.set("name", name.trim());
-    fd.set("icon", glyph);
-    fd.set("budget", String(num.numericValue || 0));
+    const fd = createFd(name.trim(), glyph, num.numericValue || 0);
     if (goal.trim()) fd.set("goal", goal.trim());
     createBlock.mutate(fd, {
       onSuccess: () => {
@@ -86,6 +123,12 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
       },
     });
   };
+
+  const selectQuickIcon = (kind: TablerGlyphKind) => {
+    setGlyph(kind);
+    setShowPicker(false);
+  };
+
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose();
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
@@ -109,10 +152,11 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
         onMouseDown={e => e.stopPropagation()}
         onKeyDown={onKey}
         style={{
-          width: 480, maxWidth: "92vw",
+          width: 520, maxWidth: "92vw", maxHeight: "80vh",
           background: "var(--bg)", borderRadius: 16,
           boxShadow: "0 28px 80px rgba(0,0,0,0.32), 0 0 0 1px var(--hairline)",
           overflow: "hidden",
+          display: "flex", flexDirection: "column",
           animation: "gp-rise 280ms cubic-bezier(.2,.85,.2,1)",
         }}
       >
@@ -155,138 +199,177 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
               </div>
             </motion.div>
           ) : (
-            <motion.div key="form" initial={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
-              {/* Header */}
-              <div style={{ padding: "18px 22px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-                  Nuevo bloque
-                </span>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <span className="kbd">esc</span>
-                  <span className="kbd">⌘↵ guardar</span>
+            <motion.div key="form" initial={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
+              style={{ display: "flex", flexDirection: "column", maxHeight: "80vh", overflow: "hidden" }}
+            >
+              <div style={{ overflowY: "auto", flex: 1 }}>
+                {/* Header */}
+                <div style={{ padding: "18px 22px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                    Nuevo bloque
+                  </span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <span className="kbd">esc</span>
+                    <span className="kbd">⌘↵ guardar</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Glyph picker */}
-              <div style={{ padding: "18px 22px 0" }}>
-                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10 }}>
-                  Ícono
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
-                  {ALL_GLYPHS.map(g => (
+                {/* Quick icons — 5 + 1 empty slot */}
+                <div style={{ padding: "16px 22px 0" }}>
+                  <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10 }}>
+                    Ícono
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {QUICK_ICONS.map(kind => (
+                      <button
+                        key={kind}
+                        onClick={() => selectQuickIcon(kind)}
+                        style={{
+                          width: 44, height: 44, borderRadius: 10, border: "none", cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: glyph === kind && !showPicker ? "var(--ink)" : "var(--surface)",
+                          boxShadow: `inset 0 0 0 1px ${glyph === kind && !showPicker ? "transparent" : "var(--hairline)"}`,
+                          transition: "all 140ms ease",
+                        }}
+                      >
+                        <BlockGlyph kind={kind} size={18} color={glyph === kind && !showPicker ? "var(--inverse)" : "var(--ink)"} />
+                      </button>
+                    ))}
                     <button
-                      key={g.kind}
-                      onClick={() => setGlyph(g.kind)}
-                      title={g.label}
+                      onClick={() => setShowPicker(!showPicker)}
                       style={{
-                        display: "flex", flexDirection: "column", alignItems: "center",
-                        justifyContent: "center", gap: 5, padding: "10px 4px",
-                        borderRadius: 8, border: "none", cursor: "pointer",
-                        background: glyph === g.kind ? "var(--ink)" : "var(--surface)",
-                        boxShadow: `inset 0 0 0 1px ${glyph === g.kind ? "transparent" : "var(--hairline)"}`,
+                        width: 44, height: 44, borderRadius: 10, border: "none", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: showPicker ? "var(--ink)" : "var(--surface)",
+                        boxShadow: `inset 0 0 0 1px ${showPicker ? "transparent" : "var(--hairline)"}`,
                         transition: "all 140ms ease",
                       }}
                     >
-                      <BlockGlyph
-                        kind={g.kind}
-                        size={16}
-                        color={glyph === g.kind ? "var(--inverse)" : "var(--ink)"}
-                      />
-                      <span className="mono" style={{
-                        fontSize: 8, letterSpacing: "0.04em",
-                        color: glyph === g.kind ? "var(--inverse)" : "var(--faint)",
-                        transition: "color 140ms ease",
-                      }}>
-                        {g.label}
-                      </span>
+                      <svg width="16" height="16" viewBox="0 0 16 16">
+                        <line x1="8" y1="3" x2="8" y2="13" stroke={showPicker ? "var(--inverse)" : "var(--faint)"} strokeWidth="1.4" strokeLinecap="round"/>
+                        <line x1="3" y1="8" x2="13" y2="8" stroke={showPicker ? "var(--inverse)" : "var(--faint)"} strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
                     </button>
-                  ))}
+                  </div>
                 </div>
+
+                {/* Collapsible full icon picker */}
+                {showPicker && (
+                  <div style={{ padding: "12px 22px 0" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {ICON_CATEGORIES.map(cat => (
+                        <div key={cat.label}>
+                          <div className="mono" style={{ fontSize: 8, color: "var(--mute)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>
+                            {cat.label}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4 }}>
+                            {cat.icons.map(ic => (
+                              <button
+                                key={ic.kind}
+                                onClick={() => selectQuickIcon(ic.kind)}
+                                style={{
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  padding: "6px 2px", borderRadius: 8, border: "none", cursor: "pointer",
+                                  background: glyph === ic.kind ? "var(--ink)" : "var(--surface)",
+                                  boxShadow: `inset 0 0 0 1px ${glyph === ic.kind ? "transparent" : "var(--hairline)"}`,
+                                  transition: "all 140ms ease",
+                                }}
+                              >
+                                <BlockGlyph kind={ic.kind} size={14} color={glyph === ic.kind ? "var(--inverse)" : "var(--ink)"} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fields */}
+                <div style={{ padding: "16px 22px 0", display: "grid", gap: 10 }}>
+                  <div>
+                    <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+                      Nombre
+                    </div>
+                    <input
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="Casa, Viajes, Salud…"
+                      autoFocus
+                      style={{
+                        width: "100%", padding: "9px 12px", borderRadius: 8,
+                        background: "var(--surface)", border: "1px solid var(--hairline)",
+                        outline: "none", fontFamily: "inherit", fontSize: 13,
+                        color: "var(--ink)", letterSpacing: "-0.005em",
+                        boxSizing: "border-box" as const,
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+                      Techo mensual ({symbol}){" "}
+                      <span style={{ opacity: 0.4, textTransform: "none", letterSpacing: 0 }}>Opcional</span>
+                    </div>
+                    <input
+                      ref={num.ref}
+                      value={num.display}
+                      onChange={num.handleChange}
+                      onBlur={num.handleBlur}
+                      placeholder="0"
+                      style={{
+                        width: "100%", padding: "9px 12px", borderRadius: 8,
+                        background: "var(--surface)", border: "1px solid var(--hairline)",
+                        outline: "none", fontFamily: "'Inter Tight', inherit", fontSize: 13,
+                        fontVariantNumeric: "tabular-nums", letterSpacing: "-0.005em",
+                        color: "var(--ink)", boxSizing: "border-box" as const,
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+                      Descripción{" "}
+                      <span style={{ opacity: 0.4, textTransform: "none", letterSpacing: 0 }}>Opcional</span>
+                    </div>
+                    <input
+                      value={goal}
+                      onChange={e => setGoal(e.target.value)}
+                      placeholder="Para viajes, reservas de emergencia…"
+                      style={{
+                        width: "100%", padding: "9px 12px", borderRadius: 8,
+                        background: "var(--surface)", border: "1px solid var(--hairline)",
+                        outline: "none", fontFamily: "inherit", fontSize: 13,
+                        color: "var(--ink)", letterSpacing: "-0.005em",
+                        boxSizing: "border-box" as const,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Error */}
+                {createBlock.isError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ padding: "0 22px" }}
+                  >
+                    <div style={{
+                      padding: "9px 12px", borderRadius: 8,
+                      background: "rgba(0,0,0,0.05)",
+                      fontSize: 12, color: "var(--ink)",
+                      fontFamily: "inherit", letterSpacing: "-0.005em",
+                    }}>
+                      {createBlock.error?.message || "Algo salió mal. Intentá de nuevo."}
+                    </div>
+                  </motion.div>
+                )}
               </div>
 
-              {/* Fields */}
-              <div style={{ padding: "16px 22px 0", display: "grid", gap: 10 }}>
-                <div>
-                  <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-                    Nombre
-                  </div>
-                  <input
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Casa, Viajes, Salud…"
-                    autoFocus
-                    style={{
-                      width: "100%", padding: "9px 12px", borderRadius: 8,
-                      background: "var(--surface)", border: "1px solid var(--hairline)",
-                      outline: "none", fontFamily: "inherit", fontSize: 13,
-                      color: "var(--ink)", letterSpacing: "-0.005em",
-                      boxSizing: "border-box" as const,
-                    }}
-                  />
-                </div>
-                <div>
-                  <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-                    Techo mensual ({symbol}){" "}
-                    <span style={{ opacity: 0.4, textTransform: "none", letterSpacing: 0 }}>Opcional</span>
-                  </div>
-                  <input
-                    ref={num.ref}
-                    value={num.display}
-                    onChange={num.handleChange}
-                    onBlur={num.handleBlur}
-                    placeholder="0"
-                    style={{
-                      width: "100%", padding: "9px 12px", borderRadius: 8,
-                      background: "var(--surface)", border: "1px solid var(--hairline)",
-                      outline: "none", fontFamily: "'Inter Tight', inherit", fontSize: 13,
-                      fontVariantNumeric: "tabular-nums", letterSpacing: "-0.005em",
-                      color: "var(--ink)", boxSizing: "border-box" as const,
-                    }}
-                  />
-                </div>
-                <div>
-                  <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-                    Descripción{" "}
-                    <span style={{ opacity: 0.4, textTransform: "none", letterSpacing: 0 }}>Opcional</span>
-                  </div>
-                  <input
-                    value={goal}
-                    onChange={e => setGoal(e.target.value)}
-                    placeholder="Para viajes, reservas de emergencia…"
-                    style={{
-                      width: "100%", padding: "9px 12px", borderRadius: 8,
-                      background: "var(--surface)", border: "1px solid var(--hairline)",
-                      outline: "none", fontFamily: "inherit", fontSize: 13,
-                      color: "var(--ink)", letterSpacing: "-0.005em",
-                      boxSizing: "border-box" as const,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Error */}
-              {createBlock.isError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{ padding: "0 22px" }}
-                >
-                  <div style={{
-                    padding: "9px 12px", borderRadius: 8,
-                    background: "rgba(0,0,0,0.05)",
-                    fontSize: 12, color: "var(--ink)",
-                    fontFamily: "inherit", letterSpacing: "-0.005em",
-                  }}>
-                    {createBlock.error?.message || "Algo salió mal. Intentá de nuevo."}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Actions */}
+              {/* Actions — sticky footer */}
               <div style={{
                 padding: "18px 22px 22px", marginTop: 14,
                 display: "flex", justifyContent: "space-between", alignItems: "center",
                 borderTop: "1px solid var(--hairline)",
+                flexShrink: 0,
               }}>
                 <button onClick={onClose} style={{
                   background: "none", border: "none", cursor: "pointer",

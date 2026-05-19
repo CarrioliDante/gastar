@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useInstallments } from "@/hooks/queries";
 import { useCreateInstallment, usePayInstallment, useDeleteInstallment, useUpdateInstallment } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
+import { Stat } from "@/components/ui/primitives";
 import { parseNumeric } from "@/hooks/use-number-input";
 import { springGentle } from "@/components/motion/presets";
 import type { InstallmentRow } from "@/hooks/queries";
@@ -135,102 +136,135 @@ function InstRowItem({ item }: { item: InstRow }) {
 
   const paidCount = item.total_installments - item.remaining;
   const pct = paidCount / item.total_installments;
-  const r = 18, c = 2 * Math.PI * r;
   const isOpt = item.id.startsWith("opt-");
   const isDone = item.remaining === 0;
 
-  if (editing) {
-    return (
-      <EditInstallmentForm
-        item={item}
-        paidCount={paidCount}
-        onSave={(name, monthlyAmount, paidInstallments) => {
-          upd.mutate(
-            { id: item.id, name, monthlyAmount, paidInstallments },
-            { onSuccess: () => setEditing(false) },
-          );
-        }}
-        onCancel={() => setEditing(false)}
-        isPending={upd.isPending}
-        error={upd.error?.message}
-      />
-    );
+  const monthAbbrs = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const currentMonthIdx = new Date().getMonth();
+  const nextDueStr = item.next_due.toLowerCase();
+  let nextDueMonthIdx = -1;
+  for (const abbr of monthAbbrs) {
+    if (nextDueStr.startsWith(abbr)) {
+      nextDueMonthIdx = monthAbbrs.indexOf(abbr);
+      break;
+    }
   }
+  const paidThisPeriod = nextDueMonthIdx >= 0 && nextDueMonthIdx !== currentMonthIdx;
 
   return (
-    <div className="row-hover" style={{
-      display: "flex", alignItems: "center", gap: 16,
-      padding: "18px 0", borderBottom: "1px solid var(--hairline)",
-      opacity: isOpt ? 0.55 : 1,
-      transition: "opacity 200ms",
-    }}>
-      {/* Radial mini */}
-      <div style={{ position: "relative", flexShrink: 0 }}>
-        <svg width={40} height={40} style={{ transform: "rotate(-90deg)" }}>
-          <circle cx={20} cy={20} r={r} fill="none" stroke="var(--hairline2)" strokeWidth={1.4} />
-          <circle cx={20} cy={20} r={r} fill="none" stroke="var(--ink)" strokeWidth={1.4}
-            strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
-        </svg>
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span className="mono" style={{ fontSize: 9, color: "var(--ink)", fontWeight: 500 }}>
-            {Math.round(pct * 100)}
-          </span>
-        </div>
-      </div>
+    <AnimatePresence mode="popLayout" initial={false}>
+      {editing ? (
+        <motion.div
+          key="edit-form"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          style={{ overflow: "hidden" }}
+        >
+          <EditInstallmentForm
+            item={item}
+            paidCount={paidCount}
+            onSave={(name, monthlyAmount, paidInstallments) => {
+              upd.mutate(
+                { id: item.id, name, monthlyAmount, paidInstallments },
+                { onSuccess: () => setEditing(false) },
+              );
+            }}
+            onCancel={() => setEditing(false)}
+            isPending={upd.isPending}
+            error={upd.error?.message}
+          />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="row"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <div style={{ padding: "18px 0", borderBottom: "1px solid var(--hairline)" }}>
+            <div className="row-hover" style={{
+              display: "flex", alignItems: "center", gap: 16,
+              opacity: isOpt ? 0.55 : 1,
+              transition: "opacity 200ms",
+            }}>
+              {/* Info */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em", marginBottom: 4 }}>
+                  {item.name}
+                </div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em" }}>
+                  {paidCount}/{item.total_installments} pagadas · vence {item.next_due}
+                </div>
+              </div>
 
-      {/* Info */}
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em", marginBottom: 4 }}>
-          {item.name}
-        </div>
-        <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em" }}>
-          {paidCount}/{item.total_installments} pagadas · vence {item.next_due}
-        </div>
-        <div style={{ marginTop: 10, height: 2, background: "var(--hairline)", borderRadius: 99, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${pct * 100}%`, background: "var(--ink)", borderRadius: 99 }} />
-        </div>
-      </div>
+              {/* Amounts */}
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div className="display tnum" style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.025em" }}>
+                  {format(item.monthly)}
+                </div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>/ mes</div>
+              </div>
 
-      {/* Amounts */}
-      <div style={{ textAlign: "right", flexShrink: 0 }}>
-        <div className="display tnum" style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.025em" }}>
-          {format(item.monthly)}
-        </div>
-        <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>/ mes</div>
-      </div>
+              {/* Status badge */}
+              {isDone ? (
+                <span className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", flexShrink: 0 }}>Completo</span>
+              ) : paidThisPeriod ? (
+                <span className="mono" style={{ fontSize: 9, color: "var(--mute)", letterSpacing: "0.06em", flexShrink: 0 }}>Pagada</span>
+              ) : (
+                <button
+                  onClick={() => !isOpt && pay.mutate(item.id)}
+                  disabled={isOpt || pay.isPending}
+                  style={{
+                    padding: "4px 8px", background: "none", border: "none",
+                    cursor: isOpt || pay.isPending ? "default" : "pointer",
+                    fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                    color: pay.isPending ? "var(--faint)" : "var(--mute)",
+                  }}>
+                  {pay.isPending ? "..." : "Pagar cuota"}
+                </button>
+              )}
 
-      {/* Actions */}
-      <button
-        onClick={() => !isOpt && !isDone && pay.mutate(item.id)}
-        disabled={isOpt || isDone || pay.isPending}
-        style={{
-          padding: "7px 14px", borderRadius: 7, border: "none",
-          cursor: isOpt || isDone || pay.isPending ? "default" : "pointer",
-          background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
-          color: isDone || pay.isPending ? "var(--faint)" : "var(--mute)",
-          boxShadow: "inset 0 0 0 1px var(--hairline)", flexShrink: 0,
-        }}>
-        {isDone ? "Completo" : "Pagar cuota"}
-      </button>
+              <button
+                onClick={() => !isOpt && setEditing(true)}
+                disabled={isOpt}
+                title="Editar"
+                style={{
+                  padding: "4px 8px", background: "none", border: "none",
+                  cursor: isOpt ? "default" : "pointer",
+                  fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                  color: "var(--mute)",
+                }}>
+                Editar
+              </button>
 
-      <button
-        onClick={() => !isOpt && setEditing(true)}
-        disabled={isOpt}
-        title="Editar"
-        style={{
-          padding: "7px 12px", borderRadius: 7, border: "none",
-          cursor: isOpt ? "default" : "pointer",
-          background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
-          color: "var(--mute)", boxShadow: "inset 0 0 0 1px var(--hairline)", flexShrink: 0,
-        }}>
-        Editar
-      </button>
+              <button
+                onClick={() => !isOpt && del.mutate(item.id)}
+                disabled={isOpt || del.isPending}
+                title="Eliminar"
+                style={{
+                  padding: "4px 8px", background: "none", border: "none",
+                  cursor: isOpt || del.isPending ? "default" : "pointer",
+                  fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                  color: "var(--mute)", flexShrink: 0,
+                }}>×</button>
+            </div>
 
-      <button
-        onClick={() => !isOpt && del.mutate(item.id)}
-        disabled={isOpt || del.isPending}
-        className="del-btn">×</button>
-    </div>
+            {/* Segmented progress dots */}
+            <div style={{ display: "flex", gap: 2, marginTop: 12 }}>
+              {Array.from({ length: item.total_installments }).map((_, j) => (
+                <div key={j} style={{
+                  flex: 1, height: 3, borderRadius: 99,
+                  background: j < paidCount ? "var(--ink)" : "var(--hairline2)",
+                }} />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -313,7 +347,6 @@ function EditInstallmentForm({
 export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }) {
   const [adding, setAdding] = useState(false);
   const { data: items } = useInstallments(initialItems);
-  const { format } = useCurrency();
 
   const list = items ?? [];
   const totalMonthly = list.reduce((s, i) => s + i.monthly, 0);
@@ -342,18 +375,23 @@ export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }
             Cuotas
           </motion.h1>
         </div>
-        {totalMonthly > 0 && (
-          <div style={{ textAlign: "right" }}>
-            <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.04em" }}>
-              {format(totalMonthly)}
-              <span style={{ color: "var(--faint)", fontSize: 14, fontWeight: 400 }}>/mes</span>
-            </div>
-            <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", marginTop: 4 }}>
-              {format(totalRemaining)} PENDIENTE TOTAL
-            </div>
-          </div>
-        )}
       </header>
+
+      {list.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springGentle, delay: 0.15 }}
+          style={{
+            display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16,
+            padding: "24px 0", borderBottom: "1px solid var(--hairline)",
+          }}
+        >
+          <Stat value={totalMonthly} label="Por mes" prefix="$" decimals={0} />
+          <Stat value={totalRemaining} label="Pendiente total" prefix="$" decimals={0} />
+          <Stat value={list.filter(i => i.remaining > 0).length} label="Activas" decimals={0} />
+        </motion.div>
+      )}
 
       <div style={{ marginTop: 8 }}>
         {adding && <AddForm onDone={() => setAdding(false)} />}

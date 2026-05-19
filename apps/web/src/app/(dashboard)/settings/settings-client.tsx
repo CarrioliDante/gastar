@@ -3,10 +3,108 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useTheme } from "@/components/providers/theme-provider";
+import { useUIStore } from "@/stores/ui";
 import { logout } from "@/app/(auth)/actions";
 import { springGentle } from "@/components/motion/presets";
-import { setMonthlyBudget, updateUserName } from "@/app/actions/settings";
+import { setMonthlyBudget, updateUserName, updateCustomCategories } from "@/app/actions/settings";
 import { useNumberInput } from "@/hooks/use-number-input";
+import type { CustomCategory } from "@/lib/custom-categories";
+
+const GLYPHS = [
+  "circle", "dot", "square", "diamond", "arc",
+  "line", "cross", "half", "ring", "triangle", "bar", "grid",
+] as const;
+
+function GlyphSVG({ kind, size = 16, color }: { kind: string; size?: number; color: string }) {
+  const s = size;
+  const w = Math.max(1, size / 12);
+  const h = s / 2;
+  const inner = (n: number) => s - n;
+  const half = s / 2;
+  switch (kind) {
+    case "circle":
+      return <circle cx={h} cy={h} r={h - w} fill="none" stroke={color} strokeWidth={w} />;
+    case "dot":
+      return <circle cx={h} cy={h} r={s / 3} fill={color} />;
+    case "square":
+      return <rect x={w} y={w} width={inner(w * 2)} height={inner(w * 2)} rx={2} fill="none" stroke={color} strokeWidth={w} />;
+    case "diamond":
+      return <rect x={s * 0.2} y={s * 0.2} width={s * 0.6} height={s * 0.6} fill="none" stroke={color} strokeWidth={w} transform={`rotate(45, ${h}, ${h})`} />;
+    case "arc":
+      return <path d={`M${w} ${s - w} A ${s - w * 2} ${s - w * 2} 0 0 1 ${s - w} ${w}`} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" />;
+    case "line":
+      return <line x1={w} y1={h} x2={s - w} y2={h} stroke={color} strokeWidth={w} strokeLinecap="round" />;
+    case "cross":
+      return (
+        <g>
+          <line x1={h} y1={w} x2={h} y2={s - w} stroke={color} strokeWidth={w} strokeLinecap="round" />
+          <line x1={w} y1={h} x2={s - w} y2={h} stroke={color} strokeWidth={w} strokeLinecap="round" />
+        </g>
+      );
+    case "half":
+      return <path d={`M${h} ${w} A ${h - w} ${h - w} 0 0 1 ${h} ${s - w} Z`} fill={color} />;
+    case "ring":
+      return (
+        <g>
+          <circle cx={h} cy={h} r={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
+          <circle cx={h} cy={h} r={1.3} fill={color} />
+        </g>
+      );
+    case "triangle":
+      return <path d={`M${h} ${w + 1} L${s - w} ${s - w} L${w} ${s - w} Z`} fill="none" stroke={color} strokeWidth={w} strokeLinejoin="round" />;
+    case "bar":
+      return <rect x={w} y={h - 1.5} width={s - w * 2} height={3} rx={1.5} fill={color} />;
+    case "grid":
+      return (
+        <g>
+          <rect x={w} y={w} width={h - w * 1.5} height={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
+          <rect x={h + w / 2} y={w} width={h - w * 1.5} height={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
+          <rect x={w} y={h + w / 2} width={h - w * 1.5} height={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
+          <rect x={h + w / 2} y={h + w / 2} width={h - w * 1.5} height={h - w * 1.5} fill={color} />
+        </g>
+      );
+    default:
+      return <circle cx={h} cy={h} r={h - w} fill="none" stroke={color} strokeWidth={w} />;
+  }
+}
+
+function GlyphPicker({ value, onChange }: { value: string; onChange: (g: string) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      {GLYPHS.map((g) => (
+        <button
+          key={g}
+          onClick={() => onChange(g)}
+          title={g}
+          style={{
+            width: 28, height: 28, borderRadius: 6, padding: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: value === g ? "var(--ink)" : "var(--surface)",
+            border: `1px solid ${value === g ? "var(--ink)" : "var(--hairline)"}`,
+            cursor: "pointer",
+          }}
+        >
+          <GlyphSVG kind={g} size={14} color={value === g ? "var(--inverse)" : "var(--ink)"} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const DEFAULTS: CustomCategory[] = [
+  { id: "comida", label: "Comida", glyph: "circle", type: "expense" },
+  { id: "casa", label: "Casa", glyph: "square", type: "expense" },
+  { id: "transporte", label: "Transporte", glyph: "line", type: "expense" },
+  { id: "ocio", label: "Ocio", glyph: "arc", type: "expense" },
+  { id: "subs", label: "Subscripciones", glyph: "ring", type: "expense" },
+  { id: "salud", label: "Salud", glyph: "cross", type: "expense" },
+  { id: "salario", label: "Salario", glyph: "dot", type: "income" },
+  { id: "freelance", label: "Freelance", glyph: "dot", type: "income" },
+  { id: "devolucion", label: "Devolución", glyph: "dot", type: "income" },
+  { id: "inversion", label: "Inversión", glyph: "dot", type: "income" },
+  { id: "regalo", label: "Regalo", glyph: "dot", type: "income" },
+  { id: "otros", label: "Otros", glyph: "dot", type: "income" },
+];
 
 type Row = { label: string; value: React.ReactNode };
 
@@ -103,14 +201,26 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
-export function SettingsClient({ email, name, monthlyBudget: initialBudget }: { email: string; name: string; monthlyBudget: number }) {
+export function SettingsClient({ email, name, monthlyBudget: initialBudget, customCategories: initialCats }: {
+  email: string; name: string; monthlyBudget: number;
+  customCategories: { expenses: CustomCategory[]; incomes: CustomCategory[] };
+}) {
   const { theme, font, currency, setTheme, setFont, setCurrency } = useTheme();
+  const animationsEnabled = useUIStore((s) => s.animationsEnabled);
+  const setAnimationsEnabled = useUIStore((s) => s.setAnimationsEnabled);
   const [saving, setSaving] = useState(false);
   const [budgetValue, setBudgetValue] = useState(String(initialBudget));
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(name);
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
+  const [categories, setCategories] = useState<CustomCategory[]>(() => [
+    ...initialCats.expenses, ...initialCats.incomes,
+  ]);
+  const [savingCats, setSavingCats] = useState(false);
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [catEditLabel, setCatEditLabel] = useState("");
+  const [catEditGlyph, setCatEditGlyph] = useState("circle");
 
   const displayName = nameValue || email.split("@")[0] || "Usuario";
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -144,6 +254,34 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget }: { 
     fd.set("budget", String(val));
     await setMonthlyBudget(fd);
     setSaving(false);
+  };
+
+  const startCatEdit = (cat: CustomCategory) => {
+    setEditingCat(cat.id);
+    setCatEditLabel(cat.label);
+    setCatEditGlyph(cat.glyph);
+  };
+
+  const commitCatEdit = () => {
+    if (!editingCat) return;
+    setCategories(prev => prev.map(c =>
+      c.id === editingCat ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
+    ));
+    setEditingCat(null);
+  };
+
+  const resetCategories = () => {
+    // Reset confirm is implicit
+    setCategories(DEFAULTS);
+  };
+
+  const saveCategoriesAction = async () => {
+    setSavingCats(true);
+    try {
+      await updateCustomCategories(categories);
+    } finally {
+      setSavingCats(false);
+    }
   };
 
   return (
@@ -286,10 +424,151 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget }: { 
           value: <FontPicker value={font} onChange={f => setFont(f as "sans" | "serif" | "mono")} />,
         },
         {
+          label: "Animaciones",
+          value: <Toggle value={animationsEnabled} onChange={setAnimationsEnabled} />,
+        },
+        {
           label: "Moneda",
           value: <CurrencyPicker value={currency} onChange={c => setCurrency(c as "USD" | "ARS" | "BRL" | "EUR")} />,
         },
       ]} />
+
+      {/* Categorías personalizadas */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...springGentle, delay: 0.25 }}
+        style={{ marginTop: 40 }}
+      >
+        <div className="mono" style={{
+          fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em",
+          textTransform: "uppercase", marginBottom: 12,
+        }}>Categorías personalizadas</div>
+        <div style={{ borderTop: "1px solid var(--hairline)" }}>
+          {/* Expenses */}
+          <div style={{
+            padding: "14px 0 6px", fontSize: 10, color: "var(--faint)",
+            letterSpacing: "0.10em", textTransform: "uppercase",
+            fontFamily: "'Inter Tight', sans-serif",
+          }}>Gastos</div>
+          {categories.filter(c => c.type === "expense").map(cat => (
+            <div key={cat.id} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 0", borderBottom: "1px solid var(--hairline)",
+            }}>
+              {editingCat === cat.id ? (
+                <>
+                  <GlyphPicker value={catEditGlyph} onChange={setCatEditGlyph} />
+                  <input
+                    autoFocus
+                    value={catEditLabel}
+                    onChange={e => setCatEditLabel(e.target.value)}
+                    style={{
+                      flex: 1, padding: "6px 8px", borderRadius: 6,
+                      border: "1px solid var(--hairline)", background: "var(--surface)",
+                      fontFamily: "inherit", fontSize: 13, color: "var(--ink)", outline: "none",
+                    }}
+                  />
+                  <button onClick={commitCatEdit} style={{
+                    padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+                    background: "var(--ink)", color: "var(--inverse)",
+                    fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+                  }}>OK</button>
+                  <button onClick={() => setEditingCat(null)} style={{
+                    padding: "5px 8px", borderRadius: 6, border: "none", cursor: "pointer",
+                    background: "none", fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+                  }}>×</button>
+                </>
+              ) : (
+                <>
+                  <GlyphSVG kind={cat.glyph} size={14} color="var(--ink)" />
+                  <span style={{ flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
+                    {cat.label}
+                  </span>
+                  <button onClick={() => startCatEdit(cat)} style={{
+                    padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
+                    background: "var(--surface)", fontFamily: "inherit", fontSize: 10,
+                    color: "var(--faint)", boxShadow: "inset 0 0 0 1px var(--hairline)",
+                  }}>
+                    Editar
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Incomes */}
+          <div style={{
+            padding: "14px 0 6px", fontSize: 10, color: "var(--faint)",
+            letterSpacing: "0.10em", textTransform: "uppercase",
+            fontFamily: "'Inter Tight', sans-serif",
+          }}>Ingresos</div>
+          {categories.filter(c => c.type === "income").map(cat => (
+            <div key={cat.id} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 0", borderBottom: "1px solid var(--hairline)",
+            }}>
+              {editingCat === cat.id ? (
+                <>
+                  <GlyphPicker value={catEditGlyph} onChange={setCatEditGlyph} />
+                  <input
+                    autoFocus
+                    value={catEditLabel}
+                    onChange={e => setCatEditLabel(e.target.value)}
+                    style={{
+                      flex: 1, padding: "6px 8px", borderRadius: 6,
+                      border: "1px solid var(--hairline)", background: "var(--surface)",
+                      fontFamily: "inherit", fontSize: 13, color: "var(--ink)", outline: "none",
+                    }}
+                  />
+                  <button onClick={commitCatEdit} style={{
+                    padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+                    background: "var(--ink)", color: "var(--inverse)",
+                    fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+                  }}>OK</button>
+                  <button onClick={() => setEditingCat(null)} style={{
+                    padding: "5px 8px", borderRadius: 6, border: "none", cursor: "pointer",
+                    background: "none", fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+                  }}>×</button>
+                </>
+              ) : (
+                <>
+                  <GlyphSVG kind={cat.glyph} size={14} color="var(--ink)" />
+                  <span style={{ flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
+                    {cat.label}
+                  </span>
+                  <button onClick={() => startCatEdit(cat)} style={{
+                    padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
+                    background: "var(--surface)", fontFamily: "inherit", fontSize: 10,
+                    color: "var(--faint)", boxShadow: "inset 0 0 0 1px var(--hairline)",
+                  }}>
+                    Editar
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8, paddingTop: 14, paddingBottom: 4 }}>
+            <button onClick={saveCategoriesAction} disabled={savingCats} style={{
+              padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer",
+              background: savingCats ? "var(--surface)" : "var(--ink)",
+              color: savingCats ? "var(--faint)" : "var(--inverse)",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+            }}>
+              {savingCats ? "..." : "Guardar cambios"}
+            </button>
+            <button onClick={resetCategories} style={{
+              padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer",
+              background: "var(--surface)", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+              boxShadow: "inset 0 0 0 1px var(--hairline)",
+            }}>
+              Restaurar defaults
+            </button>
+          </div>
+        </div>
+      </motion.div>
 
       <Section title="Cuenta" rows={[
         {
