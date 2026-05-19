@@ -17,6 +17,7 @@ import type { RecurringUI } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { Hairline } from '../components/ui/primitives';
 import { BlockGlyph } from '../components/ui/BlockGlyph';
+import { DayPicker } from '../components/ui/DatePickers';
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -93,31 +94,7 @@ const PLAY_ICON = (color: string) => (
   </Svg>
 );
 
-// ── Metric card ────────────────────────────────────────────────
-
-function MetricCard({ value, label, mono }: { value: string | number; label: string; mono?: boolean }) {
-  const { C, fontDisplay, fontMono } = useTheme();
-  return (
-    <View style={{
-      flex: 1, backgroundColor: C.surface, borderRadius: 12,
-      padding: 14, borderWidth: 1, borderColor: C.hairline,
-    }}>
-      <Text style={{
-        fontFamily: fontMono, fontSize: 8, color: C.faint,
-        letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6,
-      }}>
-        {label}
-      </Text>
-      <Text style={{
-        fontFamily: fontDisplay, fontSize: 20, fontWeight: '500',
-        letterSpacing: -0.8, color: C.ink,
-        fontVariant: mono ? ['tabular-nums'] : undefined,
-      }}>
-        {value}
-      </Text>
-    </View>
-  );
-}
+// MetricCard removed — replaced with flat stat layout below
 
 // ── Screen ─────────────────────────────────────────────────────
 
@@ -140,7 +117,7 @@ export default function RecurringScreen() {
   const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formFreq, setFormFreq] = useState('monthly');
-  const [formDay, setFormDay] = useState('');
+  const [formDay, setFormDay] = useState<number | null>(null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -180,14 +157,14 @@ export default function RecurringScreen() {
         amount,
         category: formCategory.trim() || 'Otros',
         frequency: formFreq,
-        dayOfMonth: formDay ? parseInt(formDay, 10) : undefined,
+        dayOfMonth: formDay ?? undefined,
       });
       setShowForm(false);
       setFormName('');
       setFormAmount('');
       setFormCategory('');
       setFormFreq('monthly');
-      setFormDay('');
+      setFormDay(null);
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }
@@ -247,15 +224,21 @@ export default function RecurringScreen() {
             backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
             alignItems: 'center', justifyContent: 'center',
           }}>
-            {showForm ? CHEVRON_LEFT(C.ink) : PLUS(C.ink)}
+            {showForm ? (
+              <Svg width={13} height={13} viewBox="0 0 14 14">
+                <Path d="M3 3l8 8M11 3l-8 8" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+              </Svg>
+            ) : PLUS(C.ink)}
           </Pressable>
-          <Pressable onPress={() => router.back()} style={{
-            width: 34, height: 34, borderRadius: 99,
-            backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {CHEVRON_LEFT(C.ink)}
-          </Pressable>
+          {!showForm && (
+            <Pressable onPress={() => router.back()} style={{
+              width: 34, height: 34, borderRadius: 99,
+              backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {CHEVRON_LEFT(C.ink)}
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -267,7 +250,7 @@ export default function RecurringScreen() {
 
       {/* Create form */}
       {showForm && (
-        <View style={{ marginTop: 16, marginBottom: 8, backgroundColor: C.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.hairline, gap: 10 }}>
+        <View style={{ marginTop: 16, marginBottom: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.hairline, paddingVertical: 16, gap: 10 }}>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>Nuevo recurrente</Text>
           <TextInput
             value={formName}
@@ -316,14 +299,10 @@ export default function RecurringScreen() {
           </View>
 
           {formFreq === 'monthly' && (
-            <TextInput
-              value={formDay}
-              onChangeText={setFormDay}
-              placeholder="Día de débito (1-31, opcional)"
-              placeholderTextColor={C.faint}
-              keyboardType="number-pad"
-              style={{ fontFamily: fontMono, fontSize: 12, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
-            />
+            <View style={{ marginTop: 4 }}>
+              <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Día de débito</Text>
+              <DayPicker value={formDay} onChange={setFormDay} />
+            </View>
           )}
 
           <Pressable
@@ -343,15 +322,30 @@ export default function RecurringScreen() {
         </View>
       )}
 
-      {/* Metrics row */}
+      {/* Metrics row — flat stats, no cards */}
       {items.length > 0 && (
         <View style={{
-          flexDirection: 'row', gap: 10,
+          flexDirection: 'row', gap: 32,
           paddingTop: showForm ? 8 : (isError ? 18 : 24), paddingBottom: 20,
         }}>
-          <MetricCard value={fmt(totalMonthly, { decimals: 0 })} label="Por mes" mono />
-          <MetricCard value={subsCount} label="Suscripciones" />
-          <MetricCard value={servicesCount} label="Servicios" />
+          <View>
+            <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -1, color: C.ink, fontVariant: ['tabular-nums'] }}>
+              {fmt(totalMonthly, { decimals: 0, compact: true })}
+            </Text>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Por mes</Text>
+          </View>
+          <View>
+            <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -1, color: C.ink }}>
+              {subsCount}
+            </Text>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Suscripciones</Text>
+          </View>
+          <View>
+            <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -1, color: C.ink }}>
+              {servicesCount}
+            </Text>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Servicios</Text>
+          </View>
         </View>
       )}
 

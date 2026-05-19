@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet, ViewStyle } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet, ViewStyle, Animated } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { fmt } from '../../lib/format';
 
@@ -135,9 +135,32 @@ export function Amount({
 // ─── Progress bar ─────────────────────────────────────────────
 export function ProgressBar({ value, style }: { value: number; style?: ViewStyle }) {
   const { C } = useTheme();
+  const widthAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(widthAnim, {
+      toValue: Math.min(1, Math.max(0, value)),
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [value, widthAnim]);
+
+  const widthInterpolated = widthAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
+  const isOver = value > 1;
+  const fillColor = isOver ? C.ink : C.ink; // same color for now, monochromatic
+
   return (
     <View style={[{ height: 2, backgroundColor: C.hairline, borderRadius: 99, overflow: 'hidden' }, style]}>
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, value) * 100}%`, backgroundColor: C.ink, borderRadius: 99 }} />
+      <Animated.View style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: widthInterpolated,
+        backgroundColor: fillColor,
+        borderRadius: 99,
+      }} />
     </View>
   );
 }

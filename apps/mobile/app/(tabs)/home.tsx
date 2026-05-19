@@ -86,6 +86,8 @@ export default function HomeScreen() {
   const displayBudget = period === 'semana' ? weekBudget : monthBudget;
   const displayAvailable = period === 'semana' ? weekAvailable : available;
   const displayPct = displayBudget > 0 ? Math.min(1, displaySpend / displayBudget) : 0;
+  const displayPctRaw = displayBudget > 0 ? displaySpend / displayBudget : 0;
+  const isOverBudget = displayPctRaw > 1;
   const totalSaved = goals.reduce((s, g) => s + g.current, 0);
   const totalTarget = goals.reduce((s, g) => s + g.target, 0);
   const totalPct = totalTarget > 0 ? Math.min(1, totalSaved / totalTarget) : 0;
@@ -194,7 +196,7 @@ export default function HomeScreen() {
             <ProgressBar value={displayPct} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
               <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.5 }}>
-                {Math.round(displayPct * 100)}% del presupuesto
+                {Math.round(displayPctRaw * 100)}% del presupuesto{isOverBudget ? ' · excedido' : ''}
               </Text>
               <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
                 {fmt(displayBudget, { decimals: 0, compact: true })} max
@@ -258,6 +260,7 @@ export default function HomeScreen() {
         >
           {blocks.slice(0, 5).map((b, i) => {
             const pct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
+            const pctRaw = b.budget > 0 ? b.spent / b.budget : 0;
             return (
               <View key={b.id}
                 style={{
@@ -270,7 +273,7 @@ export default function HomeScreen() {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <BlockGlyph kind={b.glyph} size={20} color={C.ink} />
                   <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5 }}>
-                    {Math.round(pct * 100)}%
+                    {Math.round(pctRaw * 100)}%
                   </Text>
                 </View>
                 <View style={{ marginTop: 16 }}>
