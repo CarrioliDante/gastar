@@ -13,7 +13,7 @@
 - [x] Server actions throw errores descriptivos en vez de `return;` silencioso
 - [x] Success UI solo en `onSuccess` — sin "guardado" falso
 - [x] FK validation en `blockId` (mobile API + server action web)
-- [ ] Mobile CaptureSheet — mostrar errores de mutation
+- [x] Mobile CaptureSheet — mostrar errores de mutation
 
 ### 1.2 Editar Block ✅
 - [x] Server action `updateBlock(id, { name, budget, icon })`

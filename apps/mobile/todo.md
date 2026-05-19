@@ -11,7 +11,7 @@
 - [x] Campo nombre/nota en CaptureSheet (fallback a categoría si está vacío)
 - [ ] Editar — modal o swipe action
 - [ ] Eliminar — confirmación + optimistic update
-- [ ] Date picker en CaptureSheet (hoy siempre usa today)
+- [x] Date picker en CaptureSheet (hoy siempre usa today)
 
 ### Blocks
 - [x] Crear — CreateBlockModal inline en blocks.tsx
@@ -50,7 +50,7 @@
 
 - [x] Empty state en lista de transacciones ("Sin movimientos" / "Sin resultados")
 - [x] Empty state en lista de bloques ("Sin bloques")
-- [ ] Error handling en mutations (CaptureSheet, forms)
+- [x] Error handling en mutations (CaptureSheet, forms)
 - [ ] Error boundary global
 - [ ] Swipe-to-delete / long-press menu en filas
 - [ ] Pull-to-refresh con feedback visual más claro
