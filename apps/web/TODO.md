@@ -11,12 +11,12 @@
 - [ ] Validar que las cuotas pagadas no excedan el total
 
 ### Recurring
-- [ ] `toggleRecurringPause(id)` — server action que escribe `pausedAt`
-- [ ] Botón pausar/reanudar en cada fila
+- [x] `toggleRecurringPause(id)` — server action que escribe `pausedAt`
+- [x] Botón pausar/reanudar en cada fila
 - [ ] Ícono opcional en Recurring (`icon` field + fallback a categoría)
 
 ### Goals
-- [ ] `updateSavingsGoal(id, data)` — server action + modal de edición
+- [x] `updateSavingsGoal(id, data)` — server action + form inline de edición
 
 ### Blocks
 - [x] `createBlock` / `updateBlock` / `archiveBlock` — completo
@@ -24,8 +24,8 @@
 - [ ] Panel derecho de Blocks: reemplazar trend sintético con lista real de transacciones
 
 ### Settings
-- [ ] Cambiar nombre de usuario — `supabase.auth.updateUser({ data: { full_name } })`
-- [ ] Campo editable en Settings (hoy es solo lectura)
+- [x] Cambiar nombre de usuario — `supabase.auth.updateUser({ data: { full_name } })`
+- [x] Campo editable inline en Settings (hoy es solo lectura)
 - [x] Presupuesto mensual — funcional
 - [x] Toggle dark mode — funcional
 - [x] Selector de moneda — funcional

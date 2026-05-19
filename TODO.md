@@ -51,25 +51,25 @@ Cosas que un usuario nuevo encuentra rotas o incompletas.
 - [x] Shortcut `⌘⇧N` en web — ya existe en `keyboard-shortcuts.tsx`
 - [ ] Tooltip visible en el botón del header
 
-### 3.2 Editar cuota existente (Installments)
-- [ ] Server action `updateInstallment(id, { name, totalAmount, monthlyAmount, paidInstallments })`
-- [ ] Modal de edición en la lista de Installments
+### 3.2 Editar cuota existente (Installments) ✅
+- [x] Server action `updateInstallment(id, { name, monthlyAmount, paidInstallments })`
+- [x] Form inline de edición en la lista de Installments
 
-### 3.3 Pausar / reanudar Recurring
-- [ ] Server action `toggleRecurringPause(id)` — escribe `pausedAt`
-- [ ] Botón en fila de la lista (campo `pausedAt` ya existe en schema)
+### 3.3 Pausar / reanudar Recurring ✅
+- [x] Server action `toggleRecurringPause(id)` — escribe `pausedAt`
+- [x] Botón en fila de la lista (campo `pausedAt` ya existe en schema)
 
-### 3.4 Editar meta de ahorro (Goals)
-- [ ] Server action `updateSavingsGoal(id, { name, targetAmount, deadline })`
-- [ ] Modal de edición en Goals
+### 3.4 Editar meta de ahorro (Goals) ✅
+- [x] Server action `updateSavingsGoal(id, { name, targetAmount, deadline })`
+- [x] Form inline de edición en Goals
 
-### 3.5 Detalle de transacciones por bloque
-- [ ] Query `getTransactionsByBlock(blockId, userId)` en `lib/queries/`
-- [ ] Reemplazar trend sintético en el panel derecho de Blocks con lista real
+### 3.5 Detalle de transacciones por bloque ✅
+- [x] Query `getTransactionsByBlock(blockId, userId)` en `lib/queries/`
+- [x] Reemplazar trend sintético en el panel derecho de Blocks con lista real
 
-### 3.6 Settings — cambiar nombre de usuario
-- [ ] `supabase.auth.updateUser({ data: { full_name } })` en server action
-- [ ] Campo editable en Settings
+### 3.6 Settings — cambiar nombre de usuario ✅
+- [x] `supabase.auth.updateUser({ data: { full_name } })` en server action
+- [x] Campo editable inline en Settings (avatar section)
 
 ---
 
@@ -122,19 +122,19 @@ Cosas que un usuario nuevo encuentra rotas o incompletas.
 
 ## Fase 5 — Features de producto
 
-### 5.1 Smart categorization
-- [ ] Tabla de patrones en `lib/categorization.ts` — regex por comercio
-- [ ] Aplicar en `createTransaction` server action como pre-fill
-- [ ] UI: sugerencia visual que el usuario puede overridear
+### 5.1 Smart categorization ✅
+- [x] `lib/categorization.ts` — 50+ patrones regex en 8 categorías
+- [x] Auto-selección client-side en QuickExpense (sin sobreescribir elección manual)
+- [x] Badge "auto" en el chip seleccionado cuando la categoría es inferida
 
-### 5.2 Runway calculator
-- [ ] Cálculo en `lib/queries/stats.ts` — promedio gasto 3 meses vs saldo Goals
-- [ ] Widget en Dashboard — "a este ritmo tus ahorros duran N meses"
+### 5.2 Runway calculator ✅
+- [x] Cálculo client-side en dashboard-shell — avg últimos 3 meses vs balance.total
+- [x] Widget en Dashboard con runway en meses + promedio mensual
 
-### 5.3 Zen Monday Digest
-- [ ] Banner lunes en Dashboard con resumen semanal
-- [ ] Lógica: solo visible el lunes, `UserSetting` para no repetir
-- [ ] Copy minimalista
+### 5.3 Zen Monday Digest ✅
+- [x] Banner lunes en Dashboard con resumen semanal (spending + top category)
+- [x] Lógica: solo visible el lunes, `UserSetting` `zenDigestDate` para no repetir
+- [x] Dismiss con × → server action persiste la fecha, state local oculta inmediato
 
 ### 5.4 Dólar blue / MEP
 - [ ] Fetch cotización desde `dolarapi.com` (API pública, sin auth)
