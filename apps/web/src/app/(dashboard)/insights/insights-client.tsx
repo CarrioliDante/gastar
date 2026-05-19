@@ -100,31 +100,30 @@ function SpendingDonut({ categories }: { categories: Category[] }) {
   }
 
   const r = 44;
-  const strokeW = 22;
+  const strokeW = 18;
   const c = 2 * Math.PI * r;
-  // Higher opacity values so all slices are clearly visible
-  const opacities = [1, 0.82, 0.65, 0.48, 0.32, 0.18];
+  const opacities = [1, 0.62, 0.36, 0.18, 0.09, 0.04];
+  const gap = 2; // px gap between slices
 
   let offset = 0;
   return (
     <div style={{ display: "flex", gap: 24, alignItems: "center", marginTop: 18 }}>
       <svg width={108} height={108} viewBox="0 0 108 108" style={{ flexShrink: 0 }}>
         {slices.map((slice, i) => {
-          const sliceLen = (slice.amount / total) * c;
+          const sliceLen = Math.max(0, (slice.amount / total) * c - gap);
           const dashOffset = -offset;
-          offset += sliceLen;
+          offset += sliceLen + gap;
           return (
             <circle
-              key={slice.name}
+              key={slice.name + '-' + i}
               cx={54} cy={54} r={r}
               fill="none"
               stroke="var(--ink)"
               strokeWidth={strokeW}
               strokeDasharray={`${sliceLen} ${c}`}
               strokeDashoffset={dashOffset}
-              opacity={opacities[i]}
+              opacity={opacities[i] ?? 0.04}
               transform="rotate(-90 54 54)"
-              style={{ transition: "opacity 200ms ease" }}
             />
           );
         })}
@@ -133,7 +132,7 @@ function SpendingDonut({ categories }: { categories: Category[] }) {
       </svg>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
         {slices.map((slice, i) => (
-          <div key={slice.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div key={slice.name + '-' + i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
               width: 5, height: 5, borderRadius: "50%",
               background: "var(--ink)", opacity: opacities[i], flexShrink: 0,
@@ -171,9 +170,6 @@ function DailySpendingChart({ dailySeries }: { dailySeries: { day: number; amoun
     );
   }
 
-  const chartHeight = 100;
-  const barArea = chartHeight - 4;
-
   return (
     <div style={{ marginTop: 18, position: "relative" }}>
       {/* Average label */}
@@ -189,30 +185,30 @@ function DailySpendingChart({ dailySeries }: { dailySeries: { day: number; amoun
       {/* Chart area */}
       <div style={{
         display: "flex", alignItems: "flex-end", gap: 2,
-        height: chartHeight, position: "relative", marginTop: 14,
+        height: 88, position: "relative", marginTop: 14,
       }}>
         {/* Average line */}
         {avg > 0 && (
           <div style={{
             position: "absolute", left: 0, right: 0, zIndex: 1,
-            bottom: `${(avg / max) * 100}%`,
+            bottom: `${(avg / max) * 88}%`,
             height: 1, background: "var(--mute)",
           }} />
         )}
 
-        {visibleDays.map(d => {
-          const h = Math.max(3, (d.amount / max) * barArea);
+        {visibleDays.map((d, i) => {
+          const h = Math.max(3, (d.amount / max) * 84);
           return (
-            <div key={d.day} style={{
-              flex: 1, display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "flex-end", height: "100%",
-            }}>
-              <div style={{
-                width: "100%", maxWidth: 12, borderRadius: "2px 2px 0 0",
-                height: h, background: d.amount > 0 ? "var(--ink)" : "var(--hairline)",
-                opacity: d.amount > 0 ? 0.65 : 0.3,
-                transition: "height 400ms ease, opacity 200ms ease",
-              }} />
+            <div key={d.day} style={{ flex: 1, display: "flex", alignItems: "flex-end" }}>
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: h }}
+                transition={{ duration: 0.4, delay: i * 0.01, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  width: "100%", borderRadius: 2, marginTop: "auto",
+                  background: d.day === today ? "var(--ink)" : "var(--hairline2)",
+                }}
+              />
             </div>
           );
         })}
@@ -386,6 +382,7 @@ export function InsightsClient({ monthly, spendingTrend, incomeTrend, categories
   const displayCategories = isMonthOrMore ? categories : computeCategoriesFromTxs(filteredTx);
 
   return (
+    <div style={{ flex: 1, overflowY: "auto" }}>
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
       {/* Header */}
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)" }}>
@@ -683,6 +680,7 @@ export function InsightsClient({ monthly, spendingTrend, incomeTrend, categories
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -64,9 +64,11 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
   };
 
   let filtered = txs.slice();
-  if (tab === "Salida")           filtered = filtered.filter(t => t.amount < 0);
-  if (tab === "Entrada")          filtered = filtered.filter(t => t.amount > 0);
-  if (catFilter !== "Todas")      filtered = filtered.filter(t => t.category === catFilter);
+  if (tab === "Salida")       filtered = filtered.filter(t => t.amount < 0);
+  if (tab === "Entrada")      filtered = filtered.filter(t => t.amount > 0);
+  if (tab === "Cuotas")       filtered = filtered.filter(t => t.category === "Cuotas");
+  if (tab === "Recurrentes")  filtered = filtered.filter(t => t.note?.includes("Recurrente") ?? false);
+  if (catFilter !== "Todas")  filtered = filtered.filter(t => t.category === catFilter);
   if (monthFilter !== "Todos")    filtered = filtered.filter(t => t.isoDate.startsWith(monthFilter));
   if (q) {
     const Q = q.toLowerCase();

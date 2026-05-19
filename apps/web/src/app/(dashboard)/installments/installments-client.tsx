@@ -49,8 +49,8 @@ function AddForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <form onSubmit={save} style={{ padding: "18px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 10 }}>
+    <form onSubmit={save} style={{ padding: "18px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12, width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
           <input name="name" required placeholder="iPhone, Notebook, Silla…" style={fieldStyle} />
@@ -160,7 +160,7 @@ function InstRowItem({ item }: { item: InstRow }) {
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          style={{ overflow: "hidden" }}
+          style={{ overflow: "hidden", width: "100%" }}
         >
           <EditInstallmentForm
             item={item}
@@ -293,9 +293,9 @@ function EditInstallmentForm({
   return (
     <form onSubmit={handleSubmit} style={{
       padding: "16px 0", borderBottom: "1px solid var(--hairline)",
-      display: "grid", gap: 10,
+      display: "grid", gap: 10, width: "100%",
     }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
           <input
