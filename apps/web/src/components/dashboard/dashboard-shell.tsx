@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useUIStore } from "@/stores/ui";
@@ -22,6 +23,7 @@ import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { RevealWords } from "@/components/motion/text-reveal";
 import { springGentle } from "@/components/motion/presets";
+import { dismissZenDigest } from "@/app/actions/settings";
 import type { BalanceData, MonthlyStats, Category } from "@gastar/shared";
 
 interface Props {
@@ -196,9 +198,26 @@ export function DashboardShell({
   const overBy       = isOverBudget ? monthly.spending - monthBudget : 0;
 
   const recurringByDue = (recurring ?? [])
-    .slice()
+    .filter(r => !r.paused)
     .sort((a, b) => a.nextDueDateMs - b.nextDueDateMs)
     .slice(0, 5);
+
+  const weeklyDigest = stats?.weeklyDigest ?? { spending: 0, topCategory: null, show: false };
+  const [digestVisible, setDigestVisible] = useState(weeklyDigest.show);
+
+  const handleDismissDigest = async () => {
+    setDigestVisible(false);
+    await dismissZenDigest();
+  };
+
+  // Runway: last 3 months avg spending vs total balance
+  const last3Spending = spendingTrend.slice(-3).map(p => p.amount);
+  const avgMonthlySpending = last3Spending.length > 0
+    ? last3Spending.reduce((s, v) => s + v, 0) / last3Spending.length
+    : 0;
+  const runwayMonths = avgMonthlySpending > 0 && balance.total > 0
+    ? Math.floor(balance.total / avgMonthlySpending)
+    : null;
 
   const txList = transactions ?? [];
   const instList = installments ?? [];
@@ -283,6 +302,51 @@ export function DashboardShell({
             </span>
           </div>
         </motion.div>
+
+        {/* ── Zen Monday Digest ── */}
+        {digestVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={springGentle}
+            style={{
+              marginTop: 28,
+              padding: "14px 18px",
+              borderRadius: 10,
+              background: "var(--surface)",
+              border: "1px solid var(--hairline)",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="mono" style={{
+                fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em",
+                textTransform: "uppercase", flexShrink: 0,
+              }}>
+                Esta semana
+              </div>
+              <div style={{ fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
+                Gastaste {formatCurrency(weeklyDigest.spending, true)}
+                {weeklyDigest.topCategory && (
+                  <span style={{ color: "var(--mute)" }}> · mayor gasto en {weeklyDigest.topCategory}</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={handleDismissDigest}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--whisper)", fontSize: 18, lineHeight: 1, padding: "0 2px",
+                flexShrink: 0, transition: "color 120ms ease",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--faint)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--whisper)")}
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
 
         <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 40 }} />
 
@@ -369,6 +433,47 @@ export function DashboardShell({
             )}
           </div>
         </ScrollReveal>
+
+        {/* ── Runway calculator ── */}
+        {runwayMonths !== null && (
+          <ScrollReveal direction="up" distance={16}>
+            <div style={{
+              marginTop: 40,
+              padding: "20px 24px",
+              borderRadius: 12,
+              background: "var(--surface)",
+              border: "1px solid var(--hairline)",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div>
+                <div className="mono" style={{
+                  fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em",
+                  textTransform: "uppercase", marginBottom: 6,
+                }}>
+                  Runway estimado
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span className="display tnum" style={{
+                    fontSize: 28, fontWeight: 500, letterSpacing: "-0.04em", color: "var(--ink)",
+                  }}>
+                    {runwayMonths}
+                  </span>
+                  <span className="mono" style={{ fontSize: 12, color: "var(--mute)", letterSpacing: "0.04em" }}>
+                    meses
+                  </span>
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em" }}>
+                  A este ritmo de gasto tus ahorros alcanzan
+                </div>
+                <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
+                  Promedio: {formatCurrency(Math.round(avgMonthlySpending), true)}/mes
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+        )}
 
         {/* ── Two columns: Bloques + Compromisos ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 40, marginTop: 48 }}>
@@ -585,7 +690,7 @@ export function DashboardShell({
                 </div>
                 <Link href="/recurring" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
                   <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
-                    {(recurring ?? []).length} activos →
+                    {(recurring ?? []).filter(r => !r.paused).length} activos →
                   </span>
                 </Link>
               </div>

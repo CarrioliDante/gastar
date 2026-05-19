@@ -9,7 +9,10 @@ export const getDashboardStats = cache(async (userId: string) => {
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const twentyFourMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 23, 1);
 
-  const [balanceAgg, monthlyTransactions, trendTransactions, allTransactions24mo, budgetSetting] = await Promise.all([
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const todayISO = now.toISOString().slice(0, 10);
+
+  const [balanceAgg, monthlyTransactions, trendTransactions, allTransactions24mo, budgetSetting, weeklyTransactions, zenDigestSetting] = await Promise.all([
     db.transaction.aggregate({ where: { userId }, _sum: { amount: true } }),
     db.transaction.findMany({
       where: { userId, date: { gte: startOfMonth } },
@@ -27,6 +30,14 @@ export const getDashboardStats = cache(async (userId: string) => {
     }),
     db.userSetting.findUnique({
       where: { userId_key: { userId, key: "monthlyBudget" } },
+      select: { value: true },
+    }),
+    db.transaction.findMany({
+      where: { userId, date: { gte: sevenDaysAgo }, amount: { lt: 0 } },
+      select: { amount: true, category: true },
+    }),
+    db.userSetting.findUnique({
+      where: { userId_key: { userId, key: "zenDigestDate" } },
       select: { value: true },
     }),
   ]);
@@ -88,6 +99,18 @@ export const getDashboardStats = cache(async (userId: string) => {
     return Math.round(running);
   });
 
+  const weeklySpending = weeklyTransactions.reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+  const weekCatMap = new Map<string, number>();
+  for (const t of weeklyTransactions) {
+    weekCatMap.set(t.category, (weekCatMap.get(t.category) ?? 0) + Math.abs(Number(t.amount)));
+  }
+  const weeklyTopCategory = weekCatMap.size > 0
+    ? [...weekCatMap.entries()].sort((a, b) => b[1] - a[1])[0][0]
+    : null;
+
+  const isMonday = now.getDay() === 1;
+  const zenDismissed = zenDigestSetting?.value === todayISO;
+
   return {
     balance: { total: totalBalance, currency: "USD", change: 0 } as BalanceData,
     monthly: {
@@ -100,5 +123,10 @@ export const getDashboardStats = cache(async (userId: string) => {
     incomeTrend,
     categories,
     netWorth24mo,
+    weeklyDigest: {
+      spending:    Math.round(weeklySpending),
+      topCategory: weeklyTopCategory,
+      show:        isMonday && !zenDismissed && weeklySpending > 0,
+    },
   };
 });
