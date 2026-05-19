@@ -141,11 +141,46 @@ export function useCreateTransaction() {
   });
 }
 
+export function useDeleteTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/transactions?id=${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
 export function useCreateBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { name: string; icon: string; budget: number; goal?: string }) =>
       apiFetch('/blocks', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['blocks'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useUpdateBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { id: string; name?: string; icon?: string; budget?: number; goal?: string }) =>
+      apiFetch('/blocks', { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['blocks'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useArchiveBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/blocks?id=${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['blocks'] });
       qc.invalidateQueries({ queryKey: ['stats'] });

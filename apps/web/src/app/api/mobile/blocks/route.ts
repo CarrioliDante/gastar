@@ -65,3 +65,70 @@ export async function POST(req: NextRequest) {
     goal: block.goal ?? '',
   }, { status: 201 });
 }
+
+export async function PUT(req: NextRequest) {
+  const auth = await requireMobileAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await req.json() as {
+    id: string; name?: string; icon?: string; budget?: number; goal?: string;
+  };
+
+  if (!body.id) {
+    return NextResponse.json({ error: 'id es obligatorio' }, { status: 400 });
+  }
+
+  const existing = await db.block.findFirst({
+    where: { id: body.id, userId: auth.userId },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: 'Bloque no encontrado' }, { status: 404 });
+  }
+
+  const updated = await db.block.update({
+    where: { id: body.id },
+    data: {
+      ...(body.name != null ? { name: body.name } : {}),
+      ...(body.icon != null ? { icon: body.icon } : {}),
+      ...(body.budget != null ? { budget: body.budget } : {}),
+      ...(body.goal !== undefined ? { goal: body.goal ?? null } : {}),
+    },
+  });
+
+  return NextResponse.json({
+    id: updated.id,
+    name: updated.name,
+    icon: updated.icon,
+    budget: Number(updated.budget),
+    goal: updated.goal ?? '',
+  });
+}
+
+export async function DELETE(req: NextRequest) {
+  const auth = await requireMobileAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json({ error: 'id es obligatorio' }, { status: 400 });
+  }
+
+  const existing = await db.block.findFirst({
+    where: { id, userId: auth.userId },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: 'Bloque no encontrado' }, { status: 404 });
+  }
+
+  // Soft-delete via archivedAt to preserve transaction history
+  await db.block.update({
+    where: { id },
+    data: { archivedAt: new Date() },
+  });
+
+  return NextResponse.json({ ok: true });
+}
