@@ -7,6 +7,7 @@ import {
   type Installment,
   type Recurring,
   type UserProfile,
+  type Goal,
 } from '../api';
 import {
   adaptStats,
@@ -14,12 +15,14 @@ import {
   adaptInstallment,
   adaptRecurring,
   adaptTxGroup,
+  adaptGoal,
   type StatsUI,
   type BlockUI,
   type InstallmentUI,
   type RecurringUI,
   type TxGroupUI,
   type TransactionUI,
+  type GoalUI,
 } from '../adapters';
 import { useAuthStore } from '../../store/auth';
 
@@ -29,15 +32,33 @@ export function useStats() {
     queryKey: ['stats'],
     queryFn: () => apiFetch<StatsResponse>('/stats'),
     enabled: !isChecking,
+    staleTime: 0,
   });
 }
 
-export function useTransactions(blockId?: string) {
+export function useTransactions(blockId?: string, month?: string) {
   const { isChecking } = useAuthStore();
   return useQuery({
-    queryKey: ['transactions', blockId ?? 'all'],
-    queryFn: () => apiFetch<TransactionsResponse>(`/transactions${blockId ? `?blockId=${blockId}` : ''}`),
+    queryKey: ['transactions', blockId ?? 'all', month ?? 'current'],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (blockId) params.set('blockId', blockId);
+      if (month) params.set('month', month);
+      const qs = params.toString();
+      return apiFetch<TransactionsResponse>(`/transactions${qs ? `?${qs}` : ''}`);
+    },
     enabled: !isChecking,
+    staleTime: 0,
+  });
+}
+
+export function useGoals() {
+  const { isChecking } = useAuthStore();
+  return useQuery({
+    queryKey: ['goals'],
+    queryFn: () => apiFetch<Goal[]>('/goals'),
+    enabled: !isChecking,
+    staleTime: 0,
   });
 }
 
@@ -47,6 +68,7 @@ export function useBlocks() {
     queryKey: ['blocks'],
     queryFn: () => apiFetch<Block[]>('/blocks'),
     enabled: !isChecking,
+    staleTime: 0,
   });
 }
 
@@ -56,6 +78,7 @@ export function useInstallments() {
     queryKey: ['installments'],
     queryFn: () => apiFetch<Installment[]>('/installments'),
     enabled: !isChecking,
+    staleTime: 0,
   });
 }
 
@@ -65,6 +88,7 @@ export function useRecurring() {
     queryKey: ['recurring'],
     queryFn: () => apiFetch<Recurring[]>('/recurring'),
     enabled: !isChecking,
+    staleTime: 0,
   });
 }
 
@@ -74,6 +98,7 @@ export function useUser() {
     queryKey: ['user'],
     queryFn: () => apiFetch<UserProfile>('/user'),
     enabled: !isChecking,
+    staleTime: 0,
   });
 }
 
@@ -151,11 +176,13 @@ export function useDashboard() {
             .flatMap(g => g.txs)
             .slice(0, 8)
             .map(t => ({
+              id:          t.id,
               label:       t.name,
               meta:        `${t.category} · ${t.time}`,
               amount:      t.amount,
               glyph:       'dot' as const,
               installment: undefined,
+              blockId:     t.blockId,
             })) ?? [],
           groups:       (transactions.data?.groups ?? []).map(adaptTxGroup),
         }

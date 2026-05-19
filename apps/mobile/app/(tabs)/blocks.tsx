@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,10 +25,27 @@ function BlockDetail({ block, onBack }: { block: BlockUI; onBack: () => void }) 
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
-  const trend = Array.from({ length: 14 }, (_, i) => 20 + Math.sin(i * 0.6) * 8 + Math.cos(i * 1.3) * 4 + 12);
   const { data: txData } = useTransactions(block.id);
   const groups = (txData?.groups ?? []).map(adaptTxGroup);
   const txs = groups.flatMap(g => g.txs);
+
+  // Build 14-day spending series from real transactions
+  const trend = useMemo(() => {
+    const series = Array(14).fill(0) as number[];
+    const today = new Date();
+    for (const g of txData?.groups ?? []) {
+      const iso = g.isoDate;
+      if (!iso) continue;
+      const d = new Date(iso);
+      const daysAgo = Math.floor((today.getTime() - d.getTime()) / 86_400_000);
+      const idx = 13 - daysAgo;
+      if (idx >= 0 && idx < 14) {
+        const daySpend = g.txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+        series[idx] = daySpend;
+      }
+    }
+    return series;
+  }, [txData]);
 
   return (
     <ScrollView
@@ -207,7 +224,7 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
 }
 
 export default function BlocksScreen() {
-  const { C, fontBody, fontDisplay, fontMono } = useTheme();
+  const { C, fontBody, fontDisplay, fontMono, currencyCode } = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [selectedBlock, setSelectedBlock] = useState<BlockUI | null>(null);
@@ -283,7 +300,7 @@ export default function BlocksScreen() {
       <View style={{ paddingTop: isError ? 18 : 32, paddingBottom: 20 }}>
         <Eyebrow right={`${blocks.length} bloques`}>Asignado · {monthName(now)}</Eyebrow>
         <Text style={{ fontFamily: fontDisplay, fontSize: 36, fontWeight: '500', letterSpacing: -1.5, marginTop: 14, color: C.ink, fontVariant: ['tabular-nums'] }}>
-          AR$ {fmt(totalBudget, { decimals: 0 })}
+          {currencyCode} {fmt(totalBudget, { decimals: 0 })}
         </Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5 }}>
@@ -297,6 +314,17 @@ export default function BlocksScreen() {
       </View>
 
       <Hairline />
+
+      {blocks.length === 0 && (
+        <View style={{ paddingTop: 48, alignItems: 'center', gap: 10 }}>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
+            Sin bloques
+          </Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, textAlign: 'center', lineHeight: 18 }}>
+            Los bloques agrupan gastos por área de tu vida.{'\n'}Creá el primero con el botón +
+          </Text>
+        </View>
+      )}
 
       {blocks.map((b, i) => {
         const bpct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
@@ -24,6 +25,7 @@ function monthName(d: Date): string {
 export default function InsightsScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useInsights();
   const [refreshing, setRefreshing] = useState(false);
@@ -186,7 +188,11 @@ export default function InsightsScreen() {
       <Hairline style={{ marginTop: 28 }} />
 
       {/* Cuotas activas */}
-      <Section title="Cuotas activas" right={`${installments.length}`} top={26}>
+      <Section
+        title="Cuotas activas"
+        right={<Pressable onPress={() => router.push('/installments')}><Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Ver todas →</Text></Pressable>}
+        top={26}
+      >
         {installments.length === 0 ? (
           <Text style={{ fontFamily: fontBody, fontSize: 14, color: C.faint, paddingVertical: 12 }}>Sin cuotas activas</Text>
         ) : (

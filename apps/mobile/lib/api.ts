@@ -82,6 +82,12 @@ export interface UserProfile {
   id: string; email: string; name: string | null;
 }
 
+export interface Goal {
+  id: string; name: string;
+  target: number; current: number;
+  deadline: string | null;
+}
+
 // Health check — no auth required
 export async function ping(): Promise<{ ok: boolean; time: string; error?: string }> {
   try {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, Pressable, ScrollView, Modal, Dimensions,
+  View, Text, Pressable, ScrollView, Modal, Dimensions, TextInput,
 } from 'react-native';
 import Animated, {
   useSharedValue, withSpring, withTiming, useAnimatedStyle, runOnJS,
@@ -46,7 +46,7 @@ const { height: SCREEN_H } = Dimensions.get('window');
 const SPRING = { damping: 22, stiffness: 280, mass: 0.9 };
 
 export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }: CaptureSheetProps) {
-  const { C, fontBody, fontDisplay, fontMono, isDark } = useTheme();
+  const { C, fontBody, fontDisplay, fontMono, isDark, currencyCode } = useTheme();
   const insets = useSafeAreaInsets();
   const translateY  = useSharedValue(SCREEN_H);
   const scrimOpacity = useSharedValue(0);
@@ -55,6 +55,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
 
   const [type, setType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('');
+  const [name, setName] = useState('');
   const [category, setCategory] = useState(EXPENSE_CATS[0].id);
   const [block, setBlock] = useState<string>('');
 
@@ -84,9 +85,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       }
     });
 
-    // Fallback: close after 5 s if the refetch never arrives
     const fallback = setTimeout(() => { unsub(); onClose(); }, 5000);
-
     return () => { unsub(); clearTimeout(fallback); };
   }, [saved]);
 
@@ -102,13 +101,12 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
     if (open) {
       setType(initialType);
       setAmount('');
+      setName('');
       setSaved(false);
       setVisible(true);
       scrimOpacity.value = withTiming(1, { duration: 220 });
       translateY.value = withSpring(0, SPRING);
     } else if (visible) {
-      // Fade the scrim out in parallel with the sheet slide — the overlay
-      // disappears visually before the Modal actually unmounts
       scrimOpacity.value = withTiming(0, { duration: 240 });
       translateY.value = withTiming(SCREEN_H, { duration: 280, easing: Easing.in(Easing.cubic) }, () => {
         runOnJS(setVisible)(false);
@@ -142,14 +140,14 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
     if (!amt) return;
 
     const txAmount = isExp ? -Math.abs(amt) : Math.abs(amt);
+    const txName = name.trim() || (cats.find(c => c.id === category)?.label ?? category);
 
-    // Show confirmation immediately — close when stats query refreshes with new data
     savedAtRef.current = Date.now();
     setSaved(true);
     onSave?.({ type, amount: amt, category, block });
 
     createTx.mutate({
-      name: cats.find(c => c.id === category)?.label ?? category,
+      name: txName,
       amount: txAmount,
       category,
       blockId: isExp && block ? block : undefined,
@@ -160,7 +158,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
 
   return (
     <Modal transparent animationType="none" visible={visible} onRequestClose={onClose}>
-      {/* Scrim — opacity animates out in parallel with the sheet slide */}
+      {/* Scrim */}
       <Animated.View style={[{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }, scrimStyle]}>
         <Pressable
           onPress={onClose}
@@ -209,13 +207,13 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               entering={FadeIn.delay(140).duration(200)}
               style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.2, textTransform: 'uppercase' }}
             >
-              {isExp ? '−' : '+'} AR$ {fmt(parseFloat(amount || '0'), { decimals: 2 })}
+              {isExp ? '−' : '+'} {currencyCode} {fmt(parseFloat(amount || '0'), { decimals: 2 })}
             </Animated.Text>
           </Animated.View>
         ) : (
           <>
             {/* Header */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Pressable onPress={onClose}>
                 <Text style={{ fontFamily: fontBody, fontSize: 13, color: C.mute }}>Cancelar</Text>
               </Pressable>
@@ -228,10 +226,9 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
             {/* Type toggle */}
             <View style={{
               flexDirection: 'row', backgroundColor: C.surface,
-              borderRadius: 14, padding: 4, marginBottom: 20,
+              borderRadius: 14, padding: 4, marginBottom: 16,
               borderWidth: 1, borderColor: C.hairline,
             }}>
-              {/* Sliding thumb */}
               <View style={{
                 position: 'absolute',
                 top: 4, bottom: 4,
@@ -250,25 +247,41 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
             </View>
 
             {/* Amount display */}
-            <View style={{ alignItems: 'center', paddingVertical: 8, marginBottom: 14 }}>
-              <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 12 }}>
-                AR$
+            <View style={{ alignItems: 'center', paddingVertical: 6, marginBottom: 12 }}>
+              <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 }}>
+                {currencyCode}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                 <Text style={{ fontFamily: fontDisplay, fontSize: 38, color: C.faint, fontWeight: '400', letterSpacing: -1 }}>
                   {isExp ? '−' : '+'}
                 </Text>
-                <Text style={{ fontFamily: fontDisplay, fontSize: 56, fontWeight: '500', letterSpacing: -3, color: amount ? C.ink : C.whisper, lineHeight: 60, fontVariant: ['tabular-nums'] }}>
+                <Text style={{ fontFamily: fontDisplay, fontSize: 52, fontWeight: '500', letterSpacing: -3, color: amount ? C.ink : C.whisper, lineHeight: 56, fontVariant: ['tabular-nums'] }}>
                   {wholeFmt}
                   {frac !== undefined && (
-                    <Text style={{ fontSize: 30, color: C.faint, fontWeight: '400' }}>.{frac.padEnd(2, '0').slice(0, 2)}</Text>
+                    <Text style={{ fontSize: 28, color: C.faint, fontWeight: '400' }}>.{frac.padEnd(2, '0').slice(0, 2)}</Text>
                   )}
                 </Text>
               </View>
             </View>
 
+            {/* Name input */}
+            <View style={{
+              backgroundColor: C.surface, borderRadius: 12,
+              paddingHorizontal: 14, paddingVertical: 10,
+              borderWidth: 1, borderColor: C.hairline, marginBottom: 12,
+            }}>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder={cats.find(c => c.id === category)?.label ?? 'Descripción (opcional)'}
+                placeholderTextColor={C.whisper}
+                style={{ fontFamily: fontBody, fontSize: 14, color: C.ink }}
+                returnKeyType="done"
+              />
+            </View>
+
             {/* Category chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }} contentContainerStyle={{ gap: 6 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
               {cats.map(c => {
                 const active = c.id === category;
                 return (
@@ -292,53 +305,54 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               })}
             </ScrollView>
 
-            {/* Block selector (expense only) */}
-            {isExp && (
+            {/* Block selector (expense only) — scrollable, no limit */}
+            {isExp && blocks.length > 0 && (
               <View style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 backgroundColor: C.surface, borderRadius: 12,
-                padding: 14, marginBottom: 14,
+                padding: 14, marginBottom: 12,
                 borderWidth: 1, borderColor: C.hairline,
               }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <BlockGlyph kind={selectedBlock?.glyph || 'circle'} size={16} color={C.ink} />
-                  <View>
-                    <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.1, textTransform: 'uppercase' }}>Bloque</Text>
-                    <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, marginTop: 2 }}>
-                      {selectedBlock?.label ?? 'Sin bloque'}
-                    </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <BlockGlyph kind={selectedBlock?.glyph || 'circle'} size={16} color={C.ink} />
+                    <View>
+                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.1, textTransform: 'uppercase' }}>Bloque</Text>
+                      <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, marginTop: 2 }}>
+                        {selectedBlock?.label ?? 'Sin bloque'}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 4 }}>
-                  {blocks.slice(0, 6).map(b => (
-                    <Pressable key={b.id} onPress={() => setBlock(b.id)}
-                      style={{
-                        width: 22, height: 22, borderRadius: 6,
-                        backgroundColor: b.id === block ? C.ink : C.surfaceAlt,
-                        alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <BlockGlyph kind={b.glyph} size={10} color={b.id === block ? C.bg : C.mute} />
-                    </Pressable>
-                  ))}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4 }} style={{ maxWidth: 160 }}>
+                    {blocks.map(b => (
+                      <Pressable key={b.id} onPress={() => setBlock(b.id)}
+                        style={{
+                          width: 24, height: 24, borderRadius: 7,
+                          backgroundColor: b.id === block ? C.ink : C.surfaceAlt,
+                          alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <BlockGlyph kind={b.glyph} size={11} color={b.id === block ? C.bg : C.mute} />
+                      </Pressable>
+                    ))}
+                  </ScrollView>
                 </View>
               </View>
             )}
 
             {/* Keypad */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               {KEYS.map(k => (
                 <Pressable key={k} onPress={() => press(k)}
                   style={({ pressed }) => ({
                     width: '30%', flexGrow: 1,
-                    height: 50, borderRadius: 12,
+                    height: 48, borderRadius: 12,
                     backgroundColor: pressed ? C.surfaceAlt : C.surface,
                     borderWidth: 1, borderColor: C.hairline,
                     alignItems: 'center', justifyContent: 'center',
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   })}
                 >
-                  <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
+                  <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
                     {k}
                   </Text>
                 </Pressable>
