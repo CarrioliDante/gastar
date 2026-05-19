@@ -7,6 +7,7 @@ import { useBlocks } from "@/hooks/queries";
 import { useCurrency } from "@/hooks/use-currency";
 import { useNumberInput } from "@/hooks/use-number-input";
 import { BlockGlyph, toGlyphKind, type GlyphKind } from "@/components/ui/primitives";
+import { inferCategory } from "@/lib/categorization";
 
 const EXP_CATS = ["Comida", "Casa", "Transporte", "Ocio", "Salud", "Tecnología", "Educación", "Suscripciones", "Otros"];
 const INC_CATS = ["Salario", "Freelance", "Devolución", "Inversión", "Regalo", "Otros"];
@@ -16,6 +17,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
   const [amount, setAmount]     = useState("");
   const [label, setLabel]       = useState("");
   const [category, setCategory] = useState("Comida");
+  const [catSource, setCatSource] = useState<"default" | "auto" | "manual">("default");
   const [blockId, setBlockId]   = useState<string | null>(null);
   const [saved, setSaved]       = useState(false);
   const [inputW, setInputW]     = useState(260);
@@ -38,14 +40,30 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
     if (open) {
       setSaved(false); setAmount(""); setLabel("");
       setBlockId(initialBlockId ?? null);
-      setType(initialType); setCategory(initialType === "income" ? "Salario" : "Comida");
+      setType(initialType);
+      setCategory(initialType === "income" ? "Salario" : "Comida");
+      setCatSource("default");
       setTimeout(() => num.ref.current?.focus(), 60);
     }
   }, [open, initialType, initialBlockId]);
 
   useEffect(() => {
     setCategory(type === "income" ? "Salario" : "Comida");
+    setCatSource("default");
   }, [type]);
+
+  // Auto-categorize from description while user hasn't picked manually
+  useEffect(() => {
+    if (type !== "expense" || catSource === "manual") return;
+    const inferred = inferCategory(label);
+    if (inferred) {
+      setCategory(inferred);
+      setCatSource("auto");
+    } else if (catSource === "auto") {
+      setCategory("Comida");
+      setCatSource("default");
+    }
+  }, [label]);
 
   const isExp   = type === "expense";
   const cats    = isExp ? EXP_CATS : INC_CATS;
@@ -257,16 +275,29 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
                     Categoría
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-                    {cats.map(c => (
-                      <button key={c} onClick={() => setCategory(c)} style={{
-                        padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer",
-                        background: category === c ? "var(--ink)" : "var(--surface)",
-                        color: category === c ? "var(--inverse)" : "var(--mute)",
-                        boxShadow: `inset 0 0 0 1px ${category === c ? "transparent" : "var(--hairline)"}`,
-                        fontSize: 12, fontFamily: "inherit",
-                        transition: "all 140ms ease",
-                      }}>{c}</button>
-                    ))}
+                    {cats.map(c => {
+                      const active = category === c;
+                      const isAuto = active && catSource === "auto";
+                      return (
+                        <button key={c} onClick={() => { setCategory(c); setCatSource("manual"); }} style={{
+                          padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer",
+                          background: active ? "var(--ink)" : "var(--surface)",
+                          color: active ? "var(--inverse)" : "var(--mute)",
+                          boxShadow: `inset 0 0 0 1px ${active ? "transparent" : "var(--hairline)"}`,
+                          fontSize: 12, fontFamily: "inherit",
+                          transition: "all 140ms ease",
+                          display: "flex", alignItems: "center", gap: 5,
+                        }}>
+                          {c}
+                          {isAuto && (
+                            <span style={{
+                              fontSize: 9, letterSpacing: "0.06em",
+                              opacity: 0.6, fontFamily: "inherit",
+                            }}>auto</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
