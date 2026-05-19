@@ -102,8 +102,10 @@ function NavIcon({ id, active }: { id: string; active: boolean }) {
     );
     case "insights": return (
       <svg {...p}>
-        <path d="M3 13 L7 8 L10 11 L15 5" stroke={c} strokeWidth={w} fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="15" cy="5" r="1.5" fill={c}/>
+        {/* 3 vertical bars: left 8px, center 13px, right 10px; width 3px each, gap 2px, baseline at y=15 */}
+        <rect x="3"   y={15 - 8}  width="3" height="8"  rx="0.5" fill={active ? c : "none"} stroke={c} strokeWidth={active ? 0 : w}/>
+        <rect x="8"   y={15 - 13} width="3" height="13" rx="0.5" fill={active ? c : "none"} stroke={c} strokeWidth={active ? 0 : w}/>
+        <rect x="13"  y={15 - 10} width="3" height="10" rx="0.5" fill={active ? c : "none"} stroke={c} strokeWidth={active ? 0 : w}/>
       </svg>
     );
     case "settings": return (

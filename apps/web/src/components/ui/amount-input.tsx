@@ -30,16 +30,18 @@ export function AmountInput({ name, value: controlled, onChange, placeholder = "
   });
 
   return (
-    <input
-      name={name}
-      ref={num.ref}
-      value={num.display}
-      onChange={num.handleChange}
-      onBlur={num.handleBlur}
-      placeholder={placeholder}
-      required={required}
-      autoFocus={autoFocus}
-      style={style}
-    />
+    <>
+      {name && <input type="hidden" name={name} value={num.numericValue} />}
+      <input
+        ref={num.ref}
+        value={num.display}
+        onChange={num.handleChange}
+        onBlur={num.handleBlur}
+        placeholder={placeholder}
+        required={required}
+        autoFocus={autoFocus}
+        style={style}
+      />
+    </>
   );
 }

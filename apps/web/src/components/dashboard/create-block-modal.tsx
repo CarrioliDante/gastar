@@ -240,15 +240,19 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
                       style={{
                         width: 44, height: 44, borderRadius: 10, border: "none", cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        background: showPicker ? "var(--ink)" : "var(--surface)",
-                        boxShadow: `inset 0 0 0 1px ${showPicker ? "transparent" : "var(--hairline)"}`,
+                        background: showPicker ? "var(--ink)" : (!showPicker && glyph !== "Home" && !QUICK_ICONS.includes(glyph)) ? "var(--ink)" : "var(--surface)",
+                        boxShadow: `inset 0 0 0 1px ${showPicker || (!showPicker && glyph !== "Home" && !QUICK_ICONS.includes(glyph)) ? "transparent" : "var(--hairline)"}`,
                         transition: "all 140ms ease",
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16">
-                        <line x1="8" y1="3" x2="8" y2="13" stroke={showPicker ? "var(--inverse)" : "var(--faint)"} strokeWidth="1.4" strokeLinecap="round"/>
-                        <line x1="3" y1="8" x2="13" y2="8" stroke={showPicker ? "var(--inverse)" : "var(--faint)"} strokeWidth="1.4" strokeLinecap="round"/>
-                      </svg>
+                      {!showPicker && glyph !== "Home" && !QUICK_ICONS.includes(glyph) ? (
+                        <BlockGlyph kind={glyph} size={18} color="var(--inverse)" />
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 16 16">
+                          <line x1="8" y1="3" x2="8" y2="13" stroke={showPicker ? "var(--inverse)" : "var(--faint)"} strokeWidth="1.4" strokeLinecap="round"/>
+                          <line x1="3" y1="8" x2="13" y2="8" stroke={showPicker ? "var(--inverse)" : "var(--faint)"} strokeWidth="1.4" strokeLinecap="round"/>
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -266,7 +270,7 @@ export function CreateBlockModal({ open, onClose }: { open: boolean; onClose: ()
                             {cat.icons.map(ic => (
                               <button
                                 key={ic.kind}
-                                onClick={() => selectQuickIcon(ic.kind)}
+                                onClick={() => { setGlyph(ic.kind); setShowPicker(false); }}
                                 style={{
                                   display: "flex", alignItems: "center", justifyContent: "center",
                                   padding: "6px 2px", borderRadius: 8, border: "none", cursor: "pointer",

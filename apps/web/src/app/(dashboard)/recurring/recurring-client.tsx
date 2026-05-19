@@ -62,8 +62,8 @@ function AddForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <form onSubmit={save} style={{ padding: "20px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: `1fr 1fr 1fr${freq === "monthly" ? " 80px" : ""}`, gap: 10 }}>
+    <form onSubmit={save} style={{ padding: "20px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12, width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)${freq === "monthly" ? " 80px" : ""}`, gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
           <input name="name" required placeholder="Spotify, Alquiler…" style={fieldStyle} />

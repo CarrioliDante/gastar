@@ -253,7 +253,7 @@ export function BlocksClient({
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: 28, paddingTop: 20 }}>
             {block.budget > 0
-              ? <RadialRing value={pct} size={120} stroke={1.8} />
+              ? <RadialRing value={pct} size={120} stroke={1.8} label={Math.round(pct * 100) + "%"} />
               : <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <BlockGlyph kind={toGlyphKind(block.icon)} size={36} />
                 </div>

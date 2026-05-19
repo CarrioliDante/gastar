@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { type ReactNode } from "react";
+import { motion } from "motion/react";
 
 type Direction = "up" | "down" | "left" | "right";
 
@@ -10,7 +10,7 @@ interface ScrollRevealProps {
   direction?: Direction;
   className?: string;
   distance?: number;
-  range?: [number, number];
+  range?: [number, number]; // kept for API compat, unused
 }
 
 export function ScrollReveal({
@@ -18,35 +18,25 @@ export function ScrollReveal({
   direction = "up",
   className,
   distance = 40,
-  range = [0, 0.4] as [number, number],
 }: ScrollRevealProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
+  const initial =
+    direction === "up"    ? { opacity: 0, y: distance } :
+    direction === "down"  ? { opacity: 0, y: -distance } :
+    direction === "left"  ? { opacity: 0, x: distance } :
+                            { opacity: 0, x: -distance };
 
-  const opacity = useTransform(scrollYProgress, range, [0, 1]);
-
-  const y =
-    direction === "up"
-      ? useTransform(scrollYProgress, range, [distance, 0])
-      : direction === "down"
-        ? useTransform(scrollYProgress, range, [-distance, 0])
-        : 0;
-
-  const x =
-    direction === "left"
-      ? useTransform(scrollYProgress, range, [distance, 0])
-      : direction === "right"
-        ? useTransform(scrollYProgress, range, [-distance, 0])
-        : 0;
+  const animate =
+    direction === "up" || direction === "down"
+      ? { opacity: 1, y: 0 }
+      : { opacity: 1, x: 0 };
 
   return (
     <motion.div
-      ref={ref}
       className={className}
-      style={{ opacity, y, x }}
+      initial={initial}
+      whileInView={animate}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
@@ -57,27 +47,19 @@ export function ScrollScaleReveal({
   children,
   className,
   from = 0.92,
-  range = [0, 0.5] as [number, number],
 }: {
   children: ReactNode;
   className?: string;
   from?: number;
   range?: [number, number];
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-
-  const scale = useTransform(scrollYProgress, range, [from, 1]);
-  const opacity = useTransform(scrollYProgress, range, [0, 1]);
-
   return (
     <motion.div
-      ref={ref}
       className={className}
-      style={{ scale, opacity }}
+      initial={{ opacity: 0, scale: from }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>

@@ -325,24 +325,20 @@ export function DashboardShell({
         >
           <motion.button
             onClick={() => openCapture("expense")}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.95 }}
+            title="Anotar gasto (⌘N)"
             style={{
-              padding: "7px 12px 7px 9px", borderRadius: 8,
+              width: 32, height: 32, borderRadius: "50%",
               background: "var(--ink)", color: "var(--inverse)", border: "none",
-              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 11 11">
-              <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <span>Anotar</span>
-            <span className="kbd" style={{
-              background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-              color: "inherit",
-            }}>⌘N</span>
           </motion.button>
         </motion.div>
       </header>
@@ -605,7 +601,7 @@ export function DashboardShell({
           </div>
         </div>
 
-        {/* ── Bloques: Horizontal scroll ── */}
+        {/* ── Bloques de vida: 3-column grid ── */}
         <div style={{ marginTop: 48 }}>
           <div style={{
             display: "flex", alignItems: "baseline", justifyContent: "space-between",
@@ -617,7 +613,7 @@ export function DashboardShell({
             {blockList.length > 0 && (
               <Link href="/blocks" style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "none" }}>
                 <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.08em" }}>
-                  {blockList.length} activos →
+                  Ver todos · {blockList.length} →
                 </span>
               </Link>
             )}
@@ -651,46 +647,86 @@ export function DashboardShell({
               animate="visible"
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } }}
               style={{
-                display: "flex", flexDirection: "row", overflowX: "auto",
-                scrollSnapType: "x mandatory", paddingBottom: 8,
+                borderTop: "1px solid var(--hairline)",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
               }}
             >
-              {blockList.slice(0, 8).map((block, i) => {
+              {blockList.slice(0, 6).map((block, i) => {
                 const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
-                const glyphKind: GlyphKind = BLOCK_GLYPHS[i % BLOCK_GLYPHS.length];
+                const glyphKind: GlyphKind = (block.icon as GlyphKind) || BLOCK_GLYPHS[i % BLOCK_GLYPHS.length];
+                const col = i % 3;
+                const row = Math.floor(i / 3);
+                const totalRows = Math.ceil(Math.min(blockList.length, 6) / 3);
+                const fmtCompact = (n: number) =>
+                  n >= 10000 ? `${Math.round(n / 1000)}k`
+                  : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.0', '')}k`
+                  : String(Math.round(n));
                 return (
-                  <Link
+                  <motion.div
                     key={block.id}
-                    href={`/blocks/${block.id}`}
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
                     style={{
-                      flex: '0 0 142px', scrollSnapAlign: 'start',
-                      borderLeft: i === 0 ? 'none' : '1px solid var(--hairline)',
-                      paddingLeft: i === 0 ? 0 : 16,
-                      paddingRight: 16,
-                      textDecoration: 'none',
-                      boxSizing: 'border-box', minHeight: 116,
-                      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      borderLeft: col > 0 ? "1px solid var(--hairline)" : "none",
+                      borderBottom: row < totalRows - 1 ? "1px solid var(--hairline)" : "none",
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <BlockGlyph kind={glyphKind} size={20} />
-                      <span className="mono tnum" style={{ fontSize: 9, color: 'var(--faint)' }}>
-                        {Math.round(pct * 100)}%
-                      </span>
-                    </div>
-                    <div>
-                      <div className="body-font" style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: 'var(--ink)' }}>
+                    <Link
+                      href={`/blocks/${block.id}`}
+                      style={{
+                        display: "flex", flexDirection: "column",
+                        padding: 20, textDecoration: "none",
+                        height: "100%", boxSizing: "border-box",
+                      }}
+                    >
+                      {/* Top row: icon + ring */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <BlockGlyph kind={glyphKind} size={24} />
+                        {/* Radial ring 36px */}
+                        <svg width="36" height="36" style={{ transform: "rotate(-90deg)", flexShrink: 0 }}>
+                          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--hairline2)" strokeWidth="2"/>
+                          <circle
+                            cx="18" cy="18" r="15" fill="none"
+                            stroke="var(--ink)" strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeDasharray={`${2 * Math.PI * 15}`}
+                            strokeDashoffset={`${2 * Math.PI * 15 * (1 - pct)}`}
+                            style={{ transition: "stroke-dashoffset 1.4s cubic-bezier(.2,.7,.1,1)" }}
+                          />
+                        </svg>
+                      </div>
+                      {/* Name */}
+                      <div className="display" style={{
+                        fontSize: 16, fontWeight: 700, letterSpacing: "-0.02em",
+                        color: "var(--ink)", lineHeight: 1.1,
+                      }}>
                         {block.name}
                       </div>
-                      <div style={{ height: 1, background: 'var(--hairline)', marginBottom: 8, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct * 100}%`, height: 1, background: 'var(--ink)' }} />
+                      {/* Description / goal */}
+                      {block.goal && (
+                        <div className="mono" style={{
+                          fontSize: 11, color: "var(--mute)", letterSpacing: "0.02em",
+                          marginTop: 4,
+                        }}>
+                          {block.goal}
+                        </div>
+                      )}
+                      {/* Bottom: amount + tx count */}
+                      <div style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                        marginTop: 12,
+                      }}>
+                        <span className="display tnum" style={{
+                          fontSize: 13, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--ink)",
+                        }}>
+                          {fmtCompact(block.spent)}{block.budget > 0 ? `/${fmtCompact(block.budget)}` : ""}
+                        </span>
+                        <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.04em" }}>
+                          {block.expenses} mov
+                        </span>
                       </div>
-                      <div className="tnum mono" style={{ fontSize: 9, color: 'var(--mute)' }}>
-                        <AnimatedNumber value={block.spent} prefix="$" />{' / '}
-                        <AnimatedNumber value={block.budget} prefix="$" />
-                      </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  </motion.div>
                 );
               })}
             </motion.div>
