@@ -3,14 +3,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useUIStore } from "@/stores/ui";
-import { useBlocks } from "@/hooks/queries";
+import { useBlocks, useBlockTransactions } from "@/hooks/queries";
 import { useArchiveBlock } from "@/hooks/mutations";
 import type { BlockRow } from "@/hooks/queries";
 import {
   BlockGlyph,
   RadialRing,
-  BarChart,
-  Hairline,
   H2,
   TxRow,
   Stat,
@@ -83,11 +81,7 @@ export function BlocksClient({
   );
 
   const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
-
-  // 14-day synthetic trend
-  const trend = Array.from({ length: 14 }, (_, i) =>
-    20 + Math.sin(i * 0.6) * 8 + Math.cos(i * 1.3) * 4 + 12
-  );
+  const { data: blockTxs, isLoading: txLoading } = useBlockTransactions(block.id);
 
   return (
     <>
@@ -336,9 +330,35 @@ export function BlocksClient({
             )}
           </motion.div>
 
-          {/* Trend bar chart */}
-          <H2 top={32} right="Tendencia">Tendencia · 14 días</H2>
-          <BarChart data={trend} width={700} height={70} gap={4} />
+          {/* Transactions */}
+          <H2 top={32} right={blockTxs ? `${blockTxs.length} transacciones` : ""}>
+            Transacciones
+          </H2>
+
+          {txLoading && (
+            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "20px 0" }}>
+              Cargando…
+            </div>
+          )}
+
+          {!txLoading && blockTxs && blockTxs.length === 0 && (
+            <div className="mono" style={{ fontSize: 11, color: "var(--faint)", padding: "20px 0" }}>
+              Sin transacciones en este bloque todavía.
+            </div>
+          )}
+
+          {!txLoading && blockTxs && blockTxs.map((t, i, arr) => (
+            <div key={t.id} style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--hairline)" : "none" }}>
+              <TxRow
+                tx={{
+                  label: t.name,
+                  glyph: CATEGORY_GLYPH[t.category] as GlyphKind | undefined,
+                  meta: `${t.category} · ${t.date}`,
+                  amount: t.amount,
+                }}
+              />
+            </div>
+          ))}
 
             </motion.div>
           </AnimatePresence>

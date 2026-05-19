@@ -13,6 +13,7 @@ export const getSavingsGoals = cache(async (userId: string) => {
     targetAmount: Number(g.targetAmount),
     currentAmount: Number(g.currentAmount),
     deadline: g.deadline?.toLocaleDateString("es-AR", { month: "short", year: "numeric" }) ?? null,
+    deadlineISO: g.deadline ? g.deadline.toISOString().slice(0, 10) : null,
     pct: Number(g.targetAmount) > 0
       ? Math.min(100, Math.round((Number(g.currentAmount) / Number(g.targetAmount)) * 100))
       : 0,

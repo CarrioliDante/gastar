@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useInstallments } from "@/hooks/queries";
-import { useCreateInstallment, usePayInstallment, useDeleteInstallment } from "@/hooks/mutations";
+import { useCreateInstallment, usePayInstallment, useDeleteInstallment, useUpdateInstallment } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
 import { parseNumeric } from "@/hooks/use-number-input";
@@ -127,15 +127,35 @@ function AddForm({ onDone }: { onDone: () => void }) {
 }
 
 function InstRowItem({ item }: { item: InstRow }) {
+  const [editing, setEditing] = useState(false);
   const { format } = useCurrency();
   const pay = usePayInstallment();
   const del = useDeleteInstallment();
+  const upd = useUpdateInstallment();
 
   const paidCount = item.total_installments - item.remaining;
   const pct = paidCount / item.total_installments;
   const r = 18, c = 2 * Math.PI * r;
   const isOpt = item.id.startsWith("opt-");
   const isDone = item.remaining === 0;
+
+  if (editing) {
+    return (
+      <EditInstallmentForm
+        item={item}
+        paidCount={paidCount}
+        onSave={(name, monthlyAmount, paidInstallments) => {
+          upd.mutate(
+            { id: item.id, name, monthlyAmount, paidInstallments },
+            { onSuccess: () => setEditing(false) },
+          );
+        }}
+        onCancel={() => setEditing(false)}
+        isPending={upd.isPending}
+        error={upd.error?.message}
+      />
+    );
+  }
 
   return (
     <div className="row-hover" style={{
@@ -194,10 +214,99 @@ function InstRowItem({ item }: { item: InstRow }) {
       </button>
 
       <button
+        onClick={() => !isOpt && setEditing(true)}
+        disabled={isOpt}
+        title="Editar"
+        style={{
+          padding: "7px 12px", borderRadius: 7, border: "none",
+          cursor: isOpt ? "default" : "pointer",
+          background: "var(--surface)", fontFamily: "inherit", fontSize: 11,
+          color: "var(--mute)", boxShadow: "inset 0 0 0 1px var(--hairline)", flexShrink: 0,
+        }}>
+        Editar
+      </button>
+
+      <button
         onClick={() => !isOpt && del.mutate(item.id)}
         disabled={isOpt || del.isPending}
         className="del-btn">×</button>
     </div>
+  );
+}
+
+function EditInstallmentForm({
+  item, paidCount, onSave, onCancel, isPending, error,
+}: {
+  item: InstRow;
+  paidCount: number;
+  onSave: (name: string, monthlyAmount: number, paidInstallments: number) => void;
+  onCancel: () => void;
+  isPending: boolean;
+  error?: string;
+}) {
+  const [name, setName] = useState(item.name);
+  const [monthly, setMonthly] = useState(String(item.monthly));
+  const [paid, setPaid] = useState(String(paidCount));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const monthlyAmt = parseNumeric(monthly);
+    const paidN = Math.max(0, parseInt(paid) || 0);
+    if (!name.trim() || monthlyAmt <= 0) return;
+    onSave(name.trim(), monthlyAmt, paidN);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{
+      padding: "16px 0", borderBottom: "1px solid var(--hairline)",
+      display: "grid", gap: 10,
+    }}>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
+        <div>
+          <div className="mono" style={labelStyle}>Nombre</div>
+          <input
+            value={name} onChange={e => setName(e.target.value)}
+            required style={fieldStyle}
+          />
+        </div>
+        <div>
+          <div className="mono" style={labelStyle}>Cuota mensual</div>
+          <AmountInput
+            value={monthly} onChange={setMonthly}
+            required style={fieldStyle}
+          />
+        </div>
+        <div>
+          <div className="mono" style={labelStyle}>Ya pagadas</div>
+          <input
+            type="number" value={paid} onChange={e => setPaid(e.target.value)}
+            min="0" max={item.total_installments - 1} style={fieldStyle}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div style={{
+          padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
+          fontSize: 12, color: "var(--ink)", fontFamily: "inherit",
+        }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={onCancel} style={{
+          padding: "7px 14px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+        }}>Cancelar</button>
+        <button type="submit" disabled={isPending} style={{
+          padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: isPending ? "var(--surface)" : "var(--ink)",
+          color: isPending ? "var(--faint)" : "var(--inverse)",
+          fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+        }}>Guardar</button>
+      </div>
+    </form>
   );
 }
 

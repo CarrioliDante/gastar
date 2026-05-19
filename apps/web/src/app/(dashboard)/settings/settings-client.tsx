@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { logout } from "@/app/(auth)/actions";
 import { springGentle } from "@/components/motion/presets";
-import { setMonthlyBudget } from "@/app/actions/settings";
+import { setMonthlyBudget, updateUserName } from "@/app/actions/settings";
 import { useNumberInput } from "@/hooks/use-number-input";
 
 type Row = { label: string; value: React.ReactNode };
@@ -107,9 +107,27 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget }: { 
   const { theme, font, currency, setTheme, setFont, setCurrency } = useTheme();
   const [saving, setSaving] = useState(false);
   const [budgetValue, setBudgetValue] = useState(String(initialBudget));
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(name);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [savingName, setSavingName] = useState(false);
 
-  const displayName = name || email.split("@")[0] || "Usuario";
+  const displayName = nameValue || email.split("@")[0] || "Usuario";
   const initials = displayName.slice(0, 2).toUpperCase();
+
+  const saveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNameError(null);
+    setSavingName(true);
+    try {
+      await updateUserName(nameValue);
+      setEditingName(false);
+    } catch (err) {
+      setNameError(err instanceof Error ? err.message : "Algo salió mal");
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const budgetInput = useNumberInput({
     value: budgetValue,
@@ -165,8 +183,52 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget }: { 
           fontFamily: "'Inter Tight', inherit", fontWeight: 600, fontSize: 18,
           flexShrink: 0,
         }}>{initials}</div>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em" }}>{displayName}</div>
+
+        <div style={{ flex: 1 }}>
+          {editingName ? (
+            <form onSubmit={saveName} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                autoFocus
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                style={{
+                  padding: "6px 10px", borderRadius: 7, border: "1px solid var(--hairline)",
+                  background: "var(--surface)", fontFamily: "inherit", fontSize: 14,
+                  fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em",
+                  outline: "none", width: 200,
+                }}
+              />
+              <button type="submit" disabled={savingName} style={{
+                padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer",
+                background: savingName ? "var(--surface)" : "var(--ink)",
+                color: savingName ? "var(--faint)" : "var(--inverse)",
+                fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+              }}>
+                {savingName ? "…" : "Guardar"}
+              </button>
+              <button type="button" onClick={() => { setEditingName(false); setNameValue(name); setNameError(null); }} style={{
+                padding: "6px 10px", borderRadius: 7, border: "none", cursor: "pointer",
+                background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+              }}>
+                Cancelar
+              </button>
+              {nameError && (
+                <span style={{ fontSize: 11, color: "var(--ink)", fontFamily: "inherit" }}>{nameError}</span>
+              )}
+            </form>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em" }}>{displayName}</div>
+              <button onClick={() => setEditingName(true)} style={{
+                padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
+                background: "var(--surface)", fontFamily: "inherit", fontSize: 10,
+                color: "var(--faint)", boxShadow: "inset 0 0 0 1px var(--hairline)",
+                letterSpacing: "0.02em",
+              }}>
+                Editar
+              </button>
+            </div>
+          )}
           <div className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>{email}</div>
         </div>
       </motion.div>

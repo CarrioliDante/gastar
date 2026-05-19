@@ -85,6 +85,23 @@ export async function markRecurringPaid(id: string) {
   }
 }
 
+export async function toggleRecurringPause(id: string) {
+  const user = await requireUser();
+  const rec = await db.recurringExpense.findFirst({ where: { id, userId: user.id }, select: { pausedAt: true } });
+  if (!rec) throw new Error("Gasto recurrente no encontrado");
+
+  try {
+    await db.recurringExpense.update({
+      where: { id },
+      data: { pausedAt: rec.pausedAt ? null : new Date() },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("toggleRecurringPause failed:", err);
+    throw err;
+  }
+}
+
 export async function deleteRecurring(id: string) {
   const user = await requireUser();
   try {

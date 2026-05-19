@@ -29,6 +29,32 @@ export async function createGoal(formData: FormData) {
   }
 }
 
+export async function updateSavingsGoal(
+  id: string,
+  data: { name: string; targetAmount: number; deadline: string | null },
+) {
+  const user = await requireUser();
+  const goal = await db.savingsGoal.findFirst({ where: { id, userId: user.id }, select: { id: true } });
+  if (!goal) throw new Error("Meta no encontrada");
+  if (!data.name.trim()) throw new Error("El nombre es obligatorio");
+  if (data.targetAmount <= 0) throw new Error("La meta debe ser mayor a cero");
+
+  try {
+    await db.savingsGoal.update({
+      where: { id },
+      data: {
+        name: data.name.trim(),
+        targetAmount: data.targetAmount,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+      },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("updateSavingsGoal failed:", err);
+    throw err;
+  }
+}
+
 export async function contributeToGoal(formData: FormData) {
   const user   = await requireUser();
   const id     = formData.get("id") as string;

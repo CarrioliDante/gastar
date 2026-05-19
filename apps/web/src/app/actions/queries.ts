@@ -3,7 +3,7 @@
 import { requireUser } from "@/lib/dal";
 import { getDashboardStats } from "@/lib/queries/stats";
 import { getRecentTransactions, getAllTransactions } from "@/lib/queries/transactions";
-import { getBlocks } from "@/lib/queries/blocks";
+import { getBlocks, getTransactionsByBlock } from "@/lib/queries/blocks";
 import { getActiveInstallments } from "@/lib/queries/installments";
 import { getRecurringExpenses } from "@/lib/queries/recurring";
 import { getSavingsGoals } from "@/lib/queries/goals";
@@ -41,4 +41,9 @@ export async function fetchRecurring() {
 export async function fetchGoals() {
   const user = await requireUser();
   return getSavingsGoals(user.id);
+}
+
+export async function fetchBlockTransactions(blockId: string) {
+  const user = await requireUser();
+  return getTransactionsByBlock(blockId, user.id);
 }
