@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../hooks/useTheme';
-import { useDashboard, useUser } from '../../lib/hooks';
+import { useDashboard, useUser, useGoals } from '../../lib/hooks';
+import { adaptGoal } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Stat, Section, Eyebrow, Hairline, ProgressBar } from '../../components/ui/primitives';
 import { TickerAmount } from '../../components/ui/TickerAmount';
@@ -30,6 +31,8 @@ export default function HomeScreen() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useDashboard();
   const { data: user } = useUser();
+  const { data: goalsData } = useGoals();
+  const goals = (goalsData ?? []).map(adaptGoal);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -60,7 +63,9 @@ export default function HomeScreen() {
   const blocks = data?.blocks ?? [];
   const installments = data?.installments ?? [];
   const recurring = data?.recurring ?? [];
-  const recent = data?.recent ?? [];
+  // "Hoy" — show only today's transactions (first group if it's labeled "Hoy")
+  const todayGroup = data?.groups?.find(g => g.date === 'Hoy');
+  const todayTxs = todayGroup?.txs ?? [];
   const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, pulso, categories } = stats;
   const monthPct = monthBudget > 0 ? Math.min(1, monthSpend / monthBudget) : 0;
   const available = monthBudget - monthSpend;
@@ -251,7 +256,7 @@ export default function HomeScreen() {
         {/* Cuotas + Recurrentes */}
         <Section top={26}>
           <View style={{ flexDirection: 'row', gap: 22 }}>
-            <Pressable style={{ flex: 1 }} onPress={() => router.navigate('/insights')}>
+            <Pressable style={{ flex: 1 }} onPress={() => router.push('/installments')}>
               <Eyebrow>Cuotas · {installments.length}</Eyebrow>
               <View style={{ marginTop: 12 }}>
                 <Stat value={installmentsMonthly} label="por mes" size={26} decimals={0} />
@@ -281,6 +286,36 @@ export default function HomeScreen() {
           </View>
         </Section>
 
+        {/* Objetivos — solo si hay alguno */}
+        {goals.length > 0 && (
+          <>
+            <Hairline style={{ marginTop: 28 }} />
+            <Section top={26}>
+              <Pressable onPress={() => router.push('/goals')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Eyebrow>Objetivos · {goals.length}</Eyebrow>
+                <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Ver →</Text>
+              </Pressable>
+              <View style={{ marginTop: 14, gap: 10 }}>
+                {goals.slice(0, 3).map(g => (
+                  <View key={g.id}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, letterSpacing: -0.2 }}>
+                        {g.label}
+                      </Text>
+                      <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.4, fontVariant: ['tabular-nums'] }}>
+                        {Math.round(g.pct * 100)}%
+                      </Text>
+                    </View>
+                    <View style={{ height: 2, backgroundColor: C.hairline2, borderRadius: 99, overflow: 'hidden' }}>
+                      <View style={{ height: '100%', width: `${Math.round(g.pct * 100)}%`, backgroundColor: C.ink, borderRadius: 99 }} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Section>
+          </>
+        )}
+
         <Hairline style={{ marginTop: 28 }} />
 
         {/* Hoy */}
@@ -289,12 +324,18 @@ export default function HomeScreen() {
           right={<Pressable onPress={() => router.navigate('/transactions')}><Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Todo →</Text></Pressable>}
           top={26}
         >
-          {recent.slice(0, 4).map((tx, i, arr) => (
-            <View key={i}>
-              <TxRow tx={tx} />
-              {i < arr.length - 1 && <Hairline />}
-            </View>
-          ))}
+          {todayTxs.length === 0 ? (
+            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, paddingVertical: 16 }}>
+              Sin movimientos hoy
+            </Text>
+          ) : (
+            todayTxs.slice(0, 5).map((tx, i, arr) => (
+              <View key={tx.id}>
+                <TxRow tx={tx} />
+                {i < arr.length - 1 && <Hairline />}
+              </View>
+            ))
+          )}
         </Section>
       </View>
     </ScrollView>

@@ -6,13 +6,15 @@ import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
 import { useStats, useUser } from '../lib/hooks';
-import { useAppStore } from '../store/app';
+import { useAppStore, CURRENCY_SYMBOLS, type CurrencyCode } from '../store/app';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
 import { ping } from '../lib/api';
 import { Eyebrow, Hairline, Section } from '../components/ui/primitives';
 import { Pulso } from '../components/ui/charts';
 import type { Theme, FontFamily } from '../lib/theme';
+
+const CURRENCIES = Object.keys(CURRENCY_SYMBOLS) as CurrencyCode[];
 
 const CHEVRON = (color: string) => (
   <Svg width={6} height={10} viewBox="0 0 6 10">
@@ -21,11 +23,11 @@ const CHEVRON = (color: string) => (
 );
 
 export default function SettingsScreen() {
-  const { C, fontBody, fontDisplay, fontMono, theme, font } = useTheme();
+  const { C, fontBody, fontDisplay, fontMono, theme, font, currency } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
-  const { setTheme, setFont } = useAppStore();
+  const { setTheme, setFont, setCurrency } = useAppStore();
   const { setSession } = useAuthStore();
   const { data: statsData, isLoading: statsLoading, error: statsErr } = useStats();
   const { data: user, error: userErr } = useUser();
@@ -161,6 +163,31 @@ export default function SettingsScreen() {
               </Text>
               <Text style={{ fontFamily: fontMono, fontSize: 10, fontWeight: '500', letterSpacing: 0.4, textTransform: 'uppercase', color: font === f.id ? C.bg : C.ink }}>
                 {f.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </Section>
+
+      <Hairline style={{ marginTop: 28 }} />
+
+      {/* Moneda */}
+      <Section title="Moneda" top={26}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {CURRENCIES.map(c => (
+            <Pressable key={c} onPress={() => setCurrency(c)}
+              style={({ pressed }) => ({
+                flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
+                backgroundColor: currency === c ? C.ink : C.surface,
+                borderWidth: 1, borderColor: currency === c ? C.ink : C.hairline,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ fontFamily: fontMono, fontSize: 11, fontWeight: '500', letterSpacing: -0.2, color: currency === c ? C.bg : C.ink }}>
+                {CURRENCY_SYMBOLS[c]}
+              </Text>
+              <Text style={{ fontFamily: fontMono, fontSize: 8, letterSpacing: 0.4, textTransform: 'uppercase', color: currency === c ? C.bg : C.faint, marginTop: 4 }}>
+                {c}
               </Text>
             </Pressable>
           ))}

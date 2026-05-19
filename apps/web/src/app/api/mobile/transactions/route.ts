@@ -18,9 +18,23 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const blockId = searchParams.get('blockId');
+  const monthParam = searchParams.get('month'); // YYYY-MM
+
+  let dateFilter: { gte?: Date; lt?: Date } | undefined;
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    const [y, m] = monthParam.split('-').map(Number);
+    dateFilter = {
+      gte: new Date(y, m - 1, 1),
+      lt:  new Date(y, m, 1),
+    };
+  }
 
   const rows = await db.transaction.findMany({
-    where: { userId: auth.userId, ...(blockId ? { blockId } : {}) },
+    where: {
+      userId: auth.userId,
+      ...(blockId ? { blockId } : {}),
+      ...(dateFilter ? { date: dateFilter } : {}),
+    },
     orderBy: { date: 'desc' },
   });
 

@@ -5,16 +5,19 @@ import type {
   Recurring as ApiRecurring,
   TxGroup,
   StatsResponse,
+  Goal as ApiGoal,
 } from './api';
 
 // ── UI types (what screens/components expect) ────────────────────
 
 export interface TransactionUI {
+  id: string;
   label: string;
   meta: string;
   amount: number;
   glyph: GlyphKind;
   installment?: string;
+  blockId?: string;
 }
 
 export interface BlockUI {
@@ -52,6 +55,15 @@ export interface CategoryUI {
   value: number;
   glyph: GlyphKind;
   share: number;
+}
+
+export interface GoalUI {
+  id: string;
+  label: string;
+  target: number;
+  current: number;
+  pct: number;
+  deadline: string | null;
 }
 
 export interface TxGroupUI {
@@ -167,11 +179,13 @@ export function adaptTxGroup(g: TxGroup): TxGroupUI {
     date:  g.date,
     total: g.total,
     txs:   g.txs.map(t => ({
+      id:          t.id,
       label:       t.name,
       meta:        `${t.category} · ${t.time}`,
       amount:      t.amount,
       glyph:       deriveGlyph(t.category),
       installment: t.note?.includes('cuota') || t.note?.includes('Cuota') ? t.note : undefined,
+      blockId:     t.blockId,
     })),
   };
 }
@@ -182,6 +196,17 @@ export function adaptCategory(c: { name: string; amount: number; share: number }
     value: c.amount,
     glyph: deriveGlyph(c.name),
     share: c.share,
+  };
+}
+
+export function adaptGoal(g: ApiGoal): GoalUI {
+  return {
+    id:       g.id,
+    label:    g.name,
+    target:   g.target,
+    current:  g.current,
+    pct:      g.target > 0 ? Math.min(1, g.current / g.target) : 0,
+    deadline: g.deadline,
   };
 }
 
