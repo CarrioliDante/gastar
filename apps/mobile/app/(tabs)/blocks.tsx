@@ -377,6 +377,8 @@ export default function BlocksScreen() {
   const totalSpent = blocks.reduce((s, b) => s + b.spent, 0);
   const totalBudget = blocks.reduce((s, b) => s + b.budget, 0);
   const pct = totalBudget > 0 ? totalSpent / totalBudget : 0;
+  const pctRaw = totalBudget > 0 ? totalSpent / totalBudget : 0;
+  const isTotalOver = pctRaw > 1;
 
   const handleBlockMenu = (b: BlockUI) => {
     Alert.alert(b.label, undefined, [
@@ -442,7 +444,7 @@ export default function BlocksScreen() {
             Gastado · {fmt(totalSpent, { decimals: 0, compact: true })}
           </Text>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.5 }}>
-            {Math.round(pct * 100)}%
+            {Math.round(pctRaw * 100)}%{isTotalOver ? ' · excedido' : ''}
           </Text>
         </View>
         <ProgressBar value={pct} style={{ marginTop: 10 }} />
@@ -463,6 +465,7 @@ export default function BlocksScreen() {
 
       {blocks.map((b) => {
         const bpct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
+        const bpctRaw = b.budget > 0 ? b.spent / b.budget : 0;
         const rightAmount = fmt(b.spent, { decimals: 0, compact: true });
         const subText = `/${fmt(b.budget, { decimals: 0, compact: true })} · ${b.txs} mov`;
 
@@ -514,9 +517,7 @@ export default function BlocksScreen() {
               </View>
 
               {/* Progress bar — full width, 2px, below row content */}
-              <View style={{ height: 2, backgroundColor: C.hairline, overflow: 'hidden', marginTop: 10 }}>
-                <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, bpct) * 100}%`, backgroundColor: C.ink }} />
-              </View>
+              <ProgressBar value={bpct} style={{ marginTop: 10 }} />
             </Pressable>
 
             <Hairline />

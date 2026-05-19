@@ -176,6 +176,24 @@ export function useUpdateBlock() {
   });
 }
 
+// ── Savings goal mutations ─────────────────────────────────────────
+
+export function useCreateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      targetAmount: number;
+      currentAmount?: number;
+      deadline?: string;
+    }) => apiFetch('/goals', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['goals'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
 export function useArchiveBlock() {
   const qc = useQueryClient();
   return useMutation({

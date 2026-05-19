@@ -1,15 +1,16 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
-import { useGoals } from '../lib/hooks';
+import { useGoals, useCreateGoal } from '../lib/hooks';
 import { adaptGoal } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { Hairline } from '../components/ui/primitives';
 import { RadialRing } from '../components/ui/charts';
+import { MonthCalendar } from '../components/ui/DatePickers';
 
 export default function GoalsScreen() {
   const { C, fontBody, fontDisplay, fontMono, currencyCode } = useTheme();
@@ -17,13 +18,47 @@ export default function GoalsScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { data: apiData, isLoading, isError } = useGoals();
+  const createGoal = useCreateGoal();
   const [refreshing, setRefreshing] = useState(false);
+
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formTarget, setFormTarget] = useState('');
+  const [formCurrent, setFormCurrent] = useState('');
+  const [formDeadline, setFormDeadline] = useState<string | null>(null);
+  const [showDeadlineCalendar, setShowDeadlineCalendar] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await qc.invalidateQueries({ queryKey: ['goals'] });
     setRefreshing(false);
   }, [qc]);
+
+  const handleCreate = async () => {
+    const name = formName.trim();
+    const target = parseFloat(formTarget);
+    if (!name || isNaN(target)) return;
+
+    try {
+      await createGoal.mutateAsync({
+        name,
+        targetAmount: target,
+        currentAmount: formCurrent ? parseFloat(formCurrent) : undefined,
+        deadline: formDeadline ?? undefined,
+      });
+      setShowForm(false);
+      setFormName('');
+      setFormTarget('');
+      setFormCurrent('');
+      setFormDeadline(null);
+      setShowDeadlineCalendar(false);
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    }
+  };
+
+  const saving = createGoal.isPending;
 
   const goals = (apiData ?? []).map(adaptGoal);
   const totalTarget  = goals.reduce((s, g) => s + g.target, 0);
@@ -47,7 +82,19 @@ export default function GoalsScreen() {
     >
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12 }}>
-        <View>
+        {!showForm && (
+          <Pressable onPress={() => router.back()} style={{
+            width: 34, height: 34, borderRadius: 99,
+            backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+            alignItems: 'center', justifyContent: 'center',
+            marginRight: 12,
+          }}>
+            <Svg width={13} height={13} viewBox="0 0 14 14">
+              <Path d="M9 2L4 7l5 5" stroke={C.mute} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </Pressable>
+        )}
+        <View style={{ flex: 1 }}>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
             Metas
           </Text>
@@ -55,15 +102,20 @@ export default function GoalsScreen() {
             Ahorro
           </Text>
         </View>
-        <Pressable onPress={() => router.back()} style={{
+        <Pressable onPress={() => setShowForm(v => !v)} style={{
           width: 34, height: 34, borderRadius: 99,
           backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <Svg width={13} height={13} viewBox="0 0 14 14">
-            <Circle cx="7" cy="7" r="6" stroke={C.ink} strokeWidth={1.4} fill="none" />
-            <Circle cx="7" cy="7" r="2" fill={C.ink} />
-          </Svg>
+          {showForm ? (
+            <Svg width={13} height={13} viewBox="0 0 14 14">
+              <Path d="M3 3l8 8M11 3l-8 8" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+            </Svg>
+          ) : (
+            <Svg width={13} height={13} viewBox="0 0 14 14">
+              <Path d="M7 2v10M2 7h10" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          )}
         </Pressable>
       </View>
 
@@ -73,14 +125,83 @@ export default function GoalsScreen() {
         </View>
       )}
 
+      {/* Create form */}
+      {showForm && (
+        <View style={{ marginTop: 16, marginBottom: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.hairline, paddingVertical: 16, gap: 10 }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>Nuevo objetivo</Text>
+          <TextInput
+            value={formName}
+            onChangeText={setFormName}
+            placeholder="Nombre"
+            placeholderTextColor={C.faint}
+            style={{ fontFamily: fontBody, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+          />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TextInput
+              value={formTarget}
+              onChangeText={setFormTarget}
+              placeholder="Monto objetivo"
+              placeholderTextColor={C.faint}
+              keyboardType="decimal-pad"
+              style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+            />
+            <TextInput
+              value={formCurrent}
+              onChangeText={setFormCurrent}
+              placeholder="Ahorrado (opcional)"
+              placeholderTextColor={C.faint}
+              keyboardType="decimal-pad"
+              style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
+            />
+          </View>
+          <Pressable
+            onPress={() => setShowDeadlineCalendar(v => !v)}
+            style={{
+              backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+              borderWidth: 1, borderColor: C.hairline,
+            }}
+          >
+            <Text style={{
+              fontFamily: fontMono, fontSize: 12,
+              color: formDeadline ? C.ink : C.faint,
+            }}>
+              {formDeadline
+                ? (() => {
+                    const [y, m, d] = formDeadline.split('-');
+                    const date = new Date(Number(y), Number(m) - 1, Number(d));
+                    return 'Límite: ' + date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+                  })()
+                : 'Fecha límite (opcional)'}
+            </Text>
+          </Pressable>
+          {showDeadlineCalendar && (
+            <MonthCalendar value={formDeadline} onChange={(d) => { setFormDeadline(d); setShowDeadlineCalendar(false); }} />
+          )}
+          <Pressable
+            onPress={handleCreate}
+            disabled={saving}
+            style={{
+              backgroundColor: C.ink, borderRadius: 8, paddingVertical: 10, alignItems: 'center',
+              opacity: saving ? 0.5 : 1,
+            }}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={C.inverse} />
+            ) : (
+              <Text style={{ fontFamily: fontMono, fontSize: 11, fontWeight: '600', color: C.inverse, letterSpacing: 0.8, textTransform: 'uppercase' }}>Crear</Text>
+            )}
+          </Pressable>
+        </View>
+      )}
+
       {/* Empty state */}
-      {goals.length === 0 && !isError && (
+      {goals.length === 0 && !isError && !showForm && (
         <View style={{ paddingTop: 48, alignItems: 'center', gap: 10 }}>
           <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
             Sin objetivos
           </Text>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, textAlign: 'center', lineHeight: 18 }}>
-            Creá objetivos de ahorro{'\n'}desde el dashboard web
+            Tocá + para crear{'\n'}tu primer objetivo de ahorro
           </Text>
         </View>
       )}

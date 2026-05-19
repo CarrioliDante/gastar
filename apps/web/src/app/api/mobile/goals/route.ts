@@ -23,3 +23,31 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(goals);
 }
+
+export async function POST(req: NextRequest) {
+  const auth = await requireMobileAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await req.json() as {
+    name: string;
+    targetAmount: number;
+    currentAmount?: number;
+    deadline?: string;
+  };
+
+  if (!body.name || !body.targetAmount) {
+    return NextResponse.json({ error: 'Nombre y monto objetivo son obligatorios' }, { status: 400 });
+  }
+
+  const goal = await db.savingsGoal.create({
+    data: {
+      userId:        auth.userId,
+      name:          body.name,
+      targetAmount:  body.targetAmount,
+      currentAmount: body.currentAmount ?? 0,
+      deadline:      body.deadline ? new Date(body.deadline) : null,
+    },
+  });
+
+  return NextResponse.json({ id: goal.id }, { status: 201 });
+}

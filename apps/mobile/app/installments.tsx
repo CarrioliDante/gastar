@@ -16,6 +16,7 @@ import { adaptInstallment } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { Hairline, Stat } from '../components/ui/primitives';
 import { BlockGlyph } from '../components/ui/BlockGlyph';
+import { MonthCalendar } from '../components/ui/DatePickers';
 
 
 const CHEVRON_LEFT = (color: string) => (
@@ -60,7 +61,8 @@ export default function InstallmentsScreen() {
   const [formName, setFormName] = useState('');
   const [formTotal, setFormTotal] = useState('');
   const [formMonthly, setFormMonthly] = useState('');
-  const [formStart, setFormStart] = useState('');
+  const [formStart, setFormStart] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -107,7 +109,8 @@ export default function InstallmentsScreen() {
       setFormName('');
       setFormTotal('');
       setFormMonthly('');
-      setFormStart('');
+      setFormStart(null);
+      setShowCalendar(false);
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }
@@ -178,15 +181,21 @@ export default function InstallmentsScreen() {
             backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
             alignItems: 'center', justifyContent: 'center',
           }}>
-            {showForm ? CHEVRON_LEFT(C.ink) : PLUS(C.ink)}
+            {showForm ? (
+              <Svg width={13} height={13} viewBox="0 0 14 14">
+                <Path d="M3 3l8 8M11 3l-8 8" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+              </Svg>
+            ) : PLUS(C.ink)}
           </Pressable>
-          <Pressable onPress={() => router.back()} style={{
-            width: 34, height: 34, borderRadius: 99,
-            backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {CHEVRON_LEFT(C.ink)}
-          </Pressable>
+          {!showForm && (
+            <Pressable onPress={() => router.back()} style={{
+              width: 34, height: 34, borderRadius: 99,
+              backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {CHEVRON_LEFT(C.ink)}
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -239,13 +248,31 @@ export default function InstallmentsScreen() {
               style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
             />
           </View>
-          <TextInput
-            value={formStart}
-            onChangeText={setFormStart}
-            placeholder="Inicio (YYYY-MM-DD, opcional)"
-            placeholderTextColor={C.faint}
-            style={{ fontFamily: fontMono, fontSize: 12, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
-          />
+          <Pressable
+            onPress={() => setShowCalendar(v => !v)}
+            style={{
+              backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+              borderWidth: 1, borderColor: C.hairline,
+            }}
+          >
+            <Text style={{
+              fontFamily: fontMono, fontSize: 12,
+              color: formStart ? C.ink : C.faint,
+            }}>
+              {formStart
+                ? (() => {
+                    const [y, m, d] = formStart.split('-');
+                    const date = new Date(Number(y), Number(m) - 1, Number(d));
+                    return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+                  })()
+                : 'Inicio (opcional)'}
+            </Text>
+          </Pressable>
+          {showCalendar && (
+            <View style={{ marginTop: 4 }}>
+              <MonthCalendar value={formStart} onChange={(d) => { setFormStart(d); setShowCalendar(false); }} />
+            </View>
+          )}
           <Pressable
             onPress={handleCreate}
             disabled={savingForm}
