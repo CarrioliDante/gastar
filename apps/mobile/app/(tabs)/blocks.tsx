@@ -1,16 +1,15 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Line, Path } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
-import { useBlocks, useTransactions, useCreateBlock } from '../../lib/hooks';
+import { useBlocks, useTransactions, useCreateBlock, useUpdateBlock, useArchiveBlock } from '../../lib/hooks';
 import { adaptBlock, adaptTxGroup, type BlockUI } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Eyebrow, Hairline, ProgressBar, Section } from '../../components/ui/primitives';
 import { RadialRing, BarChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
-import { ListRow } from '../../components/ui/ListRow';
 import { TxRow } from '../../components/ui/TxRow';
 import type { GlyphKind } from '../../lib/data';
 
@@ -139,12 +138,132 @@ function BlockDetail({ block, onBack }: { block: BlockUI; onBack: () => void }) 
   );
 }
 
-function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+// ── Shared block form fields ────────────────────────────────────────
+
+interface BlockFormProps {
+  title: string;
+  name: string;
+  setName: (v: string) => void;
+  icon: GlyphKind;
+  setIcon: (v: GlyphKind) => void;
+  budgetStr: string;
+  setBudgetStr: (v: string) => void;
+  goal: string;
+  setGoal: (v: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+  isPending: boolean;
+  canSave: boolean;
+  saveLabel: string;
+}
+
+function BlockFormModal({ title, name, setName, icon, setIcon, budgetStr, setBudgetStr, goal, setGoal, onClose, onSave, isPending, canSave, saveLabel }: BlockFormProps) {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
+  const [showAll, setShowAll] = useState(false);
+
+  return (
+    <View style={{ backgroundColor: C.bg, borderRadius: 20, padding: 24, width: 320, borderWidth: 1, borderColor: C.hairline }}>
+      <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.6, color: C.ink, marginBottom: 12 }}>
+        {title}
+      </Text>
+
+      {/* Quick icons */}
+      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>Ícono</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        {QUICK_ICONS.map(kind => (
+          <Pressable key={kind} onPress={() => setIcon(kind)}
+            style={{
+              width: 42, height: 42, borderRadius: 10,
+              backgroundColor: icon === kind ? C.ink : C.surface,
+              borderWidth: 1, borderColor: icon === kind ? C.ink : C.hairline,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+            <BlockGlyph kind={kind} size={18} color={icon === kind ? C.inverse : C.ink} />
+          </Pressable>
+        ))}
+        <Pressable onPress={() => setShowAll(!showAll)}
+          style={{
+            width: 42, height: 42, borderRadius: 10,
+            backgroundColor: showAll ? C.ink : C.surface,
+            borderWidth: 1, borderColor: showAll ? C.ink : C.hairline,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: showAll ? C.inverse : C.faint }}>
+            +
+          </Text>
+        </Pressable>
+      </View>
+
+      {showAll && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {GLYPHS.map(g => (
+            <Pressable key={g} onPress={() => { setIcon(g); setShowAll(false); }}
+              style={{
+                width: 36, height: 36, borderRadius: 8,
+                backgroundColor: icon === g ? C.ink : C.surface,
+                borderWidth: 1, borderColor: icon === g ? C.ink : C.hairline,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              <BlockGlyph kind={g} size={14} color={icon === g ? C.inverse : C.ink} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>Nombre</Text>
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        placeholder="Ej: Alquiler"
+        placeholderTextColor={C.whisper}
+        style={{ fontFamily: fontDisplay, fontSize: 16, color: C.ink, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, marginBottom: 18 }}
+        autoFocus
+      />
+
+      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>Presupuesto mensual</Text>
+      <TextInput
+        value={budgetStr}
+        onChangeText={setBudgetStr}
+        placeholder="0"
+        placeholderTextColor={C.whisper}
+        keyboardType="numeric"
+        style={{ fontFamily: fontDisplay, fontSize: 16, color: C.ink, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, marginBottom: 18 }}
+      />
+
+      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>Nota / objetivo (opcional)</Text>
+      <TextInput
+        value={goal}
+        onChangeText={setGoal}
+        placeholder="Ej: Alquiler · servicios"
+        placeholderTextColor={C.whisper}
+        style={{ fontFamily: fontDisplay, fontSize: 16, color: C.ink, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, marginBottom: 18 }}
+      />
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Pressable onPress={onClose} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline }}>
+          <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', color: C.mute }}>Cancelar</Text>
+        </Pressable>
+        <Pressable
+          onPress={onSave}
+          disabled={!canSave}
+          style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: canSave ? C.ink : C.surfaceAlt, opacity: canSave ? 1 : 0.5 }}
+        >
+          {isPending ? (
+            <ActivityIndicator size="small" color={C.bg} />
+          ) : (
+            <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', color: canSave ? C.bg : C.mute }}>{saveLabel}</Text>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState<GlyphKind>('Home');
   const [budgetStr, setBudgetStr] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [goal, setGoal] = useState('');
   const createBlock = useCreateBlock();
 
   const budget = parseInt(budgetStr.replace(/\D/g, ''), 10) || 0;
@@ -153,8 +272,8 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
   const handleSave = () => {
     if (!canSave) return;
     createBlock.mutate(
-      { name: name.trim(), icon, budget },
-      { onSuccess: () => { setName(''); setBudgetStr(''); setIcon('Home'); onClose(); } },
+      { name: name.trim(), icon, budget, goal: goal.trim() || undefined },
+      { onSuccess: () => { setName(''); setBudgetStr(''); setIcon('Home'); setGoal(''); onClose(); } },
     );
   };
 
@@ -163,91 +282,59 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
   return (
     <Modal transparent animationType="fade" visible={open} onRequestClose={onClose}>
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' }}>
-        <Pressable onPress={() => {}} style={{ backgroundColor: C.bg, borderRadius: 20, padding: 24, width: 320, borderWidth: 1, borderColor: C.hairline }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.6, color: C.ink, marginBottom: 12 }}>
-            Nuevo bloque
-          </Text>
-
-          {/* Quick icons */}
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>Ícono</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            {QUICK_ICONS.map(kind => (
-              <Pressable key={kind} onPress={() => setIcon(kind)}
-                style={{
-                  width: 42, height: 42, borderRadius: 10,
-                  backgroundColor: icon === kind ? C.ink : C.surface,
-                  borderWidth: 1, borderColor: icon === kind ? C.ink : C.hairline,
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                <BlockGlyph kind={kind} size={18} color={icon === kind ? C.inverse : C.ink} />
-              </Pressable>
-            ))}
-            <Pressable onPress={() => setShowAll(!showAll)}
-              style={{
-                width: 42, height: 42, borderRadius: 10,
-                backgroundColor: showAll ? C.ink : C.surface,
-                borderWidth: 1, borderColor: showAll ? C.ink : C.hairline,
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-              <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: showAll ? C.inverse : C.faint }}>
-                +
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Collapsible full icon grid */}
-          {showAll && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {GLYPHS.map(g => (
-                <Pressable key={g} onPress={() => { setIcon(g); setShowAll(false); }}
-                  style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    backgroundColor: icon === g ? C.ink : C.surface,
-                    borderWidth: 1, borderColor: icon === g ? C.ink : C.hairline,
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                  <BlockGlyph kind={g} size={14} color={icon === g ? C.inverse : C.ink} />
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>Nombre</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Ej: Alquiler"
-            placeholderTextColor={C.whisper}
-            style={{ fontFamily: fontDisplay, fontSize: 16, color: C.ink, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, marginBottom: 18 }}
-            autoFocus
+        <Pressable onPress={() => {}}>
+          <BlockFormModal
+            title="Nuevo bloque"
+            name={name} setName={setName}
+            icon={icon} setIcon={setIcon}
+            budgetStr={budgetStr} setBudgetStr={setBudgetStr}
+            goal={goal} setGoal={setGoal}
+            onClose={onClose}
+            onSave={handleSave}
+            isPending={createBlock.isPending}
+            canSave={canSave}
+            saveLabel="Crear"
           />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>Presupuesto mensual</Text>
-          <TextInput
-            value={budgetStr}
-            onChangeText={setBudgetStr}
-            placeholder="0"
-            placeholderTextColor={C.whisper}
-            keyboardType="numeric"
-            style={{ fontFamily: fontDisplay, fontSize: 16, color: C.ink, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, marginBottom: 18 }}
+function EditBlockModal({ block, onClose }: { block: BlockUI; onClose: () => void }) {
+  const [name, setName] = useState(block.label);
+  const [icon, setIcon] = useState<GlyphKind>(block.glyph);
+  const [budgetStr, setBudgetStr] = useState(String(block.budget));
+  const [goal, setGoal] = useState(block.note ?? '');
+  const updateBlock = useUpdateBlock();
+
+  const budget = parseInt(budgetStr.replace(/\D/g, ''), 10) || 0;
+  const canSave = name.trim().length > 0 && budget > 0 && !updateBlock.isPending;
+
+  const handleSave = () => {
+    if (!canSave) return;
+    updateBlock.mutate(
+      { id: block.id, name: name.trim(), icon, budget, goal: goal.trim() || undefined },
+      { onSuccess: onClose },
+    );
+  };
+
+  return (
+    <Modal transparent animationType="fade" visible onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' }}>
+        <Pressable onPress={() => {}}>
+          <BlockFormModal
+            title="Editar bloque"
+            name={name} setName={setName}
+            icon={icon} setIcon={setIcon}
+            budgetStr={budgetStr} setBudgetStr={setBudgetStr}
+            goal={goal} setGoal={setGoal}
+            onClose={onClose}
+            onSave={handleSave}
+            isPending={updateBlock.isPending}
+            canSave={canSave}
+            saveLabel="Guardar"
           />
-
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Pressable onPress={onClose} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline }}>
-              <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', color: C.mute }}>Cancelar</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSave}
-              disabled={!canSave}
-              style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: canSave ? C.ink : C.surfaceAlt, opacity: canSave ? 1 : 0.5 }}
-            >
-              {createBlock.isPending ? (
-                <ActivityIndicator size="small" color={C.bg} />
-              ) : (
-                <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', color: canSave ? C.bg : C.mute }}>Crear</Text>
-              )}
-            </Pressable>
-          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -255,12 +342,14 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
 }
 
 export default function BlocksScreen() {
-  const { C, fontBody, fontDisplay, fontMono, currencyCode } = useTheme();
+  const { C, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [selectedBlock, setSelectedBlock] = useState<BlockUI | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editBlock, setEditBlock] = useState<BlockUI | null>(null);
   const { data: apiBlocks, isLoading, isError } = useBlocks();
+  const archiveBlock = useArchiveBlock();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -289,6 +378,21 @@ export default function BlocksScreen() {
   const totalBudget = blocks.reduce((s, b) => s + b.budget, 0);
   const pct = totalBudget > 0 ? totalSpent / totalBudget : 0;
 
+  const handleBlockMenu = (b: BlockUI) => {
+    Alert.alert(b.label, undefined, [
+      { text: 'Editar', onPress: () => setEditBlock(b) },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => Alert.alert('Eliminar bloque', '¿Confirmar? Esta acción no se puede deshacer.', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Eliminar', style: 'destructive', onPress: () => archiveBlock.mutate(b.id) },
+        ]),
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: C.bg }}
@@ -300,7 +404,7 @@ export default function BlocksScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-            {blocks.length} activos{blocks.length ? '' : ''}
+            {blocks.length} activos
           </Text>
           <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
             Bloques
@@ -331,7 +435,7 @@ export default function BlocksScreen() {
       <View style={{ paddingTop: isError ? 18 : 32, paddingBottom: 20 }}>
         <Eyebrow right={`${blocks.length} bloques`}>Asignado · {monthName(now)}</Eyebrow>
         <Text style={{ fontFamily: fontDisplay, fontSize: 36, fontWeight: '500', letterSpacing: -1.5, marginTop: 14, color: C.ink, fontVariant: ['tabular-nums'] }}>
-          {currencyCode} {fmt(totalBudget, { decimals: 0 })}
+          {fmt(totalBudget, { decimals: 0 })}
         </Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5 }}>
@@ -357,24 +461,71 @@ export default function BlocksScreen() {
         </View>
       )}
 
-      {blocks.map((b, i) => {
+      {blocks.map((b) => {
         const bpct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
+        const rightAmount = fmt(b.spent, { decimals: 0, compact: true });
+        const subText = `/${fmt(b.budget, { decimals: 0, compact: true })} · ${b.txs} mov`;
+
         return (
           <View key={b.id}>
-            <ListRow
-              glyph={b.glyph}
-              label={b.label}
-              meta={b.note || undefined}
-              right={`${fmt(b.spent, { decimals: 0, compact: true })}/${fmt(b.budget, { decimals: 0, compact: true })}`}
-              sub={`${b.txs} mov`}
-              progress={bpct}
-              onClick={() => setSelectedBlock(b)}
-            />
+            {/* Row */}
+            <Pressable
+              onPress={() => setSelectedBlock(b)}
+              style={({ pressed }) => ({ paddingVertical: 14, opacity: pressed ? 0.55 : 1 })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                {/* Icon */}
+                <View style={{ width: 26, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <BlockGlyph kind={b.glyph} size={22} color={C.ink} />
+                </View>
+
+                {/* Label + note */}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: '500', letterSpacing: -0.4, color: C.ink }}>
+                    {b.label}
+                  </Text>
+                  {b.note ? (
+                    <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.4, marginTop: 2 }}>
+                      {b.note}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Right: amount + sub + menu */}
+                <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 12, alignSelf: 'center' }}>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: '500', letterSpacing: -0.6, color: C.ink, fontVariant: ['tabular-nums'] }}>
+                      {rightAmount}
+                    </Text>
+                    <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.4, marginTop: 2 }}>
+                      {subText}
+                    </Text>
+                  </View>
+
+                  {/* ··· menu button */}
+                  <Pressable
+                    onPress={() => handleBlockMenu(b)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ paddingLeft: 4 }}
+                  >
+                    <Text style={{ fontFamily: fontMono, fontSize: 13, color: C.faint, letterSpacing: 2 }}>···</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Progress bar — full width, 2px, below row content */}
+              <View style={{ height: 2, backgroundColor: C.hairline, overflow: 'hidden', marginTop: 10 }}>
+                <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, bpct) * 100}%`, backgroundColor: C.ink }} />
+              </View>
+            </Pressable>
+
             <Hairline />
           </View>
         );
       })}
+
       <CreateBlockModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      {editBlock && <EditBlockModal block={editBlock} onClose={() => setEditBlock(null)} />}
     </ScrollView>
   );
 }
