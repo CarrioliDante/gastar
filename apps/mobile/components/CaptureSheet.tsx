@@ -53,6 +53,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   const scrimOpacity = useSharedValue(0);
   const [visible, setVisible] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [type, setType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('');
@@ -88,6 +89,8 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   // Close the confirmation once the stats query delivers fresh data after a save
   useEffect(() => {
     if (!saved) return;
+    if (error) return; // Don't close if there's an error
+    
     const savedAt = savedAtRef.current;
 
     const unsub = qc.getQueryCache().subscribe(() => {
@@ -100,7 +103,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
 
     const fallback = setTimeout(() => { unsub(); onClose(); }, 5000);
     return () => { unsub(); clearTimeout(fallback); };
-  }, [saved]);
+  }, [saved, error]);
 
   useEffect(() => {
     if (cats.length > 0) {
@@ -117,6 +120,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       setAmount('');
       setName('');
       setSaved(false);
+      setError(null);
       setVisible(true);
       scrimOpacity.value = withTiming(1, { duration: 220 });
       translateY.value = withSpring(0, SPRING);
@@ -158,6 +162,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
 
     savedAtRef.current = Date.now();
     setSaved(true);
+    setError(null);
     onSave?.({ type, amount: amt, category, block });
 
     createTx.mutate({
@@ -165,6 +170,12 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       amount: txAmount,
       category,
       blockId: isExp && block ? block : undefined,
+    }, {
+      onError: (err: any) => {
+        setSaved(false);
+        const errMsg = err?.message || 'No se pudo guardar la transacción';
+        setError(errMsg);
+      },
     });
   };
 
@@ -200,7 +211,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
         {/* Grabber */}
         <View style={{ width: 36, height: 4, borderRadius: 99, backgroundColor: C.whisper, alignSelf: 'center', marginBottom: 16 }} />
 
-        {saved ? (
+        {saved && !error ? (
           <Animated.View entering={FadeIn.duration(180)} style={{ paddingVertical: 36, alignItems: 'center' }}>
             <Animated.View
               entering={ZoomIn.springify().damping(16).stiffness(260)}
@@ -223,6 +234,55 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
             >
               {isExp ? '−' : '+'} {currencyCode} {fmt(parseFloat(amount || '0'), { decimals: 2 })}
             </Animated.Text>
+          </Animated.View>
+        ) : error ? (
+          <Animated.View entering={FadeIn.duration(180)} style={{ paddingVertical: 36, alignItems: 'center' }}>
+            <Animated.View
+              entering={ZoomIn.springify().damping(16).stiffness(260)}
+              style={{
+                width: 54, height: 54, borderRadius: 99, backgroundColor: C.ink,
+                alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+              }}
+            >
+              <Text style={{ color: C.bg, fontSize: 22 }}>✕</Text>
+            </Animated.View>
+            <Animated.Text
+              entering={FadeIn.delay(80).duration(200)}
+              style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: '500', letterSpacing: -0.5, color: C.ink, marginBottom: 12, textAlign: 'center' }}
+            >
+              Error
+            </Animated.Text>
+            <Animated.Text
+              entering={FadeIn.delay(140).duration(200)}
+              style={{ fontFamily: fontBody, fontSize: 13, color: C.mute, marginBottom: 24, textAlign: 'center', paddingHorizontal: 20 }}
+            >
+              {error}
+            </Animated.Text>
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <Pressable
+                onPress={() => setError(null)}
+                style={({ pressed }) => ({
+                  flex: 1, height: 44, borderRadius: 10,
+                  backgroundColor: C.surface,
+                  borderWidth: 1, borderColor: C.hairline,
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink }}>Volver</Text>
+              </Pressable>
+              <Pressable
+                onPress={save}
+                style={({ pressed }) => ({
+                  flex: 1, height: 44, borderRadius: 10,
+                  backgroundColor: C.ink,
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.bg }}>Reintentar</Text>
+              </Pressable>
+            </View>
           </Animated.View>
         ) : (
           <>
