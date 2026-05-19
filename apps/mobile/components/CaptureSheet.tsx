@@ -13,6 +13,7 @@ import { useBlocks, useCategories, useCreateTransaction } from '../lib/hooks';
 import { adaptBlock, type BlockUI } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { BlockGlyph } from './ui/BlockGlyph';
+import { MonthCalendar } from './ui/DatePickers';
 import type { GlyphKind } from '../lib/data';
 import { useAppStore } from '../store/app';
 
@@ -46,6 +47,14 @@ const KEYS = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
 const { height: SCREEN_H } = Dimensions.get('window');
 const SPRING = { damping: 22, stiffness: 280, mass: 0.9 };
 
+function getTodayDate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }: CaptureSheetProps) {
   const { C, fontBody, fontDisplay, fontMono, isDark, currencyCode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -54,12 +63,14 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   const [visible, setVisible] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const [type, setType] = useState<'expense' | 'income'>(initialType);
   const [amount, setAmount] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('comida');
   const [block, setBlock] = useState<string>('');
+  const [date, setDate] = useState(getTodayDate());
 
   const { setLastCaptureType } = useAppStore();
   const qc = useQueryClient();
@@ -119,8 +130,10 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       setType(initialType);
       setAmount('');
       setName('');
+      setDate(getTodayDate());
       setSaved(false);
       setError(null);
+      setShowCalendar(false);
       setVisible(true);
       scrimOpacity.value = withTiming(1, { duration: 220 });
       translateY.value = withSpring(0, SPRING);
@@ -170,6 +183,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       amount: txAmount,
       category,
       blockId: isExp && block ? block : undefined,
+      date,
     }, {
       onError: (err: any) => {
         setSaved(false);
@@ -413,6 +427,25 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               </View>
             )}
 
+            {/* Date picker */}
+            <Pressable
+              onPress={() => setShowCalendar(true)}
+              style={{
+                backgroundColor: C.surface, borderRadius: 12,
+                paddingHorizontal: 14, paddingVertical: 10,
+                borderWidth: 1, borderColor: C.hairline, marginBottom: 12,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              }}
+            >
+              <View>
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.1, textTransform: 'uppercase' }}>Fecha</Text>
+                <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: C.ink, marginTop: 2 }}>
+                  {new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              </View>
+              <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute }}>›</Text>
+            </Pressable>
+
             {/* Keypad */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               {KEYS.map(k => (
@@ -451,6 +484,41 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
           </>
         )}
       </Animated.View>
+
+      {/* Calendar Modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showCalendar}
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <Pressable
+          onPress={() => setShowCalendar(false)}
+          style={{ flex: 1, backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' }}
+        >
+          <View
+            style={{
+              backgroundColor: C.bg,
+              borderRadius: 20,
+              padding: 20,
+              margin: 20,
+              maxHeight: '80%',
+            }}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={{ marginBottom: 16, alignItems: 'center' }}>
+              <Text style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', color: C.ink }}>Seleccionar fecha</Text>
+            </View>
+            <MonthCalendar
+              value={date}
+              onChange={(d) => {
+                if (d) setDate(d);
+                setShowCalendar(false);
+              }}
+            />
+          </View>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
