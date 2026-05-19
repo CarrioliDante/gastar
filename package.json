@@ -9,7 +9,8 @@
     "build:web": "pnpm --filter @gastar/web build",
     "build:landing": "pnpm --filter @gastar/landing build",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "clean": "rm -rf apps/web/.next apps/landing/.next"
   },
   "devDependencies": {
     "playwright": "^1.60.0",
