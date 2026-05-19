@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, AppState } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -14,24 +14,40 @@ interface DigitProps {
   color: string;
   weight: string;
   letterSpacing: number;
+  animKey?: number;
+  delay?: number;
 }
 
-function TickerDigit({ char, size, fontFamily, color, weight, letterSpacing }: DigitProps) {
-  // lineHeight > fontSize gives leading above and below so the clip boundary
-  // never touches the glyph — eliminates the "underline" edge and top-clipping
+function TickerDigit({ char, size, fontFamily, color, weight, letterSpacing, animKey = 0, delay = 0 }: DigitProps) {
   const rowH = size * 1.1;
   const index = parseInt(char, 10);
-  const translateY = useSharedValue(-index * rowH);
-  const prev = useRef(index);
+  const translateY = useSharedValue(rowH);
+  const prev = useRef<number | null>(null);
+  const prevAnimKey = useRef<number>(0);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    if (index === prev.current) return;
-    translateY.value = withTiming(-index * rowH, {
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    const keyChanged = animKey !== prevAnimKey.current;
+    if (index === prev.current && !keyChanged) return;
+    if (!mounted.current || AppState.currentState !== 'active') return;
+
+    if (keyChanged) {
+      translateY.value = rowH;
+    }
+
+    const anim = withTiming(-index * rowH, {
+      duration: 700,
+      easing: Easing.bezier(0.16, 1, 0.3, 1),
     });
+    translateY.value = delay > 0 ? withDelay(delay, anim) : anim;
     prev.current = index;
-  }, [index, rowH]);
+    prevAnimKey.current = animKey;
+  }, [index, rowH, animKey, delay]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -59,12 +75,9 @@ function TickerDigit({ char, size, fontFamily, color, weight, letterSpacing }: D
   );
 }
 
-// Assign stable keys based on distance from the decimal point so React
-// preserves digit components (and their animation state) across value changes.
 function charKeys(intPart: string, fracPart: string | undefined, decimals: number) {
   const out: { key: string; char: string; isDigit: boolean }[] = [];
-
-  let digitPos = 0; // position 0 = units, 1 = tens, …
+  let digitPos = 0;
   const intChars: { key: string; char: string; isDigit: boolean }[] = [];
   for (let i = intPart.length - 1; i >= 0; i--) {
     const c = intPart[i];
@@ -75,13 +88,11 @@ function charKeys(intPart: string, fracPart: string | undefined, decimals: numbe
     }
   }
   out.push(...intChars);
-
   if (decimals > 0 && fracPart) {
     for (let i = 0; i < fracPart.length; i++) {
       out.push({ key: `f${i}`, char: fracPart[i], isDigit: true });
     }
   }
-
   return out;
 }
 
@@ -91,14 +102,33 @@ export function TickerAmount({
   decimals = 2,
   code = '',
   weight = '500',
+  triggerKey,
 }: {
   value: number;
   size?: number;
   decimals?: number;
   code?: string;
   weight?: '400' | '500' | '600' | '700';
+  triggerKey?: number;
 }) {
   const { C, fontDisplay = '' } = useTheme();
+
+  const animKey = useRef(0);
+  const prevValue = useRef<number | null>(null);
+  const prevTriggerKey = useRef<number | undefined>(undefined);
+  const [, forceRender] = useState(0);
+
+  if (prevValue.current !== null && prevValue.current !== value) {
+    animKey.current += 1;
+  }
+  prevValue.current = value;
+
+  useEffect(() => {
+    if (triggerKey === undefined || triggerKey === prevTriggerKey.current) return;
+    prevTriggerKey.current = triggerKey;
+    animKey.current += 1;
+    forceRender(n => n + 1);
+  }, [triggerKey]);
 
   const neg = value < 0;
   const abs = Math.abs(value);
@@ -115,6 +145,9 @@ export function TickerAmount({
   const smallRowH = smallSize * 1.1;
 
   const intKeys = charKeys(intPart, undefined, 0);
+  const ak = animKey.current;
+  const numIntDigits = intKeys.filter(k => k.isDigit).length;
+  let digitCounter = 0;
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: size * 0.06 }}>
@@ -134,8 +167,11 @@ export function TickerAmount({
           −
         </Text>
       )}
-      {intKeys.map(({ key, char, isDigit }) =>
-        isDigit ? (
+      {intKeys.map(({ key, char, isDigit }) => {
+        const staggerDelay = isDigit
+          ? (numIntDigits - 1 - digitCounter++) * 38
+          : 0;
+        return isDigit ? (
           <TickerDigit
             key={key}
             char={char}
@@ -144,6 +180,8 @@ export function TickerAmount({
             color={C.ink}
             weight={weight}
             letterSpacing={letterSpacing}
+            animKey={ak}
+            delay={staggerDelay}
           />
         ) : (
           <Text key={key} style={{
@@ -152,8 +190,8 @@ export function TickerAmount({
           }}>
             {char}
           </Text>
-        )
-      )}
+        );
+      })}
       {decimals > 0 && fracPart != null && (
         <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
           <Text style={{
@@ -171,6 +209,8 @@ export function TickerAmount({
               color={C.faint}
               weight="400"
               letterSpacing={0}
+              animKey={ak}
+              delay={i * 20}
             />
           ))}
         </View>
