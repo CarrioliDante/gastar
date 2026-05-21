@@ -79,6 +79,11 @@ export interface WeekDay {
   amount: number;
 }
 
+export interface MonthDay {
+  day: number;
+  amount: number;
+}
+
 export interface TodayStats {
   spending: number;
   buckets: TodayBucket[];

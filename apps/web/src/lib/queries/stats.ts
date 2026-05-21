@@ -1,7 +1,7 @@
 import { cache } from "react";
 import "server-only";
 import { db } from "@/lib/db";
-import type { SpendingPoint, Category, BalanceData, MonthlyStats, TodayStats, WeekStats } from "@gastar/shared";
+import type { SpendingPoint, Category, BalanceData, MonthlyStats, TodayStats, WeekStats, MonthDay } from "@gastar/shared";
 
 export const getDashboardStats = cache(async (userId: string) => {
   const now = new Date();
@@ -18,7 +18,7 @@ export const getDashboardStats = cache(async (userId: string) => {
     db.transaction.aggregate({ where: { userId }, _sum: { amount: true } }),
     db.transaction.findMany({
       where: { userId, date: { gte: startOfMonth } },
-      select: { amount: true, category: true },
+      select: { amount: true, category: true, date: true },
     }),
     db.transaction.findMany({
       where: { userId, date: { gte: sixMonthsAgo } },
@@ -137,6 +137,20 @@ export const getDashboardStats = cache(async (userId: string) => {
     }));
   const weekSpending = weekTransactions.reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
+  // Month daily — spending per day of current month
+  const monthDailyMap = new Map<number, number>();
+  for (const t of monthlyTransactions) {
+    if (Number(t.amount) < 0) {
+      const day = t.date.getDate();
+      monthDailyMap.set(day, (monthDailyMap.get(day) ?? 0) + Math.abs(Number(t.amount)));
+    }
+  }
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthDaily: MonthDay[] = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    return { day, amount: Math.round(monthDailyMap.get(day) ?? 0) };
+  });
+
   return {
     balance: { total: totalBalance, currency: "USD", change: 0 } as BalanceData,
     monthly: {
@@ -151,5 +165,6 @@ export const getDashboardStats = cache(async (userId: string) => {
     netWorth24mo,
     todayStats:  { spending: Math.round(todaySpending), buckets: todayBuckets } as TodayStats,
     weekStats:   { spending: Math.round(weekSpending), daily: weekDaily } as WeekStats,
+    monthDaily,
   };
 });
