@@ -6,7 +6,7 @@ import type { TransactionRow, InstallmentRow, RecurringRow, GoalRow, BlockRow } 
 
 import { createTransaction, deleteTransaction } from "@/app/actions/transactions";
 import { createInstallment, payInstallment, deleteInstallment, updateInstallment } from "@/app/actions/installments";
-import { createRecurring, markRecurringPaid, deleteRecurring, toggleRecurringPause } from "@/app/actions/recurring";
+import { createRecurring, markRecurringPaid, deleteRecurring, toggleRecurringPause, updateRecurring } from "@/app/actions/recurring";
 import { createBlock, archiveBlock, updateBlock } from "@/app/actions/blocks";
 import { createGoal, contributeToGoal, deleteGoal, updateSavingsGoal } from "@/app/actions/goals";
 
@@ -36,6 +36,7 @@ export function useCreateTransaction() {
       const amount = parseFloat(fd.get("amount") as string);
       const category = fd.get("category") as string;
       const name = (fd.get("name") as string) || category;
+      const blockId = (fd.get("blockId") as string) || undefined;
       const now = new Date();
       const opt: TransactionRow = {
         id: `opt-${Date.now()}`,
@@ -50,11 +51,22 @@ export function useCreateTransaction() {
       qc.setQueryData<TransactionRow[]>(qk.transactions, (old) => old ? [opt, ...old] : [opt]);
       qc.setQueryData<TransactionRow[]>(qk.recentTx(8), (old) => old ? [opt, ...old].slice(0, 8) : [opt]);
 
-      return { prevAll, prevRecent };
+      let prevBlockTxs: TransactionRow[] | undefined;
+      if (blockId) {
+        prevBlockTxs = snapshot<TransactionRow[]>(qc, ["block-transactions", blockId]);
+        qc.setQueryData<TransactionRow[]>(["block-transactions", blockId], (old) =>
+          old ? [opt, ...old] : [opt]
+        );
+      }
+
+      return { prevAll, prevRecent, prevBlockTxs, blockId };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prevAll !== undefined) qc.setQueryData(qk.transactions, ctx.prevAll);
       if (ctx?.prevRecent !== undefined) qc.setQueryData(qk.recentTx(8), ctx.prevRecent);
+      if (ctx?.blockId && ctx?.prevBlockTxs !== undefined) {
+        qc.setQueryData(["block-transactions", ctx.blockId], ctx.prevBlockTxs);
+      }
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["transactions"] });
@@ -361,6 +373,52 @@ export function usePauseRecurring() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["recurring"] });
+    },
+  });
+}
+
+export function useUpdateRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; data: { name: string; amount: number; category: string; frequency: string; dayOfMonth: number | null; note: string | null } }) =>
+      updateRecurring(vars.id, vars.data),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["recurring"] });
+      const prev = snapshot<RecurringRow[]>(qc, qk.recurring);
+      const freqDays: Record<string, number> = { weekly: 7, monthly: 30, bimonthly: 60, yearly: 365 };
+      let nextMs: number;
+      if (vars.data.dayOfMonth && vars.data.frequency === "monthly") {
+        const now = new Date();
+        let d = new Date(now.getFullYear(), now.getMonth(), vars.data.dayOfMonth);
+        if (d <= now) d = new Date(now.getFullYear(), now.getMonth() + 1, vars.data.dayOfMonth);
+        nextMs = d.getTime();
+      } else {
+        nextMs = Date.now() + (freqDays[vars.data.frequency] ?? 30) * 86400000;
+      }
+      qc.setQueryData<RecurringRow[]>(qk.recurring, (old) =>
+        old?.map(r => {
+          if (r.id !== vars.id) return r;
+          return {
+            ...r,
+            name: vars.data.name,
+            amount: vars.data.amount,
+            category: vars.data.category,
+            frequency: vars.data.frequency as RecurringRow["frequency"],
+            dayOfMonth: vars.data.dayOfMonth,
+            note: vars.data.note ?? undefined,
+            nextDueDateMs: nextMs,
+            nextDueDate: new Date(nextMs).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+          };
+        })
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(qk.recurring, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["recurring"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
     },
   });
 }

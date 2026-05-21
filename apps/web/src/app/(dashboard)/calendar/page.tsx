@@ -5,7 +5,8 @@ import { CalendarClient } from "./calendar-client";
 export default async function CalendarPage() {
   const user = await requireUser();
 
-  const horizon = new Date();
+  const now = new Date();
+  const horizon = new Date(now);
   horizon.setMonth(horizon.getMonth() + 6);
 
   const [installments, recurring] = await Promise.all([
@@ -20,14 +21,27 @@ export default async function CalendarPage() {
   ]);
 
   const events = [
-    ...installments.map(i => ({
-      id: i.id,
-      label: i.name,
-      amount: -Number(i.monthlyAmount),
-      date: i.nextDueDate,
-      kind: "cuota" as const,
-      category: "Tecnología",
-    })),
+    ...installments.flatMap(i => {
+      const evs: Array<{
+        id: string; label: string; amount: number;
+        date: Date; kind: "cuota"; category: string; paid: boolean;
+      }> = [];
+      for (let n = 0; n < i.totalInstallments; n++) {
+        const date = new Date(i.startedAt);
+        date.setMonth(date.getMonth() + n);
+        const isPaid = n < i.paidInstallments;
+        evs.push({
+          id: `${i.id}-${n}`,
+          label: `${i.name} (${n + 1}/${i.totalInstallments})`,
+          amount: -Number(i.monthlyAmount),
+          date,
+          kind: "cuota" as const,
+          category: "Cuotas",
+          paid: isPaid,
+        });
+      }
+      return evs;
+    }),
     ...recurring.map(r => ({
       id: r.id,
       label: r.name,

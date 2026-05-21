@@ -6,6 +6,7 @@ import { useInstallments } from "@/hooks/queries";
 import { useCreateInstallment, usePayInstallment, useDeleteInstallment, useUpdateInstallment } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Stat } from "@/components/ui/primitives";
 import { parseNumeric } from "@/hooks/use-number-input";
 import { springGentle } from "@/components/motion/presets";
@@ -29,6 +30,8 @@ function AddForm({ onDone }: { onDone: () => void }) {
   const [total, setTotal] = useState("");
   const [n, setN] = useState("12");
   const [paid, setPaid] = useState("0");
+  const [startedAt, setStartedAt] = useState("");
+  const [nextDueDate, setNextDueDate] = useState("");
   const { format } = useCurrency();
   const createInst = useCreateInstallment();
 
@@ -84,11 +87,13 @@ function AddForm({ onDone }: { onDone: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, alignItems: "flex-end" }}>
         <div>
           <div className="mono" style={labelStyle}>Fecha inicio</div>
-          <input name="startedAt" type="date" style={fieldStyle} />
+          <DatePicker value={startedAt} onChange={setStartedAt} placeholder="Fecha inicio" style={fieldStyle} />
+          <input type="hidden" name="startedAt" value={startedAt} />
         </div>
         <div>
           <div className="mono" style={labelStyle}>Próximo venc.</div>
-          <input name="nextDueDate" type="date" style={fieldStyle} />
+          <DatePicker value={nextDueDate} onChange={setNextDueDate} placeholder="Próximo venc." style={fieldStyle} />
+          <input type="hidden" name="nextDueDate" value={nextDueDate} />
         </div>
         <div>
           {monthly && (
@@ -160,7 +165,7 @@ function InstRowItem({ item }: { item: InstRow }) {
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          style={{ overflow: "hidden", width: "100%" }}
+          style={{ overflow: "hidden", width: "100%", minWidth: 0, maxWidth: "100%" }}
         >
           <EditInstallmentForm
             item={item}
@@ -293,7 +298,7 @@ function EditInstallmentForm({
   return (
     <form onSubmit={handleSubmit} style={{
       padding: "16px 0", borderBottom: "1px solid var(--hairline)",
-      display: "grid", gap: 10, width: "100%",
+      display: "grid", gap: 10, width: "100%", minWidth: 0, boxSizing: "border-box",
     }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 10 }}>
         <div>

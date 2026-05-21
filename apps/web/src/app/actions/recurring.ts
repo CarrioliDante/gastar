@@ -102,6 +102,43 @@ export async function toggleRecurringPause(id: string) {
   }
 }
 
+export async function updateRecurring(id: string, data: {
+  name: string; amount: number; category: string;
+  frequency: string; dayOfMonth: number | null; note: string | null;
+}) {
+  const user = await requireUser();
+  const existing = await db.recurringExpense.findFirst({ where: { id, userId: user.id } });
+  if (!existing) throw new Error("Gasto recurrente no encontrado");
+
+  let nextDueDate: Date;
+  if (data.dayOfMonth && data.frequency === "monthly") {
+    nextDueDate = nextOccurrenceOfDay(data.dayOfMonth);
+  } else {
+    const days = FREQ_DAYS[data.frequency] ?? 30;
+    nextDueDate = new Date();
+    nextDueDate.setDate(nextDueDate.getDate() + days);
+  }
+
+  try {
+    await db.recurringExpense.update({
+      where: { id },
+      data: {
+        name: data.name,
+        amount: data.amount,
+        category: data.category,
+        frequency: data.frequency,
+        dayOfMonth: data.dayOfMonth,
+        note: data.note,
+        nextDueDate,
+      },
+    });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("updateRecurring failed:", err);
+    throw err;
+  }
+}
+
 export async function deleteRecurring(id: string) {
   const user = await requireUser();
   try {

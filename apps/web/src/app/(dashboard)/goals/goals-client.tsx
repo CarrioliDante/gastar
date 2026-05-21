@@ -6,6 +6,7 @@ import { useGoals } from "@/hooks/queries";
 import { useCreateGoal, useContributeToGoal, useDeleteGoal, useUpdateGoal } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { parseNumeric } from "@/hooks/use-number-input";
 import { springGentle } from "@/components/motion/presets";
 import type { GoalRow } from "@/hooks/queries";
@@ -45,9 +46,12 @@ function GoalCard({ goal }: { goal: GoalRow }) {
     const fd = new FormData();
     fd.set("id", goal.id);
     fd.set("amount", String(n));
-    contribute.mutate(fd);
-    setContributing(false);
-    setAmount("");
+    contribute.mutate(fd, {
+      onSuccess: () => {
+        setContributing(false);
+        setAmount("");
+      },
+    });
   };
 
   const handleEdit = (e: React.FormEvent) => {
@@ -76,7 +80,7 @@ function GoalCard({ goal }: { goal: GoalRow }) {
           </div>
           <div>
             <div className="mono" style={labelStyle}>Fecha límite</div>
-            <input type="date" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} style={fieldStyle} />
+            <DatePicker value={editDeadline} onChange={setEditDeadline} placeholder="Fecha l\xedmite" style={fieldStyle} />
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => setEditing(false)} style={{
@@ -161,52 +165,59 @@ function GoalCard({ goal }: { goal: GoalRow }) {
             onClick={() => !isOpt && setEditing(true)}
             disabled={isOpt}
             style={{
-              padding: "6px 10px", borderRadius: 6, border: "none",
+              padding: "6px 10px", background: "none", border: "none",
               cursor: isOpt ? "default" : "pointer",
-              background: "var(--surface)", color: "var(--mute)",
-              boxShadow: "inset 0 0 0 1px var(--hairline)",
-              fontFamily: "inherit", fontSize: 11,
+              fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+              borderBottom: "1px solid transparent",
             }}
           >Editar</button>
           <button
             onClick={() => !isOpt && del.mutate(goal.id)}
             disabled={isOpt || del.isPending}
             style={{
-              padding: "6px 8px", borderRadius: 6, border: "none",
+              padding: "6px 8px", background: "none", border: "none",
               cursor: isOpt || del.isPending ? "default" : "pointer",
-              background: "none", color: "var(--faint)",
-              boxShadow: "inset 0 0 0 1px var(--hairline)",
-              fontFamily: "inherit", fontSize: 11,
+              fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
             }}
           >×</button>
         </div>
       </div>
 
       {contributing && (
-        <form onSubmit={handleContribute} style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-              Monto a aportar
+        <form onSubmit={handleContribute} style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <div style={{ flex: 1 }}>
+              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+                Monto a aportar
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ color: "var(--faint)", fontSize: 16 }}>$</span>
+                <AmountInput
+                  value={amount} onChange={setAmount}
+                  placeholder="0" required autoFocus
+                  style={{ ...fieldStyle, flex: 1 }} />
+              </div>
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ color: "var(--faint)", fontSize: 16 }}>$</span>
-              <AmountInput
-                value={amount} onChange={setAmount}
-                placeholder="0" required autoFocus
-                style={{ ...fieldStyle, flex: 1 }} />
-            </div>
+            <button type="button" onClick={() => setContributing(false)} style={{
+              padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+            }}>Cancelar</button>
+            <button type="submit" disabled={contribute.isPending} style={{
+              padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: "var(--ink)", color: "var(--inverse)",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+            }}>
+              Confirmar
+            </button>
           </div>
-          <button type="button" onClick={() => setContributing(false)} style={{
-            padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
-          }}>Cancelar</button>
-          <button type="submit" disabled={contribute.isPending} style={{
-            padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: "var(--ink)", color: "var(--inverse)",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-          }}>
-            Confirmar
-          </button>
+          {contribute.isError && (
+            <div style={{
+              padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
+              fontSize: 12, color: "var(--ink)", fontFamily: "inherit",
+            }}>
+              {contribute.error?.message || "Algo salió mal. Intentá de nuevo."}
+            </div>
+          )}
         </form>
       )}
     </div>
@@ -215,12 +226,12 @@ function GoalCard({ goal }: { goal: GoalRow }) {
 
 function AddGoalForm({ onDone }: { onDone: () => void }) {
   const createGoal = useCreateGoal();
+  const [deadline, setDeadline] = useState("");
 
   const save = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    createGoal.mutate(fd);
-    onDone();
+    createGoal.mutate(fd, { onSuccess: () => onDone() });
   };
 
   return (
@@ -240,7 +251,8 @@ function AddGoalForm({ onDone }: { onDone: () => void }) {
         </div>
         <div>
           <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Fecha límite</div>
-          <input name="deadline" type="date" style={fieldStyle} />
+          <DatePicker value={deadline} onChange={setDeadline} placeholder="Fecha l\xedmite" style={fieldStyle} />
+          <input type="hidden" name="deadline" value={deadline} />
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={onDone} style={{
@@ -257,6 +269,14 @@ function AddGoalForm({ onDone }: { onDone: () => void }) {
           </button>
         </div>
       </div>
+      {createGoal.isError && (
+        <div style={{
+          padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
+          fontSize: 12, color: "var(--ink)", fontFamily: "inherit",
+        }}>
+          {createGoal.error?.message || "Algo salió mal. Intentá de nuevo."}
+        </div>
+      )}
     </form>
   );
 }

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useRecurring } from "@/hooks/queries";
-import { useCreateRecurring, usePayRecurring, useDeleteRecurring, usePauseRecurring } from "@/hooks/mutations";
+import { useCreateRecurring, usePayRecurring, useDeleteRecurring, usePauseRecurring, useUpdateRecurring } from "@/hooks/mutations";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { Stat } from "@/components/ui/primitives";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
+import { parseNumeric } from "@/hooks/use-number-input";
 import { springGentle } from "@/components/motion/presets";
 import type { RecurringRow } from "@/hooks/queries";
 
@@ -62,8 +63,8 @@ function AddForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <form onSubmit={save} style={{ padding: "20px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12, width: "100%" }}>
-      <div style={{ display: "grid", gridTemplateColumns: `minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)${freq === "monthly" ? " 80px" : ""}`, gap: 10 }}>
+    <form onSubmit={save} style={{ padding: "20px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12, width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 80px", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
           <input name="name" required placeholder="Spotify, Alquiler…" style={fieldStyle} />
@@ -78,16 +79,23 @@ function AddForm({ onDone }: { onDone: () => void }) {
             {FREQS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
           </select>
         </div>
-        {freq === "monthly" && (
-          <div>
-            <div className="mono" style={labelStyle}>Día</div>
-            <input
-              name="dayOfMonth" type="number" min="1" max="31"
-              placeholder="15" style={fieldStyle}
-              title="Día fijo del mes en que se debita"
-            />
-          </div>
-        )}
+        <div>
+          {freq === "monthly" ? (
+            <>
+              <div className="mono" style={labelStyle}>Día</div>
+              <input
+                name="dayOfMonth" type="number" min="1" max="31"
+                placeholder="15" style={fieldStyle}
+                title="Día fijo del mes en que se debita"
+              />
+            </>
+          ) : (
+            <div style={{ visibility: "hidden" }}>
+              <div className="mono" style={labelStyle}>Día</div>
+              <input disabled style={fieldStyle} />
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
@@ -131,6 +139,111 @@ function AddForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+// ── Edit form for recurring ──────────────────────────────────────
+
+function EditRecurringForm({
+  item, onSave, onCancel, isPending, error,
+}: {
+  item: RecurringRow;
+  onSave: (data: { name: string; amount: number; category: string; frequency: string; dayOfMonth: number | null; note: string | null }) => void;
+  onCancel: () => void;
+  isPending: boolean;
+  error?: string;
+}) {
+  const [name, setName] = useState(item.name);
+  const [amount, setAmount] = useState(String(item.amount));
+  const [category, setCategory] = useState(item.category);
+  const [freq, setFreq] = useState(item.frequency);
+  const [dayOfMonth, setDayOfMonth] = useState(item.dayOfMonth ? String(item.dayOfMonth) : "");
+  const [note, setNote] = useState(item.note ?? "");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseNumeric(amount);
+    if (!name.trim() || amt <= 0) return;
+    onSave({
+      name: name.trim(),
+      amount: amt,
+      category,
+      frequency: freq,
+      dayOfMonth: dayOfMonth ? parseInt(dayOfMonth) : null,
+      note: note.trim() || null,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{
+      padding: "16px 0", borderBottom: "1px solid var(--hairline)",
+      display: "grid", gap: 10, width: "100%", minWidth: 0, boxSizing: "border-box",
+    }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 80px", gap: 10 }}>
+        <div>
+          <div className="mono" style={labelStyle}>Nombre</div>
+          <input value={name} onChange={e => setName(e.target.value)} required style={fieldStyle} />
+        </div>
+        <div>
+          <div className="mono" style={labelStyle}>Importe</div>
+          <AmountInput value={amount} onChange={setAmount} required style={fieldStyle} />
+        </div>
+        <div>
+          <div className="mono" style={labelStyle}>Frecuencia</div>
+          <select value={freq} onChange={e => setFreq(e.target.value as typeof item.frequency)} style={fieldStyle}>
+            {FREQS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        </div>
+        <div>
+          {freq === "monthly" ? (
+            <>
+              <div className="mono" style={labelStyle}>Día</div>
+              <input type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} placeholder="15" style={fieldStyle} />
+            </>
+          ) : (
+            <div style={{ visibility: "hidden" }}>
+              <div className="mono" style={labelStyle}>Día</div>
+              <input disabled style={fieldStyle} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <div className="mono" style={labelStyle}>Categoría</div>
+          <select value={category} onChange={e => setCategory(e.target.value)} style={fieldStyle}>
+            {CATS.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <div className="mono" style={labelStyle}>Nota</div>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Opcional" style={fieldStyle} />
+        </div>
+      </div>
+
+      {error && (
+        <div style={{
+          padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
+          fontSize: 12, color: "var(--ink)", fontFamily: "inherit",
+        }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={onCancel} style={{
+          padding: "7px 14px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+        }}>Cancelar</button>
+        <button type="submit" disabled={isPending} style={{
+          padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: isPending ? "var(--surface)" : "var(--ink)",
+          color: isPending ? "var(--faint)" : "var(--inverse)",
+          fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+        }}>Guardar</button>
+      </div>
+    </form>
+  );
+}
+
 // ── Single row ───────────────────────────────────────────────────
 
 function RecurringRowItem({ item }: { item: RecurringRow }) {
@@ -138,6 +251,8 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
   const pay = usePayRecurring();
   const del = useDeleteRecurring();
   const pause = usePauseRecurring();
+  const upd = useUpdateRecurring();
+  const [editing, setEditing] = useState(false);
 
   const freqLabel = FREQS.find(f => f.id === item.frequency)?.label ?? item.frequency;
   const daysUntil = Math.ceil((item.nextDueDateMs - Date.now()) / (1000 * 60 * 60 * 24));
@@ -146,87 +261,134 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
   const showPaid = item.paidThisPeriod && !item.paused;
 
   return (
-    <div className="row-hover" style={{
-      display: "flex", alignItems: "center", gap: 14,
-      padding: "14px 0", borderBottom: "1px solid var(--hairline)",
-      opacity: isOpt || item.paused ? 0.45 : 1,
-      transition: "opacity 200ms",
-    }}>
-      <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <Glyph kind={CATEGORY_GLYPH[item.category] ?? "Home"} size={14} />
-      </div>
-
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>{item.name}</div>
-        <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
-          {item.category} ·{" "}
-          {showPaid ? (
-            <span style={{ color: "var(--ink)" }}>Pagado</span>
-          ) : (
-            <>próx {item.nextDueDate}</>
-          )}
-        </div>
-      </div>
-
-      <div className="mono" style={{
-        fontSize: 11, letterSpacing: "0.04em",
-        color: urgent ? "var(--ink)" : "var(--faint)",
-        fontWeight: urgent ? 500 : 400,
-        flexShrink: 0,
-      }}>
-        {item.paused ? "Pausado" : showPaid ? "Pagado" : daysUntil <= 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : item.nextDueDate}
-      </div>
-
-      <div className="display tnum" style={{
-        fontSize: 15, fontWeight: 500, color: "var(--ink)",
-        letterSpacing: "-0.025em", flexShrink: 0, minWidth: 80, textAlign: "right",
-      }}>
-        {format(item.amount)}
-      </div>
-
-      {!item.paused && (
-        <button
-          onClick={() => !isOpt && pay.mutate(item.id)}
-          disabled={isOpt || pay.isPending}
-          title="Marcar como pagado"
-          style={{
-            padding: "4px 8px", background: "none", border: "none",
-            cursor: isOpt || pay.isPending ? "default" : "pointer",
-            fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
-            color: "var(--mute)", flexShrink: 0,
-            borderBottom: "1px solid transparent",
+    <AnimatePresence mode="popLayout" initial={false}>
+      {editing ? (
+        <motion.div
+          key="edit-form"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          style={{ overflow: "hidden", width: "100%", minWidth: 0, maxWidth: "100%" }}
+        >
+          <EditRecurringForm
+            item={item}
+            onSave={(data) => {
+              upd.mutate(
+                { id: item.id, data },
+                { onSuccess: () => setEditing(false) },
+              );
+            }}
+            onCancel={() => setEditing(false)}
+            isPending={upd.isPending}
+            error={upd.error?.message}
+          />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="row"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <div className="row-hover" style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "14px 0", borderBottom: "1px solid var(--hairline)",
+            opacity: isOpt || item.paused ? 0.45 : 1,
+            transition: "opacity 200ms",
           }}>
-          Pagar
-        </button>
+            <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Glyph kind={CATEGORY_GLYPH[item.category] ?? "Home"} size={14} />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>{item.name}</div>
+              <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
+                {item.category} ·{" "}
+                {showPaid ? (
+                  <span style={{ color: "var(--ink)" }}>Pagado</span>
+                ) : (
+                  <>próx {item.nextDueDate}</>
+                )}
+              </div>
+            </div>
+
+            <div className="mono" style={{
+              fontSize: 11, letterSpacing: "0.04em",
+              color: urgent ? "var(--ink)" : "var(--faint)",
+              fontWeight: urgent ? 500 : 400,
+              flexShrink: 0,
+            }}>
+              {item.paused ? "Pausado" : showPaid ? "Pagado" : daysUntil <= 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : item.nextDueDate}
+            </div>
+
+            <div className="display tnum" style={{
+              fontSize: 15, fontWeight: 500, color: "var(--ink)",
+              letterSpacing: "-0.025em", flexShrink: 0, minWidth: 80, textAlign: "right",
+            }}>
+              {format(item.amount)}
+            </div>
+
+            {!item.paused && (
+              <button
+                onClick={() => !isOpt && pay.mutate(item.id)}
+                disabled={isOpt || pay.isPending}
+                title="Marcar como pagado"
+                style={{
+                  padding: "4px 8px", background: "none", border: "none",
+                  cursor: isOpt || pay.isPending ? "default" : "pointer",
+                  fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                  color: "var(--mute)", flexShrink: 0,
+                  borderBottom: "1px solid transparent",
+                }}>
+                Pagar
+              </button>
+            )}
+
+            <button
+              onClick={() => !isOpt && setEditing(true)}
+              disabled={isOpt}
+              title="Editar"
+              style={{
+                padding: "4px 8px", background: "none", border: "none",
+                cursor: isOpt ? "default" : "pointer",
+                fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                color: "var(--mute)", flexShrink: 0,
+              }}>
+              Editar
+            </button>
+
+            <button
+              onClick={() => !isOpt && pause.mutate(item.id)}
+              disabled={isOpt || pause.isPending}
+              title={item.paused ? "Reanudar" : "Pausar"}
+              style={{
+                padding: "4px 8px", background: "none", border: "none",
+                cursor: isOpt || pause.isPending ? "default" : "pointer",
+                fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                color: "var(--mute)", flexShrink: 0,
+                borderBottom: "1px solid transparent",
+              }}>
+              {item.paused ? "Reanudar" : "Pausar"}
+            </button>
+
+            <button
+              onClick={() => !isOpt && del.mutate(item.id)}
+              disabled={isOpt || del.isPending}
+              title="Eliminar"
+              style={{
+                padding: "4px 8px", background: "none", border: "none",
+                cursor: isOpt || del.isPending ? "default" : "pointer",
+                fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
+                color: "var(--mute)", flexShrink: 0,
+              }}>
+              ×
+            </button>
+          </div>
+        </motion.div>
       )}
-
-      <button
-        onClick={() => !isOpt && pause.mutate(item.id)}
-        disabled={isOpt || pause.isPending}
-        title={item.paused ? "Reanudar" : "Pausar"}
-        style={{
-          padding: "4px 8px", background: "none", border: "none",
-          cursor: isOpt || pause.isPending ? "default" : "pointer",
-          fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
-          color: "var(--mute)", flexShrink: 0,
-          borderBottom: "1px solid transparent",
-        }}>
-        {item.paused ? "Reanudar" : "Pausar"}
-      </button>
-
-      <button
-        onClick={() => !isOpt && del.mutate(item.id)}
-        disabled={isOpt || del.isPending}
-        title="Eliminar"
-        style={{
-          padding: "4px 8px", background: "none", border: "none",
-          cursor: isOpt || del.isPending ? "default" : "pointer",
-          fontFamily: "inherit", fontSize: 10, letterSpacing: "0.04em",
-          color: "var(--mute)", flexShrink: 0,
-        }}>
-        ×
-      </button>
-    </div>
+    </AnimatePresence>
   );
 }
 

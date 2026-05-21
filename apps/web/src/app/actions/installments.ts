@@ -13,22 +13,28 @@ export async function createInstallment(formData: FormData) {
   const totalInstallments = parseInt(formData.get("totalInstallments") as string);
   const paidInstallments  = Math.max(0, parseInt(formData.get("paidInstallments") as string) || 0);
   const nextDueDateStr    = formData.get("nextDueDate") as string;
-
-  const startedAtStr = formData.get("startedAt") as string;
+  const startedAtStr      = formData.get("startedAt") as string;
 
   if (!name || isNaN(totalAmount) || isNaN(monthlyAmount) || isNaN(totalInstallments)) throw new Error("Completá todos los campos obligatorios");
 
-  const nextDueDate = nextDueDateStr ? new Date(nextDueDateStr) : new Date();
-
-  // Use explicit start date if provided, otherwise backdate from next due date
-  // by the number of already-paid installments
+  // Determine startedAt: explicit > backdate from nextDueDate by already-paid count
   const startedAt = startedAtStr
     ? new Date(startedAtStr)
     : (() => {
-        const d = new Date(nextDueDate);
-        d.setMonth(d.getMonth() - paidInstallments);
+        const d = nextDueDateStr ? new Date(nextDueDateStr) : new Date();
+        if (paidInstallments > 0) d.setMonth(d.getMonth() - paidInstallments);
         return d;
       })();
+
+  // Determine nextDueDate: explicit > startedAt + paidInstallments > today
+  let nextDueDate: Date;
+  if (nextDueDateStr) {
+    nextDueDate = new Date(nextDueDateStr);
+  } else {
+    nextDueDate = new Date(startedAt);
+    if (paidInstallments > 0) nextDueDate.setMonth(nextDueDate.getMonth() + paidInstallments);
+    if (nextDueDate < new Date()) nextDueDate = new Date();
+  }
 
   try {
     await db.installment.create({
