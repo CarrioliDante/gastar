@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { TickerAmount } from '../../components/ui/TickerAmount';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { TxRow } from '../../components/ui/TxRow';
 import { LoadingLogo } from '../../components/ui/LoadingLogo';
-import { RadialRing } from '../../components/ui/charts';
+import { RadialRing, CandleChart } from '../../components/ui/charts';
 
 function weekdayName(d: Date): string {
   const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -27,6 +27,7 @@ function monthName(d: Date): string {
 
 export default function HomeScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
@@ -72,11 +73,11 @@ export default function HomeScreen() {
     );
   }
 
-  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], weekSpending: 0 };
+  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], weekSpending: 0, weekDaily: [], todayBuckets: [], todaySpending: 0 };
   const blocks = data?.blocks ?? [];
   const installments = data?.installments ?? [];
   const recurring = data?.recurring ?? [];
-  const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, weekSpending = 0 } = stats;
+  const { balance, monthSpend, monthBudget, income, monthSeries, netWorth12mo, weekSpending = 0, weekDaily = [] } = stats;
   const monthPct = monthBudget > 0 ? Math.min(1, monthSpend / monthBudget) : 0;
   const available = monthBudget > 0 ? monthBudget - monthSpend : Math.max(0, income - monthSpend);
   const weekSpend = weekSpending ?? 0;
@@ -100,6 +101,14 @@ export default function HomeScreen() {
     return g.isoDate >= firstOfMonth;
   });
   const filteredTxs = filteredGroups.flatMap(g => g.txs).slice(0, 5);
+
+  const today = now.getDate();
+  const candleData =
+    period === 'semana'
+      ? weekDaily.map(d => ({ label: d.day.slice(0, 3), amount: d.amount }))
+      : monthSeries
+          .slice(0, today)
+          .map((v, i) => ({ label: String(i + 1), amount: Math.round(v) }));
 
   return (
     <ScrollView
@@ -203,6 +212,19 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* ── Candle chart ── */}
+        <View style={{ marginTop: 28 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase' }}>
+              Gasto por {period === 'semana' ? 'días' : 'días del mes'}
+            </Text>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
+              {fmt(candleData.reduce((s, d) => s + d.amount, 0), { decimals: 0, compact: true })} total
+            </Text>
+          </View>
+          <CandleChart data={candleData} width={screenWidth - 48} height={80} color={C.ink} trackColor={C.hairline2} />
         </View>
       </View>
 

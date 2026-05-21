@@ -138,6 +138,58 @@ export function RadialRing({ value, size = 84, stroke = 1.5, color, trackColor }
   );
 }
 
+// ─── CandleChart ────────────────────────────────────────────────
+interface CandleChartProps {
+  data: { label: string; amount: number }[];
+  width: number;
+  height?: number;
+  color: string;
+  trackColor: string;
+}
+
+export function CandleChart({ data, width, height = 100, color, trackColor }: CandleChartProps) {
+  if (!data || data.length === 0) return null;
+  const max = Math.max(1, ...data.map(d => d.amount));
+  const n = data.length;
+  const totalGap = 8;
+  const candleW = Math.max(4, (width - totalGap * (n - 1)) / n);
+  const bodyW = candleW * 0.5;
+  const wickH = height * 0.12;
+
+  return (
+    <Svg width={width} height={height + wickH * 2}>
+      {data.map((d, i) => {
+        const bodyH = (d.amount / max) * height;
+        const x = i * (candleW + totalGap) + (candleW - bodyW) / 2;
+        const y = height - bodyH + wickH;
+        return (
+          <React.Fragment key={i}>
+            {d.amount > 0 && (
+              <>
+                <Rect
+                  x={x + bodyW / 2 - 0.5}
+                  y={wickH}
+                  width={1}
+                  height={height + wickH}
+                  fill={trackColor}
+                />
+                <Rect
+                  x={x}
+                  y={y}
+                  width={bodyW}
+                  height={Math.max(2, bodyH)}
+                  rx={1.5}
+                  fill={color}
+                />
+              </>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </Svg>
+  );
+}
+
 // ─── Pulso ─────────────────────────────────────────────────────
 interface PulsoProps {
   value: number; // 0–100
