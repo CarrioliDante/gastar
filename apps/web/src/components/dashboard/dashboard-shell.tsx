@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
+import { CandlestickChart } from "@/components/dashboard/candlestick-chart";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { RevealWords } from "@/components/motion/text-reveal";
@@ -213,6 +214,7 @@ export function DashboardShell({
   const monthly      = stats?.monthly ?? { income: 0, spending: 0, savings: 0, savingsGoal: 5000 } as MonthlyStats;
   const categories   = stats?.categories ?? [] as Category[];
   const spendingTrend = stats?.spendingTrend ?? [];
+  const monthDaily    = stats?.monthDaily ?? [];
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Buen día" : hour < 18 ? "Buenas tardes" : "Buenas noches";
 
@@ -286,6 +288,15 @@ export function DashboardShell({
   };
 
   const filteredTx = filterByPeriod(txList, period);
+
+  const candleData =
+    period === "semana"
+      ? (stats?.weekStats?.daily ?? []).map((d) => ({ label: d.day.slice(0, 3), amount: d.amount }))
+      : monthDaily
+          .filter((d) => d.day <= new Date().getDate())
+          .map((d) => ({ label: String(d.day), amount: d.amount }));
+
+  const candleUnit = period === "semana" ? "días" : "días del mes";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -457,7 +468,7 @@ export function DashboardShell({
                   initial={{ width: "0%" }}
                   animate={{ width: `${displayPct * 100}%` }}
                   transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ height: "100%", background: displayIsOverBudget ? "var(--ink)" : "var(--ink)", borderRadius: 99 }}
+                  style={{ height: "100%", background: "var(--ink)", borderRadius: 99 }}
                 />
               </div>
             </div>
@@ -489,6 +500,11 @@ export function DashboardShell({
                 <CategoryBreakdown categories={categories} />
               </div>
             )}
+
+            {/* ── Candlestick chart ── */}
+            <div style={{ marginTop: 40 }}>
+              <CandlestickChart data={candleData} unit={candleUnit} />
+            </div>
 
           </div>
         </ScrollReveal>
