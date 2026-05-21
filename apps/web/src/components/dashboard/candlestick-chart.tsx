@@ -2,6 +2,7 @@
 
 import { Bar, ComposedChart, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { motion } from "motion/react";
+import { ChartTooltip } from "@/components/dashboard/chart-tooltip";
 
 interface CandleData {
   label: string;
@@ -41,51 +42,6 @@ function CandleShape(props: {
         rx={1.5}
       />
     </g>
-  );
-}
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{ value: number }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg)",
-        borderRadius: 6,
-        padding: "6px 10px",
-        border: "1px solid var(--hairline)",
-      }}
-    >
-      <p
-        className="mono"
-        style={{
-          fontSize: 9,
-          color: "var(--faint)",
-          letterSpacing: "0.08em",
-          marginBottom: 2,
-        }}
-      >
-        {label}
-      </p>
-      <p
-        className="display tnum"
-        style={{
-          fontSize: 15,
-          fontWeight: 500,
-          letterSpacing: "-0.03em",
-          color: "var(--ink)",
-        }}
-      >
-        ${payload[0].value.toLocaleString("es-AR")}
-      </p>
-    </div>
   );
 }
 
@@ -175,7 +131,7 @@ export function CandlestickChart({ data, unit }: Props) {
               interval="preserveStartEnd"
             />
             <Tooltip
-              content={<ChartTooltip />}
+              content={<ChartTooltip formatValue={(v: number) => `$${v.toLocaleString("es-AR")}`} />}
               cursor={{ stroke: "var(--hairline)", strokeWidth: 1 }}
             />
             <Bar dataKey="amount" shape={<CandleShape />} isAnimationActive={false} />

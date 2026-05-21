@@ -10,7 +10,7 @@ import { useAppStore } from '../../store/app';
 import { fmt } from '../../lib/format';
 import { TickerAmount } from '../../components/ui/TickerAmount';
 import { Section, Eyebrow, Hairline } from '../../components/ui/primitives';
-import { BarChart } from '../../components/ui/charts';
+import { BarChart, HeatmapChart } from '../../components/ui/charts';
 import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { ListRow } from '../../components/ui/ListRow';
 
@@ -58,10 +58,11 @@ export default function InsightsScreen() {
     );
   }
 
-  const { stats, installments, recurring, recurringMonthly, patterns } = data ?? {
+  const { stats, installments, recurring, recurringMonthly, patterns, dailyMap } = data ?? {
     stats: { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], categories: [], todayBuckets: [], todaySpending: 0, weekDaily: [], weekSpending: 0 },
     installments: [] as any[], recurring: [] as any[], recurringMonthly: 0,
     patterns: [{ value: '—', label: 'día de más gasto' }, { value: '—', label: 'hora pico' }, { value: '0', label: 'días con movimientos' }, { value: '—', label: 'categoría principal' }],
+    dailyMap: {} as Record<string, number>,
   };
   const { monthSeries, categories, monthSpend } = stats;
   const totalCats = categories.reduce((s, c) => s + c.value, 0);
@@ -102,6 +103,23 @@ export default function InsightsScreen() {
         <TickerAmount value={avgDaily} size={28} decimals={0} code="AR$" triggerKey={viewKey} />
         <View style={{ marginBottom: 18 }} />
         <BarChart data={monthSeries} width={300} height={62} gap={3} color={C.ink} trackColor={C.hairline2} />
+      </Section>
+
+      <Hairline style={{ marginTop: 28 }} />
+
+      {/* Spending heatmap */}
+      <Section title="Intensidad de gasto" top={26}>
+        <View style={{ marginTop: 12 }}>
+          <HeatmapChart
+            dailyMap={dailyMap ?? {}}
+            width={300}
+            cellSize={12}
+            gap={3}
+            weeks={21}
+            color={C.ink}
+            trackColor={C.hairline2}
+          />
+        </View>
       </Section>
 
       <Hairline style={{ marginTop: 28 }} />

@@ -390,12 +390,17 @@ export function useDashboard() {
   return { data, isLoading, isError };
 }
 
+export interface DailySpendingMap {
+  [isoDate: string]: number;
+}
+
 interface InsightsData {
   stats: StatsUI;
   installments: InstallmentUI[];
   recurring: RecurringUI[];
   recurringMonthly: number;
   patterns: { value: string; label: string }[];
+  dailyMap: DailySpendingMap;
 }
 
 export function useInsights() {
@@ -454,6 +459,13 @@ export function useInsights() {
             { value: topCat,             label: 'categoría principal' },
           ];
 
+          // Daily spending map for heatmap (isoDate → total)
+          const dailyMap: Record<string, number> = {};
+          for (const g of transactions.data?.groups ?? []) {
+            const daySpend = g.txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+            if (daySpend > 0) dailyMap[g.isoDate] = (dailyMap[g.isoDate] ?? 0) + daySpend;
+          }
+
           return {
             stats: s,
             installments: (installments.data ?? []).map(adaptInstallment),
@@ -463,6 +475,7 @@ export function useInsights() {
               0,
             ),
             patterns,
+            dailyMap,
           };
         })()
       : null;

@@ -190,6 +190,96 @@ export function CandleChart({ data, width, height = 100, color, trackColor }: Ca
   );
 }
 
+// ─── HeatmapChart ──────────────────────────────────────────────────
+interface HeatmapChartProps {
+  dailyMap: Record<string, number>;
+  width: number;
+  cellSize?: number;
+  gap?: number;
+  weeks?: number;
+  color: string;
+  trackColor: string;
+}
+
+const MONTH_ABBR_MOBILE = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+export function HeatmapChart({ dailyMap, width, cellSize = 12, gap = 3, weeks = 21, color, trackColor }: HeatmapChartProps) {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (weeks * 7) - mondayOffset);
+  startDate.setHours(0, 0, 0, 0);
+
+  // Build grid and collect amounts for quantiles
+  const grid: { date: Date; amount: number }[][] = [];
+  const allAmounts: number[] = [];
+  const d = new Date(startDate);
+  for (let col = 0; col < weeks; col++) {
+    const week: { date: Date; amount: number }[] = [];
+    for (let row = 0; row < 7; row++) {
+      const iso = d.toISOString().slice(0, 10);
+      const amt = dailyMap[iso] ?? 0;
+      week.push({ date: new Date(d), amount: amt });
+      if (amt > 0) allAmounts.push(amt);
+      d.setDate(d.getDate() + 1);
+    }
+    grid.push(week);
+  }
+
+  allAmounts.sort((a, b) => a - b);
+  const q1 = allAmounts[Math.floor(allAmounts.length * 0.25)] ?? 0;
+  const q2 = allAmounts[Math.floor(allAmounts.length * 0.50)] ?? 0;
+  const q3 = allAmounts[Math.floor(allAmounts.length * 0.75)] ?? 0;
+
+  function lvl(v: number): number {
+    if (v === 0) return 0;
+    if (v <= q1) return 1;
+    if (v <= q2) return 2;
+    if (v <= q3) return 3;
+    return 4;
+  }
+
+  const opacities = [0, 0.1, 0.22, 0.42, 0.78];
+  const step = cellSize + gap;
+  const totalH = 7 * step - gap;
+  const totalW = weeks * step - gap;
+
+  // Month labels
+  const monthLabels: { col: number; label: string }[] = [];
+  for (let col = 0; col < grid.length; col++) {
+    const m = grid[col][0].date.getMonth();
+    const prev = col > 0 ? grid[col - 1][0].date.getMonth() : -1;
+    if (prev !== m) monthLabels.push({ col, label: MONTH_ABBR_MOBILE[m] });
+  }
+
+  return (
+    <Svg width={totalW} height={totalH}>
+      {grid.map((week, col) =>
+        week.map((cell, row) => {
+          const l = lvl(cell.amount);
+          const isFuture = cell.date > today;
+          const opacity = isFuture ? 0 : opacities[l];
+          const fill = l === 0 || isFuture ? trackColor : color;
+          return (
+            <Rect
+              key={`${row}-${col}`}
+              x={col * step}
+              y={row * step}
+              width={cellSize}
+              height={cellSize}
+              rx={2}
+              fill={fill}
+              opacity={opacity}
+            />
+          );
+        })
+      )}
+    </Svg>
+  );
+}
+
 // ─── Pulso ─────────────────────────────────────────────────────
 interface PulsoProps {
   value: number; // 0–100

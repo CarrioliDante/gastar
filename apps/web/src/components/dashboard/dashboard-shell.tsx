@@ -268,15 +268,8 @@ export function DashboardShell({
     return d;
   };
 
-  const filterByPeriod = (txs: typeof txList, p: string) => {
+  const filterByPeriod = (txs: typeof txList, p: "semana" | "mes") => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (p === "hoy") {
-      return txs.filter(tx => {
-        const txDate = new Date((tx as any).isoDate + "T00:00:00");
-        return txDate.getTime() === today.getTime();
-      });
-    }
     if (p === "semana") {
       const monday = getMonday();
       return txs.filter(tx => new Date((tx as any).isoDate) >= monday);
@@ -480,11 +473,17 @@ export function DashboardShell({
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } } }}
               style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
             >
-              {[
-                { value: displaySpend, label: "Gastado", suffix: "" },
-                { value: displayAvailable, label: "Disponible", suffix: "" },
-                { value: displayIncome, label: "Ingreso", suffix: "" },
-              ].map(s => (
+              {(period === "semana"
+                ? [
+                    { value: displaySpend, label: "Gastado", suffix: "" },
+                    { value: displayIncome, label: "Ingreso", suffix: "" },
+                  ]
+                : [
+                    { value: displaySpend, label: "Gastado", suffix: "" },
+                    { value: displayAvailable, label: "Disponible", suffix: "" },
+                    { value: displayIncome, label: "Ingreso", suffix: "" },
+                  ]
+              ).map(s => (
                 <motion.div key={s.label} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
                   <Stat value={s.value} label={s.label} size={28} suffix={s.suffix} />
                 </motion.div>

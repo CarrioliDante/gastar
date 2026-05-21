@@ -187,11 +187,17 @@ export default function HomeScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-            {[
-              { value: displaySpend, label: 'Gastado' },
-              { value: displayAvailable, label: 'Disponible' },
-              { value: income, label: 'Ingreso' },
-            ].map(s => (
+            {(period === 'semana'
+                ? [
+                    { value: displaySpend, label: 'Gastado' },
+                    { value: income, label: 'Ingreso' },
+                  ]
+                : [
+                    { value: displaySpend, label: 'Gastado' },
+                    { value: displayAvailable, label: 'Disponible' },
+                    { value: income, label: 'Ingreso' },
+                  ]
+              ).map(s => (
               <View key={s.label} style={{ flex: 1 }}>
                 <TickerAmount key={period + '-' + s.label} value={s.value} size={20} decimals={0} triggerKey={viewKey} />
                 <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>

@@ -4,33 +4,12 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
-import type { MonthlyStats, SpendingPoint, Category, Transaction, WeekStats } from "@gastar/shared";
-import {
-  AreaChart, Area, XAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar,
-} from "recharts";
+import type { MonthlyStats, Category, Transaction, WeekStats } from "@gastar/shared";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { springGentle } from "@/components/motion/presets";
 import { useCurrency } from "@/hooks/use-currency";
 import { Hairline, TxRow, type GlyphKind } from "@/components/ui/primitives";
-
-// ── ChartTooltip (recharts) ──
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean; payload?: Array<{ value: number; name?: string }>; label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: "#0A0A0A", borderRadius: 12, padding: "9px 16px" }}>
-      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: "0.08em", marginBottom: 3 }}>{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: "#F5F5F2", fontSize: 16, fontWeight: 300, letterSpacing: "-0.5px" }}>
-          {p.name ? `${p.name}: ` : ""}${p.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-        </p>
-      ))}
-    </div>
-  );
-}
 
 // ── Eyebrow ──
 function Eyebrow({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
@@ -74,14 +53,14 @@ function computeCategoriesFromTxs(txs: Transaction[]): Category[] {
 // ── Types ──
 interface Props {
   monthly: MonthlyStats;
-  spendingTrend: SpendingPoint[];
-  incomeTrend: SpendingPoint[];
   categories: Category[];
   transactions: Transaction[];
   weekStats: WeekStats;
   patrimonioNeto: number;
   dailySeries: { day: number; amount: number }[];
 }
+
+const MONTH_ABBR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 // ── SpendingDonut ──
 function SpendingDonut({ categories }: { categories: Category[] }) {
@@ -282,10 +261,186 @@ function WeekBarChart({ weekStats }: { weekStats: WeekStats }) {
   );
 }
 
+// ── SpendingHeatmap (GitHub-style) ──
+function SpendingHeatmap({ transactions }: { transactions: Transaction[] }) {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+  const totalWeeks = 21;
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (totalWeeks * 7) - mondayOffset);
+  startDate.setHours(0, 0, 0, 0);
+
+  const spendMap = new Map<string, number>();
+  for (const tx of transactions) {
+    if (tx.amount >= 0) continue;
+    const isoDate = (tx as any).isoDate as string | undefined;
+    if (!isoDate) continue;
+    spendMap.set(isoDate, (spendMap.get(isoDate) ?? 0) + Math.abs(tx.amount));
+  }
+
+  const amounts = Array.from(spendMap.values()).sort((a, b) => a - b);
+  const q1 = amounts[Math.floor(amounts.length * 0.25)] ?? 0;
+  const q2 = amounts[Math.floor(amounts.length * 0.50)] ?? 0;
+  const q3 = amounts[Math.floor(amounts.length * 0.75)] ?? 0;
+
+  function level(v: number): number {
+    if (v === 0) return 0;
+    if (v <= q1) return 1;
+    if (v <= q2) return 2;
+    if (v <= q3) return 3;
+    return 4;
+  }
+
+  const levels = [
+    { bg: "var(--hairline2)", opacity: 1 },
+    { bg: "var(--ink)", opacity: 0.1 },
+    { bg: "var(--ink)", opacity: 0.22 },
+    { bg: "var(--ink)", opacity: 0.42 },
+    { bg: "var(--ink)", opacity: 0.78 },
+  ];
+
+  const grid: { date: Date; amount: number; lvl: number }[][] = [];
+  const d = new Date(startDate);
+  for (let col = 0; col < totalWeeks; col++) {
+    const week: { date: Date; amount: number; lvl: number }[] = [];
+    for (let row = 0; row < 7; row++) {
+      const iso = d.toISOString().slice(0, 10);
+      const amt = spendMap.get(iso) ?? 0;
+      week.push({ date: new Date(d), amount: amt, lvl: amt === 0 ? 0 : level(amt) });
+      d.setDate(d.getDate() + 1);
+    }
+    grid.push(week);
+  }
+
+  const monthLabels: { col: number; label: string }[] = [];
+  for (let col = 0; col < grid.length; col++) {
+    const m = grid[col][0].date.getMonth();
+    const prev = col > 0 ? grid[col - 1][0].date.getMonth() : -1;
+    if (prev !== m) monthLabels.push({ col, label: MONTH_ABBR[m] });
+  }
+
+  const DAY_LABELS = ["L", "", "X", "", "V", "", "D"];
+
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
+        {/* Day labels */}
+        <div style={{ display: "grid", gridTemplateRows: "repeat(7, 1fr)", gap: 3, paddingTop: 16 }}>
+          {DAY_LABELS.map((l, i) => (
+            <div key={i} className="mono" style={{
+              fontSize: 8, color: "var(--faint)", letterSpacing: "0.06em",
+              textAlign: "right", paddingRight: 4, lineHeight: "12px",
+              visibility: l ? "visible" as const : "hidden" as const,
+            }}>{l}</div>
+          ))}
+        </div>
+
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          {/* Month labels */}
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${totalWeeks}, 1fr)`, gap: 3, marginBottom: 2 }}>
+            {Array.from({ length: totalWeeks }).map((_, col) => {
+              const ml = monthLabels.find(m => m.col === col);
+              return (
+                <div key={col} className="mono" style={{
+                  fontSize: 8, color: ml ? "var(--faint)" : "transparent",
+                  letterSpacing: "0.06em",
+                }}>{ml?.label ?? ""}</div>
+              );
+            })}
+          </div>
+
+          {/* Cells */}
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${totalWeeks}, 1fr)`, gap: 3 }}>
+            {Array.from({ length: 7 }).map((_, row) =>
+              Array.from({ length: totalWeeks }).map((__, col) => {
+                const cell = grid[col][row];
+                const l = levels[cell.lvl];
+                const isFuture = cell.date > today;
+                return (
+                  <div
+                    key={`${row}-${col}`}
+                    onMouseEnter={(e) => {
+                      const rect = (e.target as HTMLElement).getBoundingClientRect();
+                      setTooltip({
+                        text: `${cell.date.toLocaleDateString("es-AR", { day: "numeric", month: "short" })} · $${cell.amount.toLocaleString("es-AR")}`,
+                        x: rect.left + rect.width / 2,
+                        y: rect.top - 8,
+                      });
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                    style={{
+                      aspectRatio: "1",
+                      borderRadius: 2,
+                      background: isFuture ? "transparent" : l.bg,
+                      opacity: isFuture ? 0 : l.opacity,
+                      cursor: cell.amount > 0 ? "pointer" : "default",
+                    }}
+                  />
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="mono"
+          style={{
+            position: "fixed",
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: "translate(-50%, -100%)",
+            background: "var(--bg)",
+            borderRadius: 5,
+            padding: "4px 8px",
+            border: "1px solid var(--hairline)",
+            fontSize: 10,
+            color: "var(--ink)",
+            letterSpacing: "0.04em",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            zIndex: 999,
+            boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
+          }}
+        >
+          {tooltip.text}
+        </div>
+      )}
+
+      {/* Legend */}
+      <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 10, justifyContent: "flex-end" }}>
+        <span className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.06em", marginRight: 4 }}>Menos</span>
+        {levels.map((l, i) => (
+          <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: l.bg, opacity: l.opacity }} />
+        ))}
+        <span className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.06em", marginLeft: 4 }}>Más</span>
+      </div>
+    </div>
+  );
+}
+
 // ── MetricsGrid ──
-function MetricsGrid({ income, spending, savings, savingsRate }: {
-  income: number; spending: number; savings: number; savingsRate: number;
+function MetricsGrid({ income, spending, savings, savingsRate, hideSavings }: {
+  income: number; spending: number; savings: number; savingsRate: number; hideSavings?: boolean;
 }) {
+  const stats = hideSavings
+    ? [
+        { label: "Ingresos", value: income, prefix: "$" },
+        { label: "Gastos", value: spending, prefix: "$" },
+        { label: "Tasa de ahorro", value: savingsRate, suffix: "%" },
+      ]
+    : [
+        { label: "Ingresos", value: income, prefix: "$" },
+        { label: "Gastos", value: spending, prefix: "$" },
+        { label: "Ahorrado", value: savings, prefix: "$" },
+        { label: "Tasa de ahorro", value: savingsRate, suffix: "%" },
+      ];
   return (
     <motion.div
       initial="hidden"
@@ -294,14 +449,9 @@ function MetricsGrid({ income, spending, savings, savingsRate }: {
         hidden: {},
         visible: { transition: { staggerChildren: 0.08, delayChildren: 0.3 } },
       }}
-      style={{ paddingTop: 36, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32 }}
+      style={{ paddingTop: 36, display: "grid", gridTemplateColumns: `repeat(${stats.length}, 1fr)`, gap: 32 }}
     >
-      {[
-        { label: "Ingresos", value: income, prefix: "$" },
-        { label: "Gastos", value: spending, prefix: "$" },
-        { label: "Ahorrado", value: savings, prefix: "$" },
-        { label: "Tasa de ahorro", value: savingsRate, suffix: "%" },
-      ].map(stat => (
+      {stats.map(stat => (
         <motion.div
           key={stat.label}
           variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
@@ -320,19 +470,11 @@ function MetricsGrid({ income, spending, savings, savingsRate }: {
 }
 
 // ── Main ──
-export function InsightsClient({ monthly, spendingTrend, incomeTrend, categories, transactions, weekStats, patrimonioNeto, dailySeries }: Props) {
+export function InsightsClient({ monthly, categories, transactions, weekStats, patrimonioNeto, dailySeries }: Props) {
   const { format: formatCurrency } = useCurrency();
   const [period, setPeriod] = useState<"semana" | "mes" | "6meses" | "1año">("mes");
-  const totalSpending = categories.reduce((s, c) => s + c.amount, 0);
   const monthlySavingsRate = monthly.income > 0 ? Math.round((monthly.savings / monthly.income) * 100) : 0;
   const dailyTotal = dailySeries.reduce((s, d) => s + d.amount, 0);
-
-  // Merge income + spending trend for bar chart
-  const barData = spendingTrend.map((s, i) => ({
-    month: s.month,
-    Ingresos: incomeTrend[i]?.amount ?? 0,
-    Gastos: s.amount,
-  }));
 
   // Top merchants (by frequency)
   const merchantFreq = transactions.reduce<Record<string, number>>((acc, t) => {
@@ -468,6 +610,7 @@ export function InsightsClient({ monthly, spendingTrend, incomeTrend, categories
         spending={displaySpending}
         savings={displaySavings}
         savingsRate={displaySavingsRate}
+        hideSavings={period === "semana"}
       />
 
       {/* Daily spending chart — only for current month */}
@@ -509,87 +652,14 @@ export function InsightsClient({ monthly, spendingTrend, incomeTrend, categories
           </div>
         </ScrollReveal>
 
-        {/* RIGHT: Trends + Merchants — only for month or longer */}
+        {/* RIGHT: Heatmap + Merchants — only for month or longer */}
         {isMonthOrMore && (
           <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
-            {/* Area — spending trend */}
+            {/* Heatmap */}
             <ScrollReveal direction="up" distance={24}>
               <div>
-                <Eyebrow right="6 meses">Tendencia de gastos</Eyebrow>
-                <div style={{
-                  marginTop: 18, background: "#FAFAF8", borderRadius: 28,
-                  padding: "24px 20px 12px",
-                  border: "1px solid rgba(0,0,0,0.05)",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-                }}>
-                  {spendingTrend.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={180}>
-                      <AreaChart data={spendingTrend} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="insightsAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#111111" stopOpacity={0.1} />
-                            <stop offset="100%" stopColor="#111111" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis
-                          dataKey="month"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "rgba(0,0,0,0.25)", fontSize: 10, fontFamily: "Inter, sans-serif", letterSpacing: "0.04em" }}
-                          dy={8}
-                        />
-                        <Tooltip
-                          content={<ChartTooltip />}
-                          cursor={{ stroke: "rgba(0,0,0,0.08)", strokeWidth: 1, strokeDasharray: "3 3" }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="amount"
-                          stroke="#111111"
-                          strokeWidth={1.2}
-                          fill="url(#insightsAreaGrad)"
-                          dot={false}
-                          activeDot={{ r: 3, fill: "#111111", strokeWidth: 0 }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <p style={{ color: "rgba(0,0,0,0.2)", fontSize: 12 }}>Sin datos</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </ScrollReveal>
-
-            {/* Bar — income vs expense */}
-            <ScrollReveal direction="up" distance={24}>
-              <div>
-                <Eyebrow right="6 meses">Ingresos vs Gastos</Eyebrow>
-                <div style={{
-                  marginTop: 18, background: "#FAFAF8", borderRadius: 28,
-                  padding: "24px 20px 12px",
-                  border: "1px solid rgba(0,0,0,0.05)",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-                }}>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={barData} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
-                      <XAxis
-                        dataKey="month"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "rgba(0,0,0,0.25)", fontSize: 10, fontFamily: "Inter, sans-serif", letterSpacing: "0.04em" }}
-                        dy={8}
-                      />
-                      <Tooltip
-                        content={<ChartTooltip />}
-                        cursor={{ fill: "rgba(0,0,0,0.03)" }}
-                      />
-                      <Bar dataKey="Ingresos" fill="rgba(0,0,0,0.25)" radius={[3, 3, 0, 0]} barSize={18} />
-                      <Bar dataKey="Gastos" fill="#111111" radius={[3, 3, 0, 0]} barSize={18} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <Eyebrow>Intensidad de gasto</Eyebrow>
+                <SpendingHeatmap transactions={transactions} />
               </div>
             </ScrollReveal>
 

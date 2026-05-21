@@ -3,19 +3,8 @@
 import { motion } from "motion/react";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { fmt } from "@/lib/utils";
+import { ChartTooltip } from "@/components/dashboard/chart-tooltip";
 import type { SpendingPoint, MonthlyStats } from "@gastar/shared";
-
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: "#0A0A0A", borderRadius: 12, padding: "9px 16px" }}>
-      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: "0.08em", marginBottom: 3 }}>{label}</p>
-      <p style={{ color: "#F5F5F2", fontSize: 18, fontWeight: 300, letterSpacing: "-0.6px" }}>
-        {fmt.currency(payload[0].value)}
-      </p>
-    </div>
-  );
-}
 
 interface Props {
   trend: SpendingPoint[];
@@ -86,7 +75,7 @@ export function SpendingChart({ trend, monthly }: Props) {
                 dy={8}
               />
               <Tooltip
-                content={<ChartTooltip />}
+                content={<ChartTooltip formatValue={(v: number) => fmt.currency(v)} />}
                 cursor={{ stroke: "rgba(0,0,0,0.08)", strokeWidth: 1, strokeDasharray: "3 3" }}
               />
               <Area
