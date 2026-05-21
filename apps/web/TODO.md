@@ -1,27 +1,32 @@
 # Gastar Web — TODO
 
-> Actualizado 2026-05-18. Solo tareas del dashboard web (Next.js 16 App Router).
+> Actualizado 2026-05-21. Solo tareas del dashboard web (Next.js 16 App Router).
 
 ---
 
 ## CRUD pendiente
 
 ### Installments
-- [ ] `updateInstallment(id, data)` — server action + modal de edición
-- [ ] Validar que las cuotas pagadas no excedan el total
+- [x] `updateInstallment(id, data)` — server action + form inline de edición
+- [x] Validar que las cuotas pagadas no excedan el total
+- [x] DatePicker editorial para startedAt y nextDueDate
+- [x] nextDueDate auto-calculado de startedAt + paidInstallments
 
 ### Recurring
 - [x] `toggleRecurringPause(id)` — server action que escribe `pausedAt`
 - [x] Botón pausar/reanudar en cada fila
+- [x] `updateRecurring(id, data)` — server action + EditRecurringForm inline
 - [ ] Ícono opcional en Recurring (`icon` field + fallback a categoría)
 
 ### Goals
 - [x] `updateSavingsGoal(id, data)` — server action + form inline de edición
+- [x] DatePicker editorial para deadline (crear y editar)
+- [x] Error handling: onSuccess close + error display en AddGoalForm y contribute
 
 ### Blocks
 - [x] `createBlock` / `updateBlock` / `archiveBlock` — completo
-- [ ] `getTransactionsByBlock(blockId, userId)` — query real en `lib/queries/`
-- [ ] Panel derecho de Blocks: reemplazar trend sintético con lista real de transacciones
+- [x] `getTransactionsByBlock(blockId, userId)` — query real en `lib/queries/`
+- [x] Panel derecho de Blocks: lista real de transacciones
 
 ### Settings
 - [x] Cambiar nombre de usuario — `supabase.auth.updateUser({ data: { full_name } })`
@@ -35,13 +40,14 @@
 
 ### Header
 - [x] Shortcut `⌘N` (gasto) y `⌘⇧N` (ingreso) — funcional
+- [x] Botones editoriales unificados: círculo `+` 32px ink para acciones primarias
 - [ ] Tooltip visible en el botón "Anotar"
 
 ---
 
 ## Features de producto
 
-- [ ] Smart categorization — regex por comercio en server action
+- [x] Smart categorization — regex por comercio en server action
 - [ ] Runway calculator — "tus ahorros duran N meses"
 - [ ] Zen Monday Digest — banner semanal silencioso
 - [ ] Dólar blue / MEP — doble balance local + USD
@@ -51,6 +57,8 @@
 
 ## Analytics
 
+- [x] SpendingHeatmap (GitHub-style) — reemplaza AreaChart + BarChart en Lectura
+- [x] Tooltip en celdas del heatmap
 - [ ] Comparativa mes anterior — delta % en stats
 - [ ] Split-flap balance — animación de dígitos individuales
 
@@ -77,8 +85,10 @@
 
 ## Backlog web
 
-- [ ] Calendar view avanzada (hoy ya muestra cuotas + recurrentes)
+- [x] Calendar view avanzada — todas las cuotas (pagadas + pendientes) visibles
+- [x] Historial de cuotas pagadas — integrado en calendario
+- [x] DatePicker editorial — componente compartido
+- [x] ChartTooltip compartido — extraído a componente con formatValue
 - [ ] Import CSV de bancos
 - [ ] Quincena mode
-- [ ] Historial de cuotas pagadas
 - [ ] Dark mode: persistir preferencia del toggle correctamente

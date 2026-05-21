@@ -1,6 +1,6 @@
 # Gastar — Roadmap
 
-> Actualizado 2026-05-19. Orden: primero frontend, luego funcionalidad.
+> Actualizado 2026-05-21. Orden: primero frontend, luego funcionalidad.
 
 ---
 
@@ -178,11 +178,15 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Gasto diario con velas + línea de promedio
 - [x] Scroll funcional, sin difuminados
 - [x] Vista semana = mismo layout que mes
+- [x] Heatmap de intensidad de gasto (GitHub-style, 21 semanas, 4 niveles quantiles)
+- [x] Quitados AreaChart "Tendencia de gastos" y BarChart "Ingresos vs Gastos" (cards con sombras, fuera de UI editorial)
+- [x] Tooltip en celdas del heatmap (fecha + monto)
 
 ### 7.2 Mobile Lectura ✅
 - [x] Quitado LineChart de patrimonio neto
 - [x] TickerAmount en números clave
 - [x] Donut distribución, installments, recurring, patterns preservados
+- [x] SpendingHeatmap (GitHub-style) con datos reales de transacciones
 
 ---
 
@@ -308,9 +312,15 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ## Fase 16 — Fixes visuales pendientes
 
-### 16.1 Botones editoriales
-- [ ] Todos los botones de acción con estilo editorial (texto + underline, sin fondos surface)
-- [ ] Cards de métricas en Recurrentes reemplazadas por editorial (sin `borderRadius` ni `boxShadow`)
+### 16.1 Botones editoriales ✅
+- [x] Todos los botones de acción con estilo editorial (texto + underline, sin fondos surface)
+- [x] Primarios: círculo `+` 32px ink bg (dashboard, transactions, blocks, sidebar)
+- [x] Secundarios: texto sin fondo ni borde, underline al hover (editar, archivar, pagar, pausar)
+- [x] Eliminado `ghostBtn()` en toda la webapp
+- [x] FontPicker y CurrencyPicker: texto con underline en activo
+- [x] Calendario sin botón "Anotar" (vista de consulta)
+- [x] "Disponible" oculto en vista Semana (dashboard + mobile)
+- [x] "Ahorrado" oculto en vista Semana en Lectura/Insights
 
 ### 16.2 Bloques de vida en dashboard web
 - [ ] Ajustar a diseño de referencia (`screens.jsx`): 142px cards, separadores, sin fondos
@@ -328,20 +338,21 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ## Fase 17 — Fixes funcionales pendientes
 
-### 17.1 Cuotas con fecha de inicio
-- [ ] Crear cuota con fecha de inicio anterior → reflejar pagos pasados en calendario
-- [ ] Marcar automáticamente como pagadas las cuotas de meses anteriores a hoy
+### 17.1 Cuotas con fecha de inicio ✅
+- [x] Crear cuota con fecha de inicio anterior → reflejar pagos pasados en calendario
+- [x] nextDueDate auto-calculado de startedAt + paidInstallments
+- [x] Calendario muestra todas las cuotas (pagadas tachadas + pendientes)
 
 ### 17.2 Vista Movimientos
 - [ ] Selector nativo de meses (nuestro, no nativo del browser)
-- [ ] Arreglar filtro por "Cuotas" y por "Recurrentes"
+- [x] Arreglar filtro por "Cuotas" y por "Recurrentes" (B9, resuelto en sesión paralela)
 
-### 17.3 Vista Bloques
-- [ ] Al anotar en un bloque seleccionado, la transacción tarda en aparecer → fix cache invalidation
+### 17.3 Vista Bloques ✅
+- [x] Al anotar en un bloque seleccionado, la transacción tarda en aparecer → optimistic update en ["block-transactions", blockId]
 
-### 17.4 Fix ancho en edición inline
-- [ ] Cuotas: al editar, el ancho de los contenedores se expande — usar ancho fijo
-- [ ] Recurrentes: mismo fix
+### 17.4 Fix ancho en edición inline ✅
+- [x] Cuotas: minWidth/maxWidth/boxSizing en EditInstallmentForm
+- [x] Recurrentes: grid estable con columnas fijas en AddForm y EditRecurringForm
 
 ### 17.5 Metas y bloques
 - [ ] Ver metas de ahorro completadas
@@ -354,7 +365,9 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 - [ ] **Import CSV** — extracto de banco (Mercado Pago, BBVA, Galicia)
 - [ ] **Quincena mode** — ciclos de 15 días para salario quincenal (LATAM)
-- [ ] **Historial de cuotas pagadas** — transacciones generadas por cada cuota
+- [x] **Historial de cuotas pagadas** — calendario muestra todas las cuotas (pagadas + pendientes)
+- [x] **Editar recurrentes** — EditRecurringForm inline + updateRecurring server action
+- [x] **DatePicker editorial** — componente compartido en Goals, Installments, Recurring
 - [ ] **Font picker** — persiste preferencia (web)
 - [ ] **Pulso financiero** — posible regreso con análisis combinado de gastos e ingresos
 - [ ] Cuota sin interés con inflación real
@@ -362,7 +375,7 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [ ] Salary anticipation curve
 - [ ] Retirement calculator
 - [ ] Collaborative budgets / shared household
-- [ ] Calendario nativo para cuotas (modal nativo, no input date browser)
+- [x] Calendario nativo para cuotas — DatePicker editorial implementado
 - [ ] Desactivar animaciones individualmente (ya está el toggle global)
 
 ---
@@ -400,6 +413,19 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Smart categorization — `lib/categorization.ts`, auto-selección en QuickExpense
 - [x] Categorías editables — custom en UserSetting, UI en settings web + mobile
 - [x] Toggle animaciones global — CSS class `.no-animations` + setting
+
+### 2026-05-21 — Dashboard temporal + DatePicker + Calendario
+- [x] Dashboard temporal (semana/mes) con toggle, candlestick datos reales
+- [x] ChartTooltip compartido con prop formatValue
+- [x] DatePicker editorial — calendario popover monocromático sin dependencias
+- [x] DatePicker en Goals (crear/editar), Installments (startedAt, nextDueDate)
+- [x] EditRecurringForm inline + updateRecurring server action + useUpdateRecurring
+- [x] Calendario: todas las cuotas (pagadas tachadas + pendientes) por installment
+- [x] Server action createInstallment: nextDueDate auto-calculado
+- [x] Error handling: AddGoalForm + GoalCard.contribute (onSuccess close + error display)
+- [x] Bug fixes: B2 (date picker), B10 (cache blocks), B11 (ancho edición inline)
+- [x] Lectura: SpendingHeatmap GitHub-style reemplaza AreaChart + BarChart (fuera de UI editorial)
+- [x] Lectura: tooltip en celdas del heatmap (fecha + monto)
 
 ### Mobile — Features
 - [x] Scaffolding Expo + NativeWind + Supabase JWT auth + Zustand store

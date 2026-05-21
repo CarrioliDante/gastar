@@ -111,10 +111,11 @@ Lo que la webapp tiene y mobile todavía no.
 - [ ] **Column sorting** — ordenar por fecha, descripción, categoría, monto
 
 ### Charts
+- [x] **SpendingHeatmap** — GitHub-style, 21 semanas, 4 niveles quantiles (paridad con web)
 - [ ] **AreaChart** — web usa recharts (gradient fill), mobile no tiene
 - [ ] **RadarChart** — web tiene spider chart de salud financiera en Insights
-- [ ] **Donut / CategoryBreakdown** — web tiene gráfico de torta por categoría
-- [ ] **Grouped BarChart** — web tiene barras lado a lado (ingreso vs gasto)
+- [x] **Donut / CategoryBreakdown** — web tiene gráfico de torta por categoría (mobile ya tiene SVG donut)
+- [ ] **Grouped BarChart** — web tenía barras lado a lado (ingreso vs gasto), ya quitado de web
 
 ### Animaciones
 - [ ] Web tiene ScrollReveal, TextReveal, AnimatedNumber, PageTransition
