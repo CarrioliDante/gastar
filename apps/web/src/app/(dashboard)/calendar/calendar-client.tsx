@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { useUIStore } from "@/stores/ui";
 import {
   BlockGlyph,
   Hairline,
@@ -15,6 +14,7 @@ type CalendarEvent = {
   id: string; label: string; amount: number;
   date: Date; kind: "cuota" | "recurrente";
   category?: string;
+  paid?: boolean;
 };
 
 const DAYS_ES   = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -30,19 +30,13 @@ function fmtCompact(n: number): string {
   return abs.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-function ghostBtn(active = false): React.CSSProperties {
-  return {
-    padding: "6px 12px", borderRadius: 7,
-    background: active ? "var(--ink)" : "var(--surface)",
-    color: active ? "var(--inverse)" : "var(--mute)",
-    border: `1px solid ${active ? "var(--ink)" : "var(--hairline)"}`,
-    fontFamily: "inherit", fontSize: 11, fontWeight: 500,
-    letterSpacing: "-0.005em", cursor: "pointer",
-  };
-}
+const navBtn: React.CSSProperties = {
+  padding: "6px 10px", background: "none", border: "none",
+  fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+  color: "var(--mute)", letterSpacing: "0.02em", cursor: "pointer",
+};
 
 export function CalendarClient({ events }: { events: CalendarEvent[] }) {
-  const { openCapture } = useUIStore();
   const now             = new Date();
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -124,31 +118,15 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
           transition={{ ...springGentle, delay: 0.25 }}
           style={{ display: "flex", alignItems: "center", gap: 8 }}
         >
-          <button onClick={prevMonth} style={ghostBtn()}>←</button>
-          <div style={{
-            padding: "6px 14px", borderRadius: 7,
-            background: "var(--surface)", border: "1px solid var(--hairline)",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500, color: "var(--ink)",
+          <motion.button onClick={prevMonth} whileHover={{ color: "var(--ink)" }} style={navBtn}>←</motion.button>
+          <div className="mono" style={{
+            padding: "6px 14px",
+            fontFamily: "inherit", fontSize: 11, fontWeight: 500, color: "var(--ink)",
+            letterSpacing: "0.06em",
           }}>
             {MONTHS_ES[month]} {year}
           </div>
-          <button onClick={nextMonth} style={ghostBtn()}>→</button>
-          <button onClick={() => openCapture("expense")} style={{
-            padding: "7px 12px 7px 9px", borderRadius: 8,
-            background: "var(--ink)", color: "var(--inverse)", border: "none",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
-          }}>
-            <svg width="11" height="11" viewBox="0 0 11 11">
-              <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
-            <span>Anotar</span>
-            <span className="kbd" style={{
-              background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-              color: "inherit",
-            }}>⌘N</span>
-          </button>
+          <motion.button onClick={nextMonth} whileHover={{ color: "var(--ink)" }} style={navBtn}>→</motion.button>
         </motion.div>
       </header>
 
@@ -236,11 +214,13 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
                         fontSize: 10, color: "var(--ink)", letterSpacing: "-0.005em",
                         display: "flex", alignItems: "center", gap: 5,
                         overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                        opacity: e.paid ? 0.35 : 1,
                       }}>
                         <BlockGlyph kind={glyphKind} size={8} />
                         <span style={{
                           overflow: "hidden", textOverflow: "ellipsis", flex: 1,
                           fontFamily: "inherit", fontWeight: 500,
+                          textDecoration: e.paid ? "line-through" : "none",
                         }}>{e.label}</span>
                         <span className="mono tnum" style={{ fontSize: 9, color: "var(--mute)", flexShrink: 0 }}>
                           {fmtCompact(Math.abs(e.amount))}
@@ -277,6 +257,7 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
                   <div key={e.id} style={{
                     display: "flex", alignItems: "center", gap: 14,
                     padding: "14px 0", borderBottom: "1px solid var(--hairline)",
+                    opacity: e.paid ? 0.35 : 1,
                   }}>
                     <BlockGlyph kind={glyphKind} size={18} />
                     <div style={{ flex: 1 }}>

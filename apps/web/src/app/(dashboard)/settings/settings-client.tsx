@@ -161,11 +161,11 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
     <div style={{ display: "flex", gap: 6 }}>
       {opts.map(o => (
         <button key={o.id} onClick={() => onChange(o.id)} style={{
-          padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer",
-          background: value === o.id ? "var(--ink)" : "var(--surface)",
-          color: value === o.id ? "var(--inverse)" : "var(--mute)",
-          boxShadow: `inset 0 0 0 1px ${value === o.id ? "transparent" : "var(--hairline)"}`,
-          fontSize: 12, letterSpacing: "-0.005em", fontFamily: "inherit",
+          padding: "6px 0", background: "none", border: "none", cursor: "pointer",
+          fontFamily: "inherit", fontSize: 12, letterSpacing: "-0.005em",
+          color: value === o.id ? "var(--ink)" : "var(--faint)",
+          borderBottom: value === o.id ? "1px solid var(--ink)" : "1px solid transparent",
+          fontWeight: value === o.id ? 500 : 400,
           transition: "all 160ms ease",
         }}>
           {o.label}
@@ -187,11 +187,11 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (v: stri
     <div style={{ display: "flex", gap: 6 }}>
       {CURRENCIES.map(c => (
         <button key={c.id} onClick={() => onChange(c.id)} style={{
-          padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer",
-          background: value === c.id ? "var(--ink)" : "var(--surface)",
-          color: value === c.id ? "var(--inverse)" : "var(--mute)",
-          boxShadow: `inset 0 0 0 1px ${value === c.id ? "transparent" : "var(--hairline)"}`,
-          fontSize: 12, letterSpacing: "-0.005em", fontFamily: "inherit",
+          padding: "6px 0", background: "none", border: "none", cursor: "pointer",
+          fontFamily: "inherit", fontSize: 12, letterSpacing: "-0.005em",
+          color: value === c.id ? "var(--ink)" : "var(--faint)",
+          borderBottom: value === c.id ? "1px solid var(--ink)" : "1px solid transparent",
+          fontWeight: value === c.id ? 500 : 400,
           transition: "all 160ms ease",
         }}>
           {c.label}
@@ -358,9 +358,8 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.01em" }}>{displayName}</div>
               <button onClick={() => setEditingName(true)} style={{
-                padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
-                background: "var(--surface)", fontFamily: "inherit", fontSize: 10,
-                color: "var(--faint)", boxShadow: "inset 0 0 0 1px var(--hairline)",
+                padding: "3px 8px", background: "none", border: "none", cursor: "pointer",
+                fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
                 letterSpacing: "0.02em",
               }}>
                 Editar
@@ -486,9 +485,8 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
                     {cat.label}
                   </span>
                   <button onClick={() => startCatEdit(cat)} style={{
-                    padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
-                    background: "var(--surface)", fontFamily: "inherit", fontSize: 10,
-                    color: "var(--faint)", boxShadow: "inset 0 0 0 1px var(--hairline)",
+                    padding: "3px 8px", background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
                   }}>
                     Editar
                   </button>
@@ -538,9 +536,8 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
                     {cat.label}
                   </span>
                   <button onClick={() => startCatEdit(cat)} style={{
-                    padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer",
-                    background: "var(--surface)", fontFamily: "inherit", fontSize: 10,
-                    color: "var(--faint)", boxShadow: "inset 0 0 0 1px var(--hairline)",
+                    padding: "3px 8px", background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
                   }}>
                     Editar
                   </button>
@@ -560,9 +557,9 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
               {savingCats ? "..." : "Guardar cambios"}
             </button>
             <button onClick={resetCategories} style={{
-              padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer",
-              background: "var(--surface)", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
-              boxShadow: "inset 0 0 0 1px var(--hairline)",
+              padding: "7px 14px", background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+              borderBottom: "1px solid transparent",
             }}>
               Restaurar defaults
             </button>
@@ -586,12 +583,10 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           label: "Exportar transacciones",
           value: (
             <a href="/api/export" download style={{
-              display: "inline-block",
-              padding: "7px 14px", borderRadius: 7,
-              background: "var(--surface)", border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12, color: "var(--ink)",
-              boxShadow: "inset 0 0 0 1px var(--hairline)",
+              padding: "7px 0", background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
               letterSpacing: "-0.005em", textDecoration: "none",
+              borderBottom: "1px solid transparent",
             }}>
               Exportar CSV
             </a>
@@ -605,10 +600,8 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           value: (
             <form action={logout}>
               <button type="submit" style={{
-                padding: "7px 14px", borderRadius: 7,
-                background: "none", border: "none", cursor: "pointer",
+                padding: "7px 0", background: "none", border: "none", cursor: "pointer",
                 fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
-                boxShadow: "inset 0 0 0 1px var(--hairline)",
                 letterSpacing: "-0.005em",
               }}>
                 Salir de la cuenta

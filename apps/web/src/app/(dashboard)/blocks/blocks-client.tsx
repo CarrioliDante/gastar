@@ -27,15 +27,13 @@ type Tx = {
   isoDate: string;
 };
 
-function ghostBtn(): React.CSSProperties {
-  return {
-    padding: "7px 12px", borderRadius: 8,
-    background: "var(--surface)", color: "var(--ink)",
-    border: "1px solid var(--hairline)",
-    fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-    letterSpacing: "-0.005em", cursor: "pointer",
-  };
-}
+const actionLink: React.CSSProperties = {
+  padding: "6px 0", background: "none", border: "none",
+  fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+  color: "var(--mute)", letterSpacing: "0.02em", cursor: "pointer",
+  borderBottom: "1px solid transparent",
+  transition: "all 180ms",
+};
 
 function fmtCompact(n: number): string {
   const abs = Math.abs(n);
@@ -64,17 +62,24 @@ export function BlocksClient({
         <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
           Sin bloques todavía.
         </div>
-        <button
+        <motion.button
           onClick={() => setShowCreate(true)}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
           style={{
-            padding: "9px 18px", borderRadius: 9,
+            padding: "9px 18px 9px 14px", borderRadius: 9,
             background: "var(--ink)", color: "var(--inverse)", border: "none",
             fontFamily: "inherit", fontSize: 13, fontWeight: 500,
             letterSpacing: "-0.005em", cursor: "pointer",
+            display: "inline-flex", alignItems: "center", gap: 8,
           }}
         >
-          + Nuevo bloque
-        </button>
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          Nuevo bloque
+        </motion.button>
       </div>
       <CreateBlockModal open={showCreate} onClose={() => setShowCreate(false)} />
     </>
@@ -122,27 +127,35 @@ export function BlocksClient({
           transition={{ ...springGentle, delay: 0.25 }}
           style={{ display: "flex", alignItems: "center", gap: 10 }}
         >
-          <button onClick={() => setShowCreate(true)} style={ghostBtn()}>+ Nuevo bloque</button>
           <motion.button
-            onClick={() => openCapture("expense")}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowCreate(true)}
+            whileHover={{ color: "var(--ink)", borderBottomColor: "var(--ink)" }}
             style={{
-              padding: "7px 12px 7px 9px", borderRadius: 8,
-              background: "var(--ink)", color: "var(--inverse)", border: "none",
+              padding: "6px 0", background: "none", border: "none",
               fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+              color: "var(--mute)", letterSpacing: "-0.005em", cursor: "pointer",
+              borderBottom: "1px solid transparent",
+              transition: "all 180ms",
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 11 11">
-              <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            + Nuevo bloque
+          </motion.button>
+          <motion.button
+            onClick={() => openCapture("expense")}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.95 }}
+            title="Anotar gasto (⌘N)"
+            style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: "var(--ink)", color: "var(--inverse)", border: "none",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <span>Anotar</span>
-            <span className="kbd" style={{
-              background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-              color: "inherit",
-            }}>⌘N</span>
           </motion.button>
         </motion.div>
       </header>
@@ -277,21 +290,39 @@ export function BlocksClient({
                   {block.goal}
                 </p>
               )}
-              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-                <button onClick={() => setShowEdit(true)} style={ghostBtn()}>Editar</button>
-                <button
+              <div style={{ display: "flex", gap: 14, marginTop: 14, alignItems: "center" }}>
+                <motion.button
+                  onClick={() => setShowEdit(true)}
+                  whileHover={{ color: "var(--ink)", borderBottomColor: "var(--ink)" }}
+                  style={actionLink}
+                >
+                  Editar
+                </motion.button>
+                <motion.button
                   onClick={() => archiveBlock.mutate(block.id)}
                   disabled={archiveBlock.isPending}
-                  style={ghostBtn()}
+                  whileHover={{ color: "var(--ink)", borderBottomColor: "var(--ink)" }}
+                  style={{ ...actionLink, opacity: archiveBlock.isPending ? 0.5 : 1 }}
                 >
                   Archivar
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   onClick={() => openCapture("expense", block.id)}
-                  style={{ ...ghostBtn(), background: "var(--ink)", color: "var(--inverse)", border: "none" }}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.95 }}
+                  title={`Anotar en ${block.name}`}
+                  style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: "var(--ink)", color: "var(--inverse)", border: "none",
+                    cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}
                 >
-                  + Anotar en este bloque
-                </button>
+                  <svg width="12" height="12" viewBox="0 0 12 12">
+                    <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                </motion.button>
               </div>
             </div>
           </div>

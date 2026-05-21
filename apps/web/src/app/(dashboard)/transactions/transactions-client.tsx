@@ -28,16 +28,6 @@ type SortDir = "asc" | "desc";
 const TABS = ["Todo", "Salida", "Entrada", "Cuotas", "Recurrentes"] as const;
 type Tab = typeof TABS[number];
 
-function ghostBtn(): React.CSSProperties {
-  return {
-    padding: "7px 12px", borderRadius: 8,
-    background: "var(--surface)", color: "var(--ink)",
-    border: "1px solid var(--hairline)",
-    fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-    letterSpacing: "-0.005em", cursor: "pointer",
-  };
-}
-
 export function TransactionsClient({ initialTransactions, initialBlocks }: Props) {
   const { openCapture } = useUIStore();
   const { data: transactions } = useAllTransactions(initialTransactions);
@@ -66,8 +56,8 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
   let filtered = txs.slice();
   if (tab === "Salida")       filtered = filtered.filter(t => t.amount < 0);
   if (tab === "Entrada")      filtered = filtered.filter(t => t.amount > 0);
-  if (tab === "Cuotas")       filtered = filtered.filter(t => t.category === "Cuotas");
-  if (tab === "Recurrentes")  filtered = filtered.filter(t => t.note?.includes("Recurrente") ?? false);
+  if (tab === "Cuotas")       filtered = filtered.filter(t => (t.note?.toLowerCase().includes("cuota") ?? false));
+  if (tab === "Recurrentes")  filtered = filtered.filter(t => (t.note?.startsWith("Recurrente") ?? false));
   if (catFilter !== "Todas")  filtered = filtered.filter(t => t.category === catFilter);
   if (monthFilter !== "Todos")    filtered = filtered.filter(t => t.isoDate.startsWith(monthFilter));
   if (q) {
@@ -156,28 +146,24 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
           transition={{ ...springGentle, delay: 0.25 }}
           style={{ display: "flex", alignItems: "center", gap: 10 }}
         >
-          <button style={ghostBtn()}>Exportar CSV</button>
-          <button style={ghostBtn()}>Filtros</button>
+          <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", padding: "7px 0" }}>Exportar CSV</span>
+          <span className="mono" style={{ fontSize: 10, color: "var(--faint)", letterSpacing: "0.06em", padding: "7px 0" }}>Filtros</span>
           <motion.button
             onClick={() => openCapture("expense")}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.95 }}
+            title="Anotar gasto (⌘N)"
             style={{
-              padding: "7px 12px 7px 9px", borderRadius: 8,
+              width: 32, height: 32, borderRadius: "50%",
               background: "var(--ink)", color: "var(--inverse)", border: "none",
-              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 11 11">
-              <line x1="5.5" y1="2" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="2" y1="5.5" x2="9" y2="5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <span>Anotar</span>
-            <span className="kbd" style={{
-              background: "rgba(255,255,255,0.1)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-              color: "inherit",
-            }}>⌘N</span>
           </motion.button>
         </motion.div>
       </header>

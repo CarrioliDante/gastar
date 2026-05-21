@@ -256,21 +256,23 @@ export function Sidebar() {
         transition={{ delay: 0.4 }}
         style={{ padding: "10px 12px 14px", borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 6 }}
       >
-        <button onClick={() => openCapture("expense")} title="Anotar gasto (⌘N)"
+        <motion.button
+          onClick={() => openCapture("expense")}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.95 }}
+          title="Anotar gasto (⌘N)"
           style={{
-            flex: 1, padding: "8px 10px", borderRadius: 7, border: "none",
-            background: "transparent", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 8,
-            color: "var(--mute)", fontSize: 12, fontFamily: "inherit",
+            width: 32, height: 32, borderRadius: "50%",
+            background: "var(--ink)", color: "var(--inverse)", border: "none",
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
           }}
-          className="row-hover">
+        >
           <svg width="12" height="12" viewBox="0 0 12 12">
             <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
-          <span>Anotar</span>
-          <span className="kbd">⌘N</span>
-        </button>
+        </motion.button>
 
         <button onClick={toggle} title={theme === "dark" ? "Modo día" : "Modo noche"}
           style={{
