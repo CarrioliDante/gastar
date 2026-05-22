@@ -328,6 +328,22 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ---
 
+## Fase 18 — Publicación App Store + Play Store
+
+- [ ] Deploy `apps/web` a Vercel/Railway — dominio público para `EXPO_PUBLIC_API_URL`
+- [ ] Offline-first mobile — React Query persist + MMKV + NetInfo + mutation queue
+- [ ] EAS: `eas build:configure` + `eas.json` con env vars de prod
+- [ ] iOS: Apple Developer Program ($99/año), App Store Connect, certificados vía EAS
+- [ ] Android: Google Play Developer ($25 one-time), service account, app signing key vía EAS
+- [ ] Assets: screenshots App Store (6.7" + 6.5"), feature graphic + screenshots Play Store
+- [ ] Privacy policy pública — hostear en `apps/landing/privacy`
+- [ ] Build iOS + Android (`eas build --platform all --profile production`)
+- [ ] iOS: TestFlight beta → Submit for Review
+- [ ] Android: closed testing (20 testers × 14 días) → producción
+- [ ] Landing page: links a stores, onboarding público, SEO
+
+---
+
 ## Fase 16 — Fixes visuales pendientes
 
 ### 16.1 Botones editoriales ✅
@@ -432,6 +448,15 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Smart categorization — `lib/categorization.ts`, auto-selección en QuickExpense
 - [x] Categorías editables — custom en UserSetting, UI en settings web + mobile
 - [x] Toggle animaciones global — CSS class `.no-animations` + setting
+
+### 2026-05-22 — Fixes UX: modales, layout shift, DatePicker
+
+- [x] Fix crash bloques sin datos — null guard en `block.budget` y `block.id`
+- [x] AddGoalForm, AddForm (installments), AddForm (recurring) ahora abren en modal overlay en vez de inline — elimina layout shift en las 3 vistas
+- [x] DatePicker: `<div>` → `<input readOnly>` para altura idéntica a los demás inputs
+- [x] DatePicker: placeholder "Fecha limite" → "Fecha límite", color dinámico no pisado por `fieldStyle`
+- [x] AddGoalForm rediseñado vertical (Nombre full-width, Meta+Inicial 1fr+1fr, Fecha límite full-width, botones right-aligned)
+- [x] AddForm modals: removido `borderBottom` y `padding` heredados de inline styling
 
 ### 2026-05-21 (tarde) — Dólar + Fixes visuales/funcionales + Analytics
 - [x] Página `/dolar` — tenencia USD, compra/venta con cotizaciones Blue/Oficial, historial

@@ -1,6 +1,17 @@
 # Gastar Web — TODO
 
-> Actualizado 2026-05-21. Solo tareas del dashboard web (Next.js 16 App Router).
+> Actualizado 2026-05-22. Solo tareas del dashboard web (Next.js 16 App Router).
+
+---
+
+## 2026-05-22 — Fixes UX: modales, layout shift, DatePicker
+
+- [x] Fix crash bloques sin datos — null guard en `block.budget` y `block.id`
+- [x] AddGoalForm, AddForm (installments), AddForm (recurring) → modal overlay en vez de inline (elimina layout shift)
+- [x] DatePicker: `<button>` → `<input readOnly>` (altura idéntica a inputs)
+- [x] DatePicker: placeholder "Fecha limite" → "Fecha límite"
+- [x] AddGoalForm rediseñado vertical en vez de 5 columnas horizontales
+- [x] AddForm modals: removido `borderBottom`/`padding` residual del inline styling
 
 ---
 
@@ -11,6 +22,9 @@
 - [x] Validar que las cuotas pagadas no excedan el total
 - [x] DatePicker editorial para startedAt y nextDueDate
 - [x] nextDueDate auto-calculado de startedAt + paidInstallments
+- [ ] Mostrar monto total del crédito O valor por cuota de forma prominente en la lista
+- [ ] Campo "cantidad de cuotas" — solo aceptar números (input type=number con validación)
+- [ ] Agregar selector de categoría a cuotas (web + mobile)
 
 ### Recurring
 - [x] `toggleRecurringPause(id)` — server action que escribe `pausedAt`
@@ -76,6 +90,15 @@
 - [ ] Login con Apple — OAuth provider + botón
 
 ---
+
+## Publicación App Store + Play Store
+
+- [ ] Deploy a Vercel/Railway — dominio público como `EXPO_PUBLIC_API_URL`
+- [ ] Environment vars en hosting: `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, etc.
+- [ ] `/privacy` page — política de privacidad pública (requerida por ambos stores)
+- [ ] `/api/mobile/*` endpoints — verificar que todos respondan correctamente
+- [ ] Rate limiting en mobile API — protección básica contra abuso
+- [ ] Health check endpoint — monitoreo básico
 
 ## Infraestructura
 
