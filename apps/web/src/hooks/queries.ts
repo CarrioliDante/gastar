@@ -10,7 +10,12 @@ import {
   fetchInstallments,
   fetchRecurring,
   fetchGoals,
+  fetchCompletedGoals,
+  fetchArchivedBlocks,
   fetchBlockTransactions,
+  fetchCustomCategories,
+  fetchDollarData,
+  fetchDollarBalance,
 } from "@/app/actions/queries";
 
 type DashboardStats = Awaited<ReturnType<typeof fetchDashboardStats>>;
@@ -85,6 +90,22 @@ export function useGoals(initialData?: GoalRow[]) {
   });
 }
 
+export function useCompletedGoals() {
+  return useQuery({
+    queryKey: [...qk.goals, "completed"],
+    queryFn: fetchCompletedGoals,
+    staleTime: 0,
+  });
+}
+
+export function useArchivedBlocks() {
+  return useQuery({
+    queryKey: [...qk.blocks, "archived"],
+    queryFn: fetchArchivedBlocks,
+    staleTime: 0,
+  });
+}
+
 export type BlockTransactionRow = Awaited<ReturnType<typeof fetchBlockTransactions>>[number];
 
 export function useBlockTransactions(blockId: string | null) {
@@ -92,6 +113,34 @@ export function useBlockTransactions(blockId: string | null) {
     queryKey: ["block-transactions", blockId],
     queryFn: () => fetchBlockTransactions(blockId!),
     enabled: !!blockId,
+    staleTime: 0,
+  });
+}
+
+export function useCustomCategories() {
+  return useQuery({
+    queryKey: qk.categories,
+    queryFn: fetchCustomCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+type DollarData = Awaited<ReturnType<typeof fetchDollarData>>;
+
+export function useDollarData(initialData?: DollarData) {
+  return useQuery({
+    queryKey: qk.dollar,
+    queryFn: fetchDollarData,
+    initialData,
+    staleTime: 0,
+  });
+}
+
+export function useDollarBalance(initialData?: number) {
+  return useQuery({
+    queryKey: qk.dollarBalance,
+    queryFn: fetchDollarBalance,
+    initialData,
     staleTime: 0,
   });
 }

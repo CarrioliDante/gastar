@@ -19,7 +19,8 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  block Block? @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  block           Block?            @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  dollarOperation DollarOperation?
 
   @@index([userId, date])
   @@index([blockId])
@@ -103,4 +104,23 @@ model RecurringExpense {
   updatedAt   DateTime  @updatedAt
 
   @@index([userId, nextDueDate])
+}
+
+// Operaciones de compra/venta de dólar billete
+model DollarOperation {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // "BUY" | "SELL"
+  usdAmount     Decimal
+  arsAmount     Decimal
+  rate          Decimal
+  transactionId String   @unique
+  date          DateTime @default(now())
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
 }

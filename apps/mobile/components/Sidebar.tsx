@@ -89,6 +89,16 @@ function NavIcon({ id, active }: { id: string; active: boolean }) {
         <Circle cx={12} cy={12.5} r={1.6} fill={c} stroke={c} strokeWidth={w} />
       </Svg>
     ),
+    dolar: (
+      <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
+        <Rect x={2.5} y={3.5} width={9} height={11} rx={1.5} stroke={c} strokeWidth={w} fill="none" />
+        <Line x1={7} y1={7} x2={7} y2={12} stroke={c} strokeWidth={1} strokeLinecap="round" />
+        <Path d="M5.5 8.5 L7 7 L8.5 8.5" stroke={c} strokeWidth={0.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <Line x1={14} y1={5} x2={14} y2={10.4} stroke={c} strokeWidth={w} strokeLinecap="round" />
+        <Line x1={12.5} y1={8} x2={15.5} y2={8} stroke={c} strokeWidth={w} strokeLinecap="round" />
+        <Circle cx={14} cy={13} r={2.2} stroke={c} strokeWidth={w} fill="none" />
+      </Svg>
+    ),
     logout: (
       <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
         <Path d="M11 9H3M6 6l-3 3 3 3" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
@@ -118,6 +128,7 @@ const SECONDARY_LINKS: NavLink[] = [
   { href: '/installments', id: 'installments', label: 'Cuotas' },
   { href: '/recurring', id: 'recurring', label: 'Recurrentes' },
   { href: '/goals', id: 'goals', label: 'Objetivos' },
+  { href: '/dolar', id: 'dolar', label: 'Dólar' },
 ];
 
 const BOTTOM_LINKS: NavLink[] = [

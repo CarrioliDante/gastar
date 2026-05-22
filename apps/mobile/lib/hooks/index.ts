@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   apiFetch,
   saveCategories,
+  fetchDolar,
+  createDolarOp,
+  fetchCompletedGoals,
+  fetchArchivedBlocks,
+  unarchiveBlock,
   type StatsResponse,
   type TransactionsResponse,
   type Block,
@@ -10,6 +15,7 @@ import {
   type UserProfile,
   type Goal,
   type CategoryItem,
+  type DolarResponse,
 } from '../api';
 import {
   adaptStats,
@@ -69,6 +75,26 @@ export function useBlocks() {
   return useQuery({
     queryKey: ['blocks'],
     queryFn: () => apiFetch<Block[]>('/blocks'),
+    enabled: !isChecking,
+    staleTime: 0,
+  });
+}
+
+export function useCompletedGoals() {
+  const { isChecking } = useAuthStore();
+  return useQuery({
+    queryKey: ['goals', 'completed'],
+    queryFn: () => fetchCompletedGoals(),
+    enabled: !isChecking,
+    staleTime: 0,
+  });
+}
+
+export function useArchivedBlocks() {
+  const { isChecking } = useAuthStore();
+  return useQuery({
+    queryKey: ['blocks', 'archived'],
+    queryFn: () => fetchArchivedBlocks(),
     enabled: !isChecking,
     staleTime: 0,
   });
@@ -199,6 +225,17 @@ export function useArchiveBlock() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/blocks?id=${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['blocks'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useUnarchiveBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unarchiveBlock(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['blocks'] });
       qc.invalidateQueries({ queryKey: ['stats'] });
@@ -481,4 +518,31 @@ export function useInsights() {
       : null;
 
   return { data, isLoading, isError };
+}
+
+// ── Dólar ──────────────────────────────────────────────────────────
+
+export function useDolar() {
+  const { isChecking } = useAuthStore();
+  return useQuery({
+    queryKey: ['dolar'],
+    queryFn: () => fetchDolar(),
+    enabled: !isChecking,
+    staleTime: 0,
+  });
+}
+
+export function useCreateDolarOp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { type: 'BUY' | 'SELL'; usdAmount: number; rate: number; note?: string }) =>
+      createDolarOp(body),
+    onSuccess: () => {
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['dolar'] });
+        qc.invalidateQueries({ queryKey: ['stats'] });
+        qc.invalidateQueries({ queryKey: ['transactions'] });
+      }, 1200);
+    },
+  });
 }

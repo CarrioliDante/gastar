@@ -42,6 +42,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 export interface StatsResponse {
   balance: number;
   monthly: { income: number; spending: number; budget: number; available: number };
+  previousMonth?: { spending: number; income: number };
   dailySeries: number[];
   netWorth24mo: number[];
   categories: { name: string; amount: number; share: number }[];
@@ -97,12 +98,57 @@ export interface CategoryItem {
   type: 'expense' | 'income';
 }
 
+// ── Dólar ──
+
+export interface DolarRate {
+  compra: number;
+  venta: number;
+  fecha: string;
+}
+
+export interface DollarOp {
+  id: string;
+  type: 'BUY' | 'SELL';
+  usdAmount: number;
+  arsAmount: number;
+  rate: number;
+  date: string;
+  note: string | null;
+}
+
+export interface DolarResponse {
+  totalUsd: number;
+  avgCost: number;
+  operations: DollarOp[];
+  rates: { blue: DolarRate; oficial: DolarRate } | null;
+}
+
 export async function fetchCategories(): Promise<{ expenses: CategoryItem[]; incomes: CategoryItem[] }> {
   return apiFetch('/categories');
 }
 
 export async function saveCategories(categories: CategoryItem[]) {
   return apiFetch('/categories', { method: 'PUT', body: JSON.stringify({ categories }) });
+}
+
+export async function fetchDolar(): Promise<DolarResponse> {
+  return apiFetch('/dolar');
+}
+
+export async function createDolarOp(body: { type: 'BUY' | 'SELL'; usdAmount: number; rate: number; note?: string }) {
+  return apiFetch<{ ok: boolean }>('/dolar', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export async function fetchCompletedGoals() {
+  return apiFetch<Goal[]>('/goals?completed=1');
+}
+
+export async function fetchArchivedBlocks() {
+  return apiFetch<Block[]>('/blocks?archived=1');
+}
+
+export async function unarchiveBlock(id: string) {
+  return apiFetch<{ ok: boolean }>('/blocks', { method: 'PATCH', body: JSON.stringify({ id, unarchive: true }) });
 }
 
 // Health check — no auth required

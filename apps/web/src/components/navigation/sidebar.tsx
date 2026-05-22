@@ -29,6 +29,7 @@ const NAV = [
     label: "Crecimiento",
     items: [
       { href: "/goals",        id: "goals",        label: "Ahorro",      kbd: "g a" },
+      { href: "/dolar",        id: "dolar",        label: "Dólar",       kbd: "g u" },
       { href: "/insights",     id: "insights",     label: "Lectura",     kbd: "g l" },
     ],
   },
@@ -106,6 +107,15 @@ function NavIcon({ id, active }: { id: string; active: boolean }) {
         <rect x="3"   y={15 - 8}  width="3" height="8"  rx="0.5" fill={active ? c : "none"} stroke={c} strokeWidth={active ? 0 : w}/>
         <rect x="8"   y={15 - 13} width="3" height="13" rx="0.5" fill={active ? c : "none"} stroke={c} strokeWidth={active ? 0 : w}/>
         <rect x="13"  y={15 - 10} width="3" height="10" rx="0.5" fill={active ? c : "none"} stroke={c} strokeWidth={active ? 0 : w}/>
+      </svg>
+    );
+    case "dolar": return (
+      <svg {...p}>
+        <rect x="2.5" y="3.5" width="9" height="11" rx="1.5" stroke={c} strokeWidth={w} fill="none"/>
+        <text x="7" y="11.5" textAnchor="middle" fontSize="7" fontWeight="bold" fill={c}>$</text>
+        <circle cx="14" cy="13" r="2.2" stroke={c} strokeWidth={w} fill="none"/>
+        <line x1="14" y1="5" x2="14" y2="10.4" stroke={c} strokeWidth={w} strokeLinecap="round"/>
+        <line x1="12.5" y1="8" x2="15.5" y2="8" stroke={c} strokeWidth={w} strokeLinecap="round"/>
       </svg>
     );
     case "settings": return (
