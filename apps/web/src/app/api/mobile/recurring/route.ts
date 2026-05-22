@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
       amount:   Number(r.amount),
       category: r.category,
       freq:     FREQ_ES[r.frequency] ?? r.frequency,
-      nextDue:  r.nextDueDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
+      nextDue:     r.nextDueDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
+      nextDueIso:  r.nextDueDate.toISOString().slice(0, 10),
       blockId:  r.blockId ?? undefined,
       paid,
     };

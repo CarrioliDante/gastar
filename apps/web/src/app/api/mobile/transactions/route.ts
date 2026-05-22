@@ -100,6 +100,31 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ id: tx.id }, { status: 201 });
 }
 
+export async function PATCH(req: NextRequest) {
+  const auth = await requireMobileAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await req.json() as {
+    id: string; name?: string; amount?: number; category?: string; note?: string | null;
+  };
+  if (!body.id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  const existing = await db.transaction.findFirst({ where: { id: body.id, userId: auth.userId } });
+  if (!existing) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  await db.transaction.update({
+    where: { id: body.id },
+    data: {
+      ...(body.name     !== undefined && { name:     body.name }),
+      ...(body.amount   !== undefined && { amount:   body.amount }),
+      ...(body.category !== undefined && { category: body.category }),
+      ...(body.note     !== undefined && { note:     body.note }),
+    },
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   const auth = await requireMobileAuth(req);
   if (auth instanceof NextResponse) return auth;

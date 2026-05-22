@@ -12,12 +12,13 @@ export async function GET(req: NextRequest) {
   });
 
   const installments = rows.map(inst => ({
-    id:      inst.id,
-    name:    inst.name,
-    paid:    inst.paidInstallments,
-    total:   inst.totalInstallments,
-    monthly: Number(inst.monthlyAmount),
-    nextDue: inst.nextDueDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
+    id:          inst.id,
+    name:        inst.name,
+    paid:        inst.paidInstallments,
+    total:       inst.totalInstallments,
+    monthly:     Number(inst.monthlyAmount),
+    nextDue:     inst.nextDueDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
+    nextDueIso:  inst.nextDueDate.toISOString().slice(0, 10),
   }));
 
   return NextResponse.json(installments);
