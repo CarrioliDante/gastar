@@ -1,10 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Line, Path } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
 import { useBlocks, useTransactions, useCreateBlock, useUpdateBlock, useArchiveBlock, useArchivedBlocks, useUnarchiveBlock } from '../../lib/hooks';
+import { useAppStore } from '../../store/app';
 import { adaptBlock, adaptTxGroup, type BlockUI } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Eyebrow, Hairline, ProgressBar, Section } from '../../components/ui/primitives';
@@ -349,6 +351,20 @@ export default function BlocksScreen() {
   const { C, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const animationsEnabled = useAppStore(s => s.animationsEnabled);
+  const activeTabIndex = useAppStore(s => s.activeTabIndex);
+  const [viewKey, setViewKey] = useState(0);
+  const lastAnimRef = useRef(0);
+  const e = (d: number) => animationsEnabled ? FadeInDown.duration(320).delay(d) : undefined;
+
+  useEffect(() => {
+    if (activeTabIndex !== 2) return;
+    const now = Date.now();
+    if (now - lastAnimRef.current < 3000) return;
+    lastAnimRef.current = now;
+    setViewKey(k => k + 1);
+  }, [activeTabIndex]);
+
   const [selectedBlock, setSelectedBlock] = useState<BlockUI | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editBlock, setEditBlock] = useState<BlockUI | null>(null);
@@ -410,7 +426,7 @@ export default function BlocksScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
+      <Animated.View key={`hdr-${viewKey}`} entering={e(0)} style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
             {showArchived ? `${(archivedApiBlocks ?? []).length} archivados` : `${blocks.length} activos`}
@@ -431,7 +447,7 @@ export default function BlocksScreen() {
             </Svg>
           </Pressable>
         )}
-      </View>
+      </Animated.View>
 
       {/* Error banner */}
       {isError && (
@@ -538,14 +554,14 @@ export default function BlocksScreen() {
         </View>
       )}
 
-      {blocks.map((b) => {
+      {blocks.map((b, i) => {
         const bpct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
         const bpctRaw = b.budget > 0 ? b.spent / b.budget : 0;
         const rightAmount = fmt(b.spent, { decimals: 0, compact: true });
         const subText = `/${fmt(b.budget, { decimals: 0, compact: true })} · ${b.txs} mov`;
 
         return (
-          <View key={b.id}>
+          <Animated.View key={`${b.id}-${viewKey}`} entering={e(120 + i * 50)}>
             {/* Row */}
             <Pressable
               onPress={() => setSelectedBlock(b)}
@@ -596,10 +612,11 @@ export default function BlocksScreen() {
             </Pressable>
 
             <Hairline />
-          </View>
+          </Animated.View>
         );
       })}
 
+      </>
       )}
 
       <CreateBlockModal open={createOpen} onClose={() => setCreateOpen(false)} />

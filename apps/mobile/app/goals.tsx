@@ -120,7 +120,7 @@ export default function GoalsScreen() {
               <Path d="M7 2v10M2 7h10" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           )}
-        </Pressable>
+        </Pressable>}
       </View>
 
       {isError && (

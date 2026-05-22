@@ -20,8 +20,7 @@ const SCREENS = [HomeScreen, TransactionsScreen, BlocksScreen, InsightsScreen] a
 
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
-  const { captureOpen, captureType, openCapture, closeCapture, setActiveTabIndex } = useAppStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { captureOpen, captureType, openCapture, closeCapture, setActiveTabIndex, sidebarOpen, openSidebar, closeSidebar } = useAppStore();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<Animated.ScrollView>(null);
   const scrollX = useSharedValue(0);
@@ -79,8 +78,8 @@ export default function TabsLayout() {
 
       <Sidebar
         isOpen={sidebarOpen}
-        onOpen={() => setSidebarOpen(true)}
-        onClose={() => setSidebarOpen(false)}
+        onOpen={openSidebar}
+        onClose={closeSidebar}
         activeTabIndex={activeIndex}
         onNavigateTab={(name) => navigateTo(name as TabName)}
       />

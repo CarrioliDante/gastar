@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, useWindowDimensions } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import { TxRow } from '../../components/ui/TxRow';
 import { LoadingLogo } from '../../components/ui/LoadingLogo';
 import { RadialRing, CandleChart } from '../../components/ui/charts';
+import Svg, { Line } from 'react-native-svg';
 
 function weekdayName(d: Date): string {
   const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -39,6 +41,9 @@ export default function HomeScreen() {
   const [period, setPeriod] = useState<'semana' | 'mes'>('mes');
   const [viewKey, setViewKey] = useState(0);
   const activeTabIndex = useAppStore(s => s.activeTabIndex);
+  const animationsEnabled = useAppStore(s => s.animationsEnabled);
+  const openSidebar = useAppStore(s => s.openSidebar);
+  const e = (d: number) => animationsEnabled ? FadeInDown.duration(320).delay(d) : undefined;
   const lastAnimRef = useRef(0);
 
   useEffect(() => {
@@ -63,7 +68,6 @@ export default function HomeScreen() {
   const now = new Date();
   const dateLabel = `${weekdayName(now)} · ${now.getDate()} ${monthName(now)}`;
   const userName = user?.name ?? user?.email?.split('@')[0] ?? '';
-  const initial = userName.charAt(0).toUpperCase();
 
   if (isLoading) {
     return (
@@ -73,7 +77,7 @@ export default function HomeScreen() {
     );
   }
 
-  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], weekSpending: 0, weekDaily: [], todayBuckets: [], todaySpending: 0 };
+  const stats = data?.stats ?? { balance: 0, monthSpend: 0, monthBudget: 0, income: 0, available: 0, monthSeries: [], netWorth12mo: [], weekSpending: 0, weekDaily: [], todayBuckets: [], todaySpending: 0, previousMonth: undefined };
   const blocks = data?.blocks ?? [];
   const installments = data?.installments ?? [];
   const recurring = data?.recurring ?? [];
@@ -127,23 +131,25 @@ export default function HomeScreen() {
     >
       <View style={{ paddingHorizontal: 24 }}>
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View>
-            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase' }}>
-              {dateLabel}
-            </Text>
-            <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, marginTop: 8, color: C.ink }}>
-              Buen día{userName ? `, ${userName}` : ''}
-            </Text>
-          </View>
-          <Pressable onPress={() => router.push('/settings')} style={{
-            width: 32, height: 32, borderRadius: 99,
-            backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Text style={{ fontFamily: fontDisplay, fontSize: 11, fontWeight: '500', color: C.ink }}>{initial || '?'}</Text>
+        <Animated.View key={`hdr-${viewKey}`} entering={e(0)}>
+          <Pressable
+            onPress={openSidebar}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, alignSelf: 'flex-start' })}
+          >
+            <Svg width={18} height={14} viewBox="0 0 18 14" fill="none">
+              <Line x1={0} y1={1} x2={18} y2={1} stroke={C.ink} strokeWidth={1.5} strokeLinecap="round" />
+              <Line x1={0} y1={7} x2={18} y2={7} stroke={C.ink} strokeWidth={1.5} strokeLinecap="round" />
+              <Line x1={0} y1={13} x2={12} y2={13} stroke={C.ink} strokeWidth={1.5} strokeLinecap="round" />
+            </Svg>
           </Pressable>
-        </View>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginTop: 20 }}>
+            {dateLabel}
+          </Text>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, marginTop: 6, color: C.ink }}>
+            Buen día{userName ? `, ${userName}` : ''}
+          </Text>
+        </Animated.View>
 
         {/* Error banner */}
         {isError && (
@@ -155,7 +161,7 @@ export default function HomeScreen() {
         )}
 
         {/* Hero balance + Ahorro */}
-        <View style={{ paddingTop: isError ? 18 : 36, paddingBottom: 14 }}>
+        <Animated.View key={`bal-${viewKey}`} entering={e(80)} style={{ paddingTop: isError ? 18 : 36, paddingBottom: 14 }}>
           <Eyebrow>Balance total</Eyebrow>
           <TickerAmount value={balance} size={48} code="AR$" decimals={2} weight="500" triggerKey={viewKey} />
           {goals.length > 0 && (
@@ -168,10 +174,10 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           )}
-        </View>
+        </Animated.View>
 
         {/* Period section */}
-        <View style={{ paddingTop: 38 }}>
+        <Animated.View key={`per-${viewKey}`} entering={e(150)} style={{ paddingTop: 38 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Eyebrow>
               {period === 'semana' ? 'Esta semana' : `Este mes · ${monthName(now)}`}
@@ -231,10 +237,10 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* ── Candle chart ── */}
-        <View style={{ marginTop: 28 }}>
+        <Animated.View key={`chart-${viewKey}`} entering={e(220)} style={{ marginTop: 28 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
             <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase' }}>
               Gasto por {period === 'semana' ? 'días' : 'días del mes'}
@@ -244,11 +250,11 @@ export default function HomeScreen() {
             </Text>
           </View>
           <CandleChart data={candleData} width={screenWidth - 48} height={80} color={C.ink} trackColor={C.hairline2} />
-        </View>
+        </Animated.View>
       </View>
 
       {/* Cuotas + Recurrentes */}
-      <View style={{ paddingHorizontal: 24 }}>
+      <Animated.View key={`cr-${viewKey}`} entering={e(280)} style={{ paddingHorizontal: 24 }}>
         <Hairline style={{ marginTop: 36 }} />
         <Section top={28}>
           <View style={{ flexDirection: 'row', gap: 22 }}>
@@ -285,7 +291,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </Section>
-      </View>
+      </Animated.View>
 
       {/* Bloques — horizontal scroll */}
       <Hairline style={{ marginTop: 36, marginHorizontal: 24 }} />
@@ -303,7 +309,7 @@ export default function HomeScreen() {
             const pct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
             const pctRaw = b.budget > 0 ? b.spent / b.budget : 0;
             return (
-              <View key={b.id}
+              <Animated.View key={`${b.id}-${viewKey}`} entering={e(320 + i * 50)}
                 style={{
                   width: 150, paddingRight: 16,
                   borderLeftWidth: i === 0 ? 0 : 1, borderLeftColor: C.hairline,
@@ -326,7 +332,7 @@ export default function HomeScreen() {
                     {fmt(b.spent, { decimals: 0, compact: true })} / {fmt(b.budget, { decimals: 0, compact: true })}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
             );
           })}
         </ScrollView>
@@ -345,10 +351,10 @@ export default function HomeScreen() {
           ) : (
             <>
               {filteredTxs.map((tx, i, arr) => (
-                <View key={tx.id}>
+                <Animated.View key={`${tx.id}-${viewKey}`} entering={e(420 + i * 35)}>
                   <TxRow tx={tx} />
                   {i < arr.length - 1 && <Hairline />}
-                </View>
+                </Animated.View>
               ))}
               <Pressable onPress={() => router.push('/transactions')} style={{ paddingVertical: 12, alignItems: 'center' }}>
                 <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.ink, letterSpacing: 0.5 }}>Ver todo →</Text>

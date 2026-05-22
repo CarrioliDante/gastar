@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useSegments } from 'expo-router';
 import Animated, {
@@ -56,6 +57,16 @@ function NavIcon({ id, active }: { id: string; active: boolean }) {
       <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
         <Path d="M3 13 L7 8 L10 11 L15 5" stroke={c} strokeWidth={w} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={15} cy={5} r={1.5} fill={c} />
+      </Svg>
+    ),
+    calendar: (
+      <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
+        <Rect x={2.5} y={3.5} width={13} height={12} rx={1.5} stroke={c} strokeWidth={w} fill="none" />
+        <Line x1={2.5} y1={7.5} x2={15.5} y2={7.5} stroke={c} strokeWidth={w} strokeLinecap="round" />
+        <Line x1={6} y1={2} x2={6} y2={5} stroke={c} strokeWidth={w} strokeLinecap="round" />
+        <Line x1={12} y1={2} x2={12} y2={5} stroke={c} strokeWidth={w} strokeLinecap="round" />
+        <Rect x={5.5} y={10} width={2} height={2} rx={0.5} fill={c} />
+        <Rect x={8.5} y={10} width={2} height={2} rx={0.5} fill={c} />
       </Svg>
     ),
     installments: (
@@ -128,6 +139,7 @@ const SECONDARY_LINKS: NavLink[] = [
   { href: '/installments', id: 'installments', label: 'Cuotas' },
   { href: '/recurring', id: 'recurring', label: 'Recurrentes' },
   { href: '/goals', id: 'goals', label: 'Objetivos' },
+  { href: '/calendar', id: 'calendar', label: 'Calendario' },
   { href: '/dolar', id: 'dolar', label: 'Dólar' },
 ];
 
@@ -166,6 +178,17 @@ export function Sidebar({ isOpen, onOpen, onClose, activeTabIndex = 0, onNavigat
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
+
+  // Drive animation from isOpen prop (e.g. when opened via button, not gesture)
+  useEffect(() => {
+    if (isOpen) {
+      translateX.value = withTiming(0, { duration: 220 });
+      backdropOpacity.value = withTiming(0.35, { duration: 220 });
+    } else {
+      translateX.value = withTiming(-PANEL_WIDTH, { duration: 220 });
+      backdropOpacity.value = withTiming(0, { duration: 220 });
+    }
+  }, [isOpen]);
 
   // ── edge gesture: swipe right from left edge to open ───────────
 

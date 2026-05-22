@@ -113,6 +113,17 @@ export default function OnboardingScreen() {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [done, setDone]             = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passTouched, setPassTouched]   = useState(false);
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const emailError = emailTouched && email.length > 0 && !emailValid ? 'Email inválido' : null;
+  const passError  = passTouched && password.length > 0 && password.length < 6 ? 'Mínimo 6 caracteres' : null;
+
+  const passStrength = password.length === 0 ? 0
+    : password.length < 6 ? 1
+    : password.length < 10 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) ? 2
+    : 3;
 
   const translateX = useSharedValue(0);
   const slideStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
@@ -126,7 +137,7 @@ export default function OnboardingScreen() {
 
   const canAdvance = () => {
     switch (step) {
-      case 0: return email.includes('@') && password.length >= 6 && name.trim().length >= 2;
+      case 0: return emailValid && password.length >= 6 && name.trim().length >= 2;
       case 1: return !!profession;
       case 2: return !!goal;
       case 3: return true;
@@ -278,24 +289,32 @@ export default function OnboardingScreen() {
 
               <Text style={labelStyle}>Email</Text>
               <TextInput
-                style={inputStyle}
+                style={[inputStyle, emailError ? { borderBottomColor: C.mute } : {}]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={v => { setEmail(v); setEmailTouched(false); }}
+                onBlur={() => setEmailTouched(true)}
                 placeholder="vos@ejemplo.com"
                 placeholderTextColor={C.whisper}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="next"
+                onSubmitEditing={() => passRef.current?.focus()}
               />
+              {emailError && (
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.4, marginTop: -20, marginBottom: 20 }}>
+                  {emailError}
+                </Text>
+              )}
 
               <Text style={labelStyle}>Contraseña</Text>
               <View style={{ position: 'relative' }}>
                 <TextInput
                   ref={passRef}
-                  style={inputStyle}
+                  style={[inputStyle, passError ? { borderBottomColor: C.mute } : {}]}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={v => { setPassword(v); setPassTouched(false); }}
+                  onBlur={() => setPassTouched(true)}
                   placeholder="Mínimo 6 caracteres"
                   placeholderTextColor={C.whisper}
                   secureTextEntry={!showPass}
@@ -311,6 +330,23 @@ export default function OnboardingScreen() {
                   </Text>
                 </Pressable>
               </View>
+              {/* Password strength indicator */}
+              {password.length > 0 && (
+                <View style={{ marginTop: -20, marginBottom: 24 }}>
+                  <View style={{ flexDirection: 'row', gap: 4, marginBottom: 4 }}>
+                    {[1, 2, 3].map(level => (
+                      <View key={level} style={{
+                        flex: 1, height: 2, borderRadius: 1,
+                        backgroundColor: passStrength >= level ? C.ink : C.hairline,
+                      }} />
+                    ))}
+                  </View>
+                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.4 }}>
+                    {passStrength === 1 ? 'Débil' : passStrength === 2 ? 'Aceptable' : 'Fuerte'}
+                    {passError ? ` · ${passError}` : ''}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
