@@ -28,10 +28,11 @@ const GLYPHS: GlyphKind[] = ['Home', 'Building', 'Key', 'Bulb', 'Flame', 'Drople
 
 const DEFAULT_CATEGORIES: CategoryItem[] = [
   { id: 'comida', label: 'Comida', glyph: 'Coffee', type: 'expense' },
+  { id: 'servicios', label: 'Servicios', glyph: 'Droplet', type: 'expense' },
   { id: 'casa', label: 'Casa', glyph: 'Home', type: 'expense' },
   { id: 'transporte', label: 'Transporte', glyph: 'Car', type: 'expense' },
   { id: 'ocio', label: 'Ocio', glyph: 'Music', type: 'expense' },
-  { id: 'subs', label: 'Subscripciones', glyph: 'CreditCard', type: 'expense' },
+  { id: 'subs', label: 'Suscripciones', glyph: 'CreditCard', type: 'expense' },
   { id: 'salud', label: 'Salud', glyph: 'Heart', type: 'expense' },
   { id: 'salario', label: 'Salario', glyph: 'Coins', type: 'income' },
   { id: 'freelance', label: 'Freelance', glyph: 'Briefcase', type: 'income' },
@@ -57,6 +58,9 @@ export default function SettingsScreen() {
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [catEditLabel, setCatEditLabel] = useState('');
   const [catEditGlyph, setCatEditGlyph] = useState<GlyphKind>('Home');
+  const [addingType, setAddingType] = useState<'expense' | 'income' | null>(null);
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatGlyph, setNewCatGlyph] = useState<GlyphKind>('Home');
 
   // Sync local categories from API data, or fall back to defaults
   const effectiveCategories = categories ?? (apiCategories
@@ -78,6 +82,28 @@ export default function SettingsScreen() {
     await qc.invalidateQueries({ queryKey: ['categories'] });
     setRefreshing(false);
   }, [qc]);
+
+  const deleteCategory = (id: string) => {
+    setCategories(prev => (prev ?? effectiveCategories).filter(c => c.id !== id));
+  };
+
+  const startNewCat = (type: 'expense' | 'income') => {
+    setAddingType(type);
+    setNewCatLabel('');
+    setNewCatGlyph('Home');
+  };
+
+  const commitNewCat = () => {
+    if (!addingType || !newCatLabel.trim()) return;
+    const id = newCatLabel.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    setCategories(prev => [...(prev ?? effectiveCategories), {
+      id: id || `cat-${Date.now()}`,
+      label: newCatLabel.trim(),
+      glyph: newCatGlyph,
+      type: addingType,
+    }]);
+    setAddingType(null);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -244,7 +270,48 @@ export default function SettingsScreen() {
       {/* Categorías */}
       <Section title="Categorías" top={26}>
         {/* Expense categories */}
-        <Eyebrow style={{ marginBottom: 12 }}>Gastos</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Eyebrow style={{ marginBottom: 0 }}>Gastos</Eyebrow>
+          <Pressable onPress={() => startNewCat('expense')} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+            <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.mute }}>+ Agregar</Text>
+          </Pressable>
+        </View>
+        {addingType === 'expense' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 4 }}>
+              {GLYPHS.map(g => (
+                <Pressable key={g} onPress={() => setNewCatGlyph(g)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: newCatGlyph === g ? C.ink : C.surface,
+                    borderWidth: 1, borderColor: newCatGlyph === g ? C.ink : C.hairline,
+                  }}
+                >
+                  <BlockGlyph kind={g} size={14} color={newCatGlyph === g ? C.bg : C.ink} />
+                </Pressable>
+              ))}
+            </ScrollView>
+            <TextInput
+              value={newCatLabel}
+              onChangeText={setNewCatLabel}
+              placeholder="Nueva categoría"
+              placeholderTextColor={C.faint}
+              style={{
+                fontFamily: fontBody, fontSize: 13, color: C.ink,
+                borderWidth: 1, borderColor: C.hairline, borderRadius: 6,
+                paddingHorizontal: 8, paddingVertical: 5, minWidth: 100,
+                backgroundColor: C.surface,
+              }}
+            />
+            <Pressable onPress={commitNewCat} style={{ padding: 6 }}>
+              <Text style={{ fontFamily: fontBody, fontSize: 12, fontWeight: '500', color: C.ink }}>OK</Text>
+            </Pressable>
+            <Pressable onPress={() => setAddingType(null)} style={{ padding: 6 }}>
+              <Text style={{ fontFamily: fontBody, fontSize: 12, color: C.mute }}>×</Text>
+            </Pressable>
+          </View>
+        )}
         {effectiveCategories.filter(c => c.type === 'expense').map(cat => (
           <View key={cat.id} style={{
             flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -307,13 +374,57 @@ export default function SettingsScreen() {
                 >
                   <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.faint }}>Editar</Text>
                 </Pressable>
+                <Pressable onPress={() => deleteCategory(cat.id)} style={{ paddingHorizontal: 6, paddingVertical: 4 }}>
+                  <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.faint }}>×</Text>
+                </Pressable>
               </>
             )}
           </View>
         ))}
 
         {/* Income categories */}
-        <Eyebrow style={{ marginTop: 20, marginBottom: 12 }}>Ingresos</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 12 }}>
+          <Eyebrow style={{ marginBottom: 0 }}>Ingresos</Eyebrow>
+          <Pressable onPress={() => startNewCat('income')} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+            <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.mute }}>+ Agregar</Text>
+          </Pressable>
+        </View>
+        {addingType === 'income' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 4 }}>
+              {GLYPHS.map(g => (
+                <Pressable key={g} onPress={() => setNewCatGlyph(g)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: newCatGlyph === g ? C.ink : C.surface,
+                    borderWidth: 1, borderColor: newCatGlyph === g ? C.ink : C.hairline,
+                  }}
+                >
+                  <BlockGlyph kind={g} size={14} color={newCatGlyph === g ? C.bg : C.ink} />
+                </Pressable>
+              ))}
+            </ScrollView>
+            <TextInput
+              value={newCatLabel}
+              onChangeText={setNewCatLabel}
+              placeholder="Nueva categoría"
+              placeholderTextColor={C.faint}
+              style={{
+                fontFamily: fontBody, fontSize: 13, color: C.ink,
+                borderWidth: 1, borderColor: C.hairline, borderRadius: 6,
+                paddingHorizontal: 8, paddingVertical: 5, minWidth: 100,
+                backgroundColor: C.surface,
+              }}
+            />
+            <Pressable onPress={commitNewCat} style={{ padding: 6 }}>
+              <Text style={{ fontFamily: fontBody, fontSize: 12, fontWeight: '500', color: C.ink }}>OK</Text>
+            </Pressable>
+            <Pressable onPress={() => setAddingType(null)} style={{ padding: 6 }}>
+              <Text style={{ fontFamily: fontBody, fontSize: 12, color: C.mute }}>×</Text>
+            </Pressable>
+          </View>
+        )}
         {effectiveCategories.filter(c => c.type === 'income').map(cat => (
           <View key={cat.id} style={{
             flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -375,6 +486,9 @@ export default function SettingsScreen() {
                   style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5, borderWidth: 1, borderColor: C.hairline }}
                 >
                   <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.faint }}>Editar</Text>
+                </Pressable>
+                <Pressable onPress={() => deleteCategory(cat.id)} style={{ paddingHorizontal: 6, paddingVertical: 4 }}>
+                  <Text style={{ fontFamily: fontBody, fontSize: 10, color: C.faint }}>×</Text>
                 </Pressable>
               </>
             )}

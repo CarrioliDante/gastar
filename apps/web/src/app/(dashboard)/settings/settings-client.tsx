@@ -2,89 +2,45 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useUIStore } from "@/stores/ui";
 import { logout } from "@/app/(auth)/actions";
 import { springGentle } from "@/components/motion/presets";
 import { setMonthlyBudget, updateUserName, updateCustomCategories } from "@/app/actions/settings";
 import { useNumberInput } from "@/hooks/use-number-input";
+import { BlockGlyph, type GlyphKind } from "@/components/ui/primitives";
+import { qk } from "@/hooks/query-keys";
 import type { CustomCategory } from "@/lib/custom-categories";
 
-const GLYPHS = [
-  "circle", "dot", "square", "diamond", "arc",
-  "line", "cross", "half", "ring", "triangle", "bar", "grid",
-] as const;
+const GLYPHS: GlyphKind[] = [
+  "Home", "Building", "Key", "Bulb", "Flame", "Droplet",
+  "Car", "Bike", "Plane", "Train", "Bus", "GasStation",
+  "Heart", "Activity", "Barbell", "Apple", "FirstAidKit", "Run",
+  "Coffee", "ToolsKitchen2", "ShoppingBag", "Pizza", "Coins", "CreditCard",
+  "Briefcase", "TrendingUp", "Music", "Book", "Movie", "Camera",
+  "Users", "Dog", "Globe", "Map", "DeviceMobile", "DeviceLaptop",
+];
 
-function GlyphSVG({ kind, size = 16, color }: { kind: string; size?: number; color: string }) {
-  const s = size;
-  const w = Math.max(1, size / 12);
-  const h = s / 2;
-  const inner = (n: number) => s - n;
-  const half = s / 2;
-  switch (kind) {
-    case "circle":
-      return <circle cx={h} cy={h} r={h - w} fill="none" stroke={color} strokeWidth={w} />;
-    case "dot":
-      return <circle cx={h} cy={h} r={s / 3} fill={color} />;
-    case "square":
-      return <rect x={w} y={w} width={inner(w * 2)} height={inner(w * 2)} rx={2} fill="none" stroke={color} strokeWidth={w} />;
-    case "diamond":
-      return <rect x={s * 0.2} y={s * 0.2} width={s * 0.6} height={s * 0.6} fill="none" stroke={color} strokeWidth={w} transform={`rotate(45, ${h}, ${h})`} />;
-    case "arc":
-      return <path d={`M${w} ${s - w} A ${s - w * 2} ${s - w * 2} 0 0 1 ${s - w} ${w}`} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" />;
-    case "line":
-      return <line x1={w} y1={h} x2={s - w} y2={h} stroke={color} strokeWidth={w} strokeLinecap="round" />;
-    case "cross":
-      return (
-        <g>
-          <line x1={h} y1={w} x2={h} y2={s - w} stroke={color} strokeWidth={w} strokeLinecap="round" />
-          <line x1={w} y1={h} x2={s - w} y2={h} stroke={color} strokeWidth={w} strokeLinecap="round" />
-        </g>
-      );
-    case "half":
-      return <path d={`M${h} ${w} A ${h - w} ${h - w} 0 0 1 ${h} ${s - w} Z`} fill={color} />;
-    case "ring":
-      return (
-        <g>
-          <circle cx={h} cy={h} r={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
-          <circle cx={h} cy={h} r={1.3} fill={color} />
-        </g>
-      );
-    case "triangle":
-      return <path d={`M${h} ${w + 1} L${s - w} ${s - w} L${w} ${s - w} Z`} fill="none" stroke={color} strokeWidth={w} strokeLinejoin="round" />;
-    case "bar":
-      return <rect x={w} y={h - 1.5} width={s - w * 2} height={3} rx={1.5} fill={color} />;
-    case "grid":
-      return (
-        <g>
-          <rect x={w} y={w} width={h - w * 1.5} height={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
-          <rect x={h + w / 2} y={w} width={h - w * 1.5} height={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
-          <rect x={w} y={h + w / 2} width={h - w * 1.5} height={h - w * 1.5} fill="none" stroke={color} strokeWidth={w} />
-          <rect x={h + w / 2} y={h + w / 2} width={h - w * 1.5} height={h - w * 1.5} fill={color} />
-        </g>
-      );
-    default:
-      return <circle cx={h} cy={h} r={h - w} fill="none" stroke={color} strokeWidth={w} />;
-  }
-}
+const ROW_MIN_HEIGHT = 38;
 
-function GlyphPicker({ value, onChange }: { value: string; onChange: (g: string) => void }) {
+function GlyphPicker({ value, onChange }: { value: GlyphKind; onChange: (g: GlyphKind) => void }) {
   return (
-    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 4, overflow: "auto", maxWidth: 240, paddingBottom: 4 }}>
       {GLYPHS.map((g) => (
         <button
           key={g}
           onClick={() => onChange(g)}
           title={g}
           style={{
-            width: 28, height: 28, borderRadius: 6, padding: 0,
+            width: 28, height: 28, borderRadius: 6, padding: 0, flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
             background: value === g ? "var(--ink)" : "var(--surface)",
             border: `1px solid ${value === g ? "var(--ink)" : "var(--hairline)"}`,
             cursor: "pointer",
           }}
         >
-          <GlyphSVG kind={g} size={14} color={value === g ? "var(--inverse)" : "var(--ink)"} />
+          <BlockGlyph kind={g} size={14} color={value === g ? "var(--inverse)" : "var(--ink)"} />
         </button>
       ))}
     </div>
@@ -92,18 +48,19 @@ function GlyphPicker({ value, onChange }: { value: string; onChange: (g: string)
 }
 
 const DEFAULTS: CustomCategory[] = [
-  { id: "comida", label: "Comida", glyph: "circle", type: "expense" },
-  { id: "casa", label: "Casa", glyph: "square", type: "expense" },
-  { id: "transporte", label: "Transporte", glyph: "line", type: "expense" },
-  { id: "ocio", label: "Ocio", glyph: "arc", type: "expense" },
-  { id: "subs", label: "Subscripciones", glyph: "ring", type: "expense" },
-  { id: "salud", label: "Salud", glyph: "cross", type: "expense" },
-  { id: "salario", label: "Salario", glyph: "dot", type: "income" },
-  { id: "freelance", label: "Freelance", glyph: "dot", type: "income" },
-  { id: "devolucion", label: "Devolución", glyph: "dot", type: "income" },
-  { id: "inversion", label: "Inversión", glyph: "dot", type: "income" },
-  { id: "regalo", label: "Regalo", glyph: "dot", type: "income" },
-  { id: "otros", label: "Otros", glyph: "dot", type: "income" },
+  { id: "comida", label: "Comida", glyph: "Coffee", type: "expense" },
+  { id: "servicios", label: "Servicios", glyph: "Droplet", type: "expense" },
+  { id: "casa", label: "Casa", glyph: "Home", type: "expense" },
+  { id: "transporte", label: "Transporte", glyph: "Car", type: "expense" },
+  { id: "ocio", label: "Ocio", glyph: "Music", type: "expense" },
+  { id: "subs", label: "Suscripciones", glyph: "CreditCard", type: "expense" },
+  { id: "salud", label: "Salud", glyph: "Heart", type: "expense" },
+  { id: "salario", label: "Salario", glyph: "Coins", type: "income" },
+  { id: "freelance", label: "Freelance", glyph: "Briefcase", type: "income" },
+  { id: "devolucion", label: "Devolución", glyph: "Coins", type: "income" },
+  { id: "inversion", label: "Inversión", glyph: "TrendingUp", type: "income" },
+  { id: "regalo", label: "Regalo", glyph: "Heart", type: "income" },
+  { id: "otros", label: "Otros", glyph: "Globe", type: "income" },
 ];
 
 type Row = { label: string; value: React.ReactNode };
@@ -217,10 +174,14 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
   const [categories, setCategories] = useState<CustomCategory[]>(() => [
     ...initialCats.expenses, ...initialCats.incomes,
   ]);
+  const qc = useQueryClient();
   const [savingCats, setSavingCats] = useState(false);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [catEditLabel, setCatEditLabel] = useState("");
-  const [catEditGlyph, setCatEditGlyph] = useState("circle");
+  const [catEditGlyph, setCatEditGlyph] = useState<GlyphKind>("Home");
+  const [addingType, setAddingType] = useState<"expense" | "income" | null>(null);
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [newCatGlyph, setNewCatGlyph] = useState<GlyphKind>("Home");
 
   const displayName = nameValue || email.split("@")[0] || "Usuario";
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -259,7 +220,7 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
   const startCatEdit = (cat: CustomCategory) => {
     setEditingCat(cat.id);
     setCatEditLabel(cat.label);
-    setCatEditGlyph(cat.glyph);
+    setCatEditGlyph(cat.glyph as GlyphKind);
   };
 
   const commitCatEdit = () => {
@@ -268,6 +229,28 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
       c.id === editingCat ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
     ));
     setEditingCat(null);
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+  };
+
+  const startNewCat = (type: "expense" | "income") => {
+    setAddingType(type);
+    setNewCatLabel("");
+    setNewCatGlyph("Home");
+  };
+
+  const commitNewCat = () => {
+    if (!addingType || !newCatLabel.trim()) return;
+    const id = newCatLabel.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    setCategories(prev => [...prev, {
+      id: id || `cat-${Date.now()}`,
+      label: newCatLabel.trim(),
+      glyph: newCatGlyph,
+      type: addingType,
+    }]);
+    setAddingType(null);
   };
 
   const resetCategories = () => {
@@ -279,13 +262,14 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
     setSavingCats(true);
     try {
       await updateCustomCategories(categories);
+      qc.invalidateQueries({ queryKey: qk.categories });
     } finally {
       setSavingCats(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 40px 80px" }}>
+    <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 40px 120px" }}>
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)" }}>
         <motion.div
           className="mono"
@@ -448,12 +432,46 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           <div style={{
             padding: "14px 0 6px", fontSize: 10, color: "var(--faint)",
             letterSpacing: "0.10em", textTransform: "uppercase",
-            fontFamily: "'Inter Tight', sans-serif",
-          }}>Gastos</div>
+            fontFamily: "'Inter Tight', sans-serif", display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <span>Gastos</span>
+            <button onClick={() => startNewCat("expense")} style={{
+              padding: "2px 8px", background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
+            }}>
+              + Agregar
+            </button>
+          </div>
+          {addingType === "expense" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--hairline)" }}>
+              <GlyphPicker value={newCatGlyph} onChange={setNewCatGlyph} />
+              <input
+                autoFocus
+                value={newCatLabel}
+                onChange={e => setNewCatLabel(e.target.value)}
+                placeholder="Nueva categoría"
+                style={{
+                  flex: 1, padding: "6px 8px", borderRadius: 6,
+                  border: "1px solid var(--hairline)", background: "var(--surface)",
+                  fontFamily: "inherit", fontSize: 13, color: "var(--ink)", outline: "none",
+                }}
+              />
+              <button onClick={commitNewCat} style={{
+                padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+                background: "var(--ink)", color: "var(--inverse)",
+                fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+              }}>OK</button>
+              <button onClick={() => setAddingType(null)} style={{
+                padding: "5px 8px", borderRadius: 6, border: "none", cursor: "pointer",
+                background: "none", fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+              }}>×</button>
+            </div>
+          )}
           {categories.filter(c => c.type === "expense").map(cat => (
             <div key={cat.id} style={{
               display: "flex", alignItems: "center", gap: 10,
               padding: "10px 0", borderBottom: "1px solid var(--hairline)",
+              minHeight: ROW_MIN_HEIGHT,
             }}>
               {editingCat === cat.id ? (
                 <>
@@ -480,7 +498,7 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
                 </>
               ) : (
                 <>
-                  <GlyphSVG kind={cat.glyph} size={14} color="var(--ink)" />
+                  <BlockGlyph kind={cat.glyph as GlyphKind} size={14} />
                   <span style={{ flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
                     {cat.label}
                   </span>
@@ -489,6 +507,12 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
                     fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
                   }}>
                     Editar
+                  </button>
+                  <button onClick={() => deleteCategory(cat.id)} style={{
+                    padding: "3px 6px", background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "inherit", fontSize: 10, color: "var(--faint)",
+                  }}>
+                    ×
                   </button>
                 </>
               )}
@@ -499,12 +523,46 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           <div style={{
             padding: "14px 0 6px", fontSize: 10, color: "var(--faint)",
             letterSpacing: "0.10em", textTransform: "uppercase",
-            fontFamily: "'Inter Tight', sans-serif",
-          }}>Ingresos</div>
+            fontFamily: "'Inter Tight', sans-serif", display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <span>Ingresos</span>
+            <button onClick={() => startNewCat("income")} style={{
+              padding: "2px 8px", background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
+            }}>
+              + Agregar
+            </button>
+          </div>
+          {addingType === "income" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--hairline)" }}>
+              <GlyphPicker value={newCatGlyph} onChange={setNewCatGlyph} />
+              <input
+                autoFocus
+                value={newCatLabel}
+                onChange={e => setNewCatLabel(e.target.value)}
+                placeholder="Nueva categoría"
+                style={{
+                  flex: 1, padding: "6px 8px", borderRadius: 6,
+                  border: "1px solid var(--hairline)", background: "var(--surface)",
+                  fontFamily: "inherit", fontSize: 13, color: "var(--ink)", outline: "none",
+                }}
+              />
+              <button onClick={commitNewCat} style={{
+                padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+                background: "var(--ink)", color: "var(--inverse)",
+                fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+              }}>OK</button>
+              <button onClick={() => setAddingType(null)} style={{
+                padding: "5px 8px", borderRadius: 6, border: "none", cursor: "pointer",
+                background: "none", fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+              }}>×</button>
+            </div>
+          )}
           {categories.filter(c => c.type === "income").map(cat => (
             <div key={cat.id} style={{
               display: "flex", alignItems: "center", gap: 10,
               padding: "10px 0", borderBottom: "1px solid var(--hairline)",
+              minHeight: ROW_MIN_HEIGHT,
             }}>
               {editingCat === cat.id ? (
                 <>
@@ -531,7 +589,7 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
                 </>
               ) : (
                 <>
-                  <GlyphSVG kind={cat.glyph} size={14} color="var(--ink)" />
+                  <BlockGlyph kind={cat.glyph as GlyphKind} size={14} />
                   <span style={{ flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
                     {cat.label}
                   </span>
@@ -540,6 +598,12 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
                     fontFamily: "inherit", fontSize: 10, color: "var(--mute)",
                   }}>
                     Editar
+                  </button>
+                  <button onClick={() => deleteCategory(cat.id)} style={{
+                    padding: "3px 6px", background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "inherit", fontSize: 10, color: "var(--faint)",
+                  }}>
+                    ×
                   </button>
                 </>
               )}

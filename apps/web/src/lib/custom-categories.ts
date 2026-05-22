@@ -8,21 +8,22 @@ export interface CustomCategory {
 }
 
 const DEFAULT_EXPENSE: CustomCategory[] = [
-  { id: "comida", label: "Comida", glyph: "circle", type: "expense" },
-  { id: "casa", label: "Casa", glyph: "square", type: "expense" },
-  { id: "transporte", label: "Transporte", glyph: "line", type: "expense" },
-  { id: "ocio", label: "Ocio", glyph: "arc", type: "expense" },
-  { id: "subs", label: "Subscripciones", glyph: "ring", type: "expense" },
-  { id: "salud", label: "Salud", glyph: "cross", type: "expense" },
+  { id: "comida", label: "Comida", glyph: "Coffee", type: "expense" },
+  { id: "servicios", label: "Servicios", glyph: "Droplet", type: "expense" },
+  { id: "casa", label: "Casa", glyph: "Home", type: "expense" },
+  { id: "transporte", label: "Transporte", glyph: "Car", type: "expense" },
+  { id: "ocio", label: "Ocio", glyph: "Music", type: "expense" },
+  { id: "subs", label: "Suscripciones", glyph: "CreditCard", type: "expense" },
+  { id: "salud", label: "Salud", glyph: "Heart", type: "expense" },
 ];
 
 const DEFAULT_INCOME: CustomCategory[] = [
-  { id: "salario", label: "Salario", glyph: "dot", type: "income" },
-  { id: "freelance", label: "Freelance", glyph: "dot", type: "income" },
-  { id: "devolucion", label: "Devolución", glyph: "dot", type: "income" },
-  { id: "inversion", label: "Inversión", glyph: "dot", type: "income" },
-  { id: "regalo", label: "Regalo", glyph: "dot", type: "income" },
-  { id: "otros", label: "Otros", glyph: "dot", type: "income" },
+  { id: "salario", label: "Salario", glyph: "Coins", type: "income" },
+  { id: "freelance", label: "Freelance", glyph: "Briefcase", type: "income" },
+  { id: "devolucion", label: "Devolución", glyph: "Coins", type: "income" },
+  { id: "inversion", label: "Inversión", glyph: "TrendingUp", type: "income" },
+  { id: "regalo", label: "Regalo", glyph: "Heart", type: "income" },
+  { id: "otros", label: "Otros", glyph: "Globe", type: "income" },
 ];
 
 export function getDefaults(): CustomCategory[] {
