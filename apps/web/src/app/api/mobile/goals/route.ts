@@ -6,9 +6,12 @@ export async function GET(req: NextRequest) {
   const auth = await requireMobileAuth(req);
   if (auth instanceof NextResponse) return auth;
 
+  const url = new URL(req.url);
+  const showCompleted = url.searchParams.get('completed') === '1';
+
   const rows = await db.savingsGoal.findMany({
-    where: { userId: auth.userId, completedAt: null },
-    orderBy: { createdAt: 'asc' },
+    where: { userId: auth.userId, completedAt: showCompleted ? { not: null } : null },
+    orderBy: showCompleted ? { completedAt: 'desc' } : { createdAt: 'asc' },
   });
 
   const goals = rows.map(g => ({
