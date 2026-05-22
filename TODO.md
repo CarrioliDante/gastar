@@ -197,9 +197,21 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] `saveCustomCategories(userId, categories)` — upsert en `UserSetting`
 - [x] API: `GET/PUT /api/mobile/categories`
 - [x] `useCategories()` + `useSaveCategories()` hooks mobile
-- [x] Web settings: editor de categorías con nombre + glyph picker + restaurar defaults
-- [x] Mobile settings: editor inline + guardar cambios + restaurar defaults
+- [x] Web settings: crear/editar/eliminar categorías con BlockGlyph (36 Tabler icons)
+- [x] Mobile settings: crear/editar/eliminar categorías con picker horizontal Tabler
+- [x] Defaults unificados web + mobile (Coffee, Home, Car, Music, CreditCard, Heart, etc.)
+- [x] `fetchCustomCategories` server action + `useCustomCategories` hook web
+- [x] QuickExpense usa categorías custom (vía `buildCatList` con fallback a defaults)
+- [x] RecurringClient AddForm y EditRecurringForm usan categorías custom
+- [x] Recurring mobile: picker horizontal de categorías reemplaza TextInput libre
 - [x] `CaptureSheet.tsx` usa categorías custom (con fallback a defaults)
+- [x] Typos: "Subscripciones" → "Suscripciones" en los 4 archivos + alias en glyph.tsx
+- [x] GlyphSVG eliminado, reemplazado por BlockGlyph (Tabler) en web settings
+- [x] Layout: filas con minHeight, GlyphPicker scrollable horizontal (no wrap)
+- [x] Scroll: `<main>` overflow:auto para scroll nativo de página entera
+- [x] Botones editor: "Agregar" por sección (gastos/ingresos), "×" eliminar en cada fila
+- [x] Cache invalidation: `qc.invalidateQueries(qk.categories)` al guardar → visibles al instante en QuickExpense y RecurringClient
+- [x] "Servicios" agregado como categoría default (Droplet) en web + mobile
 
 ---
 
@@ -246,6 +258,7 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ### 10.3 Toggle animaciones ✅
 - [x] Web: CSS class `.no-animations` global, toggle en settings
+- [x] Web: `DashboardContent` omite `PageTransition` cuando disabled
 - [x] Mobile: `animationsEnabled` en store, toggle en settings
 
 ---
@@ -256,10 +269,15 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] `lib/categorization.ts` — 50+ patrones regex en 8 categorías
 - [x] Auto-selección en QuickExpense con badge "auto"
 
-### 11.2 Dólar blue / MEP
-- [ ] Fetch cotización desde `dolarapi.com` (API pública, sin auth)
-- [ ] Doble balance en el hero — moneda local + equivalente USD
-- [ ] Cache con `unstable_cache` + revalidate cada 1 hora
+### 11.2 Dólar blue / MEP ✅
+- [x] Fetch cotización desde `dolarapi.com` — Blue + Oficial
+- [x] Cache con `unstable_cache` + revalidate cada 1 hora
+- [x] Doble balance en el hero — toggle ARS / USD
+- [x] Página `/dolar` dedicada con tenencia, compra/venta, cotizaciones
+- [x] Modelo `DollarOperation` — historial de operaciones de compra/venta USD
+- [x] `buyDollars()` / `sellDollars()` — server actions con `$transaction` atómico
+- [x] Transacción "dolar" automática — debita/acredita balance ARS al operar
+- [x] Sidebar nav item "Dólar" bajo Crecimiento
 
 ### 11.3 Emergency fund widget
 - [ ] Cálculo: saldo Goals / promedio gasto mensual = N meses
@@ -269,9 +287,9 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ## Fase 12 — Analytics
 
-### 12.1 Comparativa período anterior
-- [ ] Query delta % respecto al período anterior (mes anterior, semana anterior, ayer)
-- [ ] Badge `+X%` o `−X%` junto a stats principales
+### 12.1 Comparativa período anterior ✅
+- [x] Query `previousMonth` en stats — mes anterior spending/income
+- [x] Badge `↑ +X%` o `↓ −X%` junto a stats en dashboard (vista Mes)
 
 ### 12.2 Split-flap balance
 - [ ] Componente `SplitFlap` — anima cada dígito individualmente
@@ -326,13 +344,14 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [ ] Ajustar a diseño de referencia (`screens.jsx`): 142px cards, separadores, sin fondos
 - [ ] En bloques con techo/tope: mostrar ícono dentro del pie chart
 
-### 16.3 Icon picker refinamiento
-- [ ] Al seleccionar ícono, cerrar el picker automáticamente
-- [ ] El botón "+" debe transformarse en el ícono elegido
+### 16.3 Icon picker refinamiento ✅
+- [x] Mobile: botón "+" se transforma en ícono elegido, picker cierra al seleccionar
+- [x] Quick icons cierran el picker completo si está abierto
 
-### 16.4 Lectura
-- [ ] Fix fade/opacidad trabada en vista lectura
-- [ ] Scroll completo en todas las secciones
+### 16.4 Lectura ✅
+- [x] Fix fade/opacidad trabada — ScrollReveal reemplazado por motion.div (initial/animate)
+- [x] Scroll completo — minHeight: 0 en contenedor flex chain
+- [x] Dashboard shell: mismo fix minHeight: 0 en scrollable
 
 ---
 
@@ -354,10 +373,10 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Cuotas: minWidth/maxWidth/boxSizing en EditInstallmentForm
 - [x] Recurrentes: grid estable con columnas fijas en AddForm y EditRecurringForm
 
-### 17.5 Metas y bloques
-- [ ] Ver metas de ahorro completadas
-- [ ] Ver bloques archivados
-- [ ] Revivir bloques archivados
+### 17.5 Metas y bloques ✅
+- [x] Ver metas completadas — toggle Activas/Completadas, query `getCompletedGoals`
+- [x] Ver bloques archivados — toggle Activos/Archivados, query `getArchivedBlocks`
+- [x] Revivir bloques archivados — `unarchiveBlock` server action + botón "Revivir"
 
 ---
 
@@ -413,6 +432,18 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Smart categorization — `lib/categorization.ts`, auto-selección en QuickExpense
 - [x] Categorías editables — custom en UserSetting, UI en settings web + mobile
 - [x] Toggle animaciones global — CSS class `.no-animations` + setting
+
+### 2026-05-21 (tarde) — Dólar + Fixes visuales/funcionales + Analytics
+- [x] Página `/dolar` — tenencia USD, compra/venta con cotizaciones Blue/Oficial, historial
+- [x] Modelo `DollarOperation` — operaciones atómicas con `$transaction` (Transaction + DollarOperation)
+- [x] Dashboard toggle ARS/USD en hero balance
+- [x] Sidebar nav "Dólar" bajo Crecimiento
+- [x] Icon picker mobile refinado — "+" se transforma, picker cierra al seleccionar
+- [x] Lectura: fix fade/opacidad + scroll completo (minHeight: 0 + sin ScrollReveal)
+- [x] Metas completadas — toggle Activas/Completadas + query getCompletedGoals
+- [x] Bloques archivados — toggle Activos/Archivados + unarchiveBlock + Revivir
+- [x] Comparativa mes anterior — delta % badges en stats del dashboard
+- [x] Cotizaciones Blue + Oficial desde dolarapi.com en dashboard y /dolar
 
 ### 2026-05-21 — Dashboard temporal + DatePicker + Calendario
 - [x] Dashboard temporal (semana/mes) con toggle, candlestick datos reales

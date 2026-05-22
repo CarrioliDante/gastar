@@ -18,6 +18,10 @@
 - [x] `updateRecurring(id, data)` — server action + EditRecurringForm inline
 - [ ] Ícono opcional en Recurring (`icon` field + fallback a categoría)
 
+### Goals (completadas)
+- [x] Toggle Activas/Completadas con query `getCompletedGoals`
+- [x] Completed goals cards sin botones de acción
+
 ### Goals
 - [x] `updateSavingsGoal(id, data)` — server action + form inline de edición
 - [x] DatePicker editorial para deadline (crear y editar)
@@ -25,6 +29,8 @@
 
 ### Blocks
 - [x] `createBlock` / `updateBlock` / `archiveBlock` — completo
+- [x] `unarchiveBlock` — revivir bloque archivado
+- [x] Toggle Activos/Archivados con query `getArchivedBlocks`
 - [x] `getTransactionsByBlock(blockId, userId)` — query real en `lib/queries/`
 - [x] Panel derecho de Blocks: lista real de transacciones
 
@@ -50,7 +56,7 @@
 - [x] Smart categorization — regex por comercio en server action
 - [ ] Runway calculator — "tus ahorros duran N meses"
 - [ ] Zen Monday Digest — banner semanal silencioso
-- [ ] Dólar blue / MEP — doble balance local + USD
+- [x] **Dólar** — página `/dolar`, modelo `DollarOperation`, compra/venta con `$transaction`, toggle ARS/USD en dashboard, cotizaciones Blue + Oficial desde dolarapi.com
 - [ ] Emergency fund widget — meses cubiertos con ahorros
 
 ---
@@ -59,7 +65,7 @@
 
 - [x] SpendingHeatmap (GitHub-style) — reemplaza AreaChart + BarChart en Lectura
 - [x] Tooltip en celdas del heatmap
-- [ ] Comparativa mes anterior — delta % en stats
+- [x] Comparativa mes anterior — delta % badges (`↑ +12%` / `↓ -8%`) en stats
 - [ ] Split-flap balance — animación de dígitos individuales
 
 ---
