@@ -1,133 +1,68 @@
 # Gastar Mobile — TODO
 
-> Actualizado 2026-05-18. Solo tareas de la app mobile (Expo + React Native).
+> Actualizado 2026-05-22. Solo tareas de la app mobile (Expo + React Native).
 
 ---
 
-## Mutations faltantes
+> Nota: fixes del 2026-05-22 fueron web-only (modales, DatePicker, layout shift en goals/installments/recurring). Mobile no tuvo cambios.
 
-### Transactions
-- [x] Crear — CaptureSheet funcional (keypad, categorías, selector de bloque)
-- [x] Campo nombre/nota en CaptureSheet (fallback a categoría si está vacío)
-- [ ] Editar — modal o swipe action
-- [ ] Eliminar — confirmación + optimistic update
-- [x] Date picker en CaptureSheet (hoy siempre usa today)
+## Publicación App Store + Play Store
 
-### Blocks
-- [x] Crear — CreateBlockModal inline en blocks.tsx
-- [ ] Editar — modal de edición (nombre, budget, ícono)
-- [ ] Archivar/eliminar
-
-### Installments
-- [ ] Crear — mutation + form
-- [ ] Pagar cuota
-- [ ] Eliminar
-
-### Recurring
-- [ ] Crear — mutation + form
-- [ ] Marcar como pagado
-- [ ] Eliminar
-
-### Goals
-- [x] Pantalla de Goals — `/goals` con radial hero y progress por objetivo
-- [ ] Crear meta
-- [ ] Contribuir a meta
-- [ ] Eliminar meta
+- [ ] Offline-first — React Query persist + MMKV + NetInfo + mutation queue
+- [ ] EAS: `eas build:configure` + `eas.json` con env vars de prod
+- [ ] iOS: Apple Developer Program ($99/año) + App Store Connect + certificados vía EAS
+- [ ] Android: Google Play Developer ($25 one-time) + service account + app signing key
+- [ ] Assets: screenshots App Store (6.7" + 6.5"), feature graphic + screenshots Play Store
+- [ ] Build iOS + Android (`eas build --platform all --profile production`)
+- [ ] iOS: TestFlight beta → Submit for Review
+- [ ] Android: closed testing (20 testers × 14 días) → producción
+- [ ] Privacy policy — hostear en landing page
+- [ ] Landing page: links a app stores, SEO
 
 ---
 
-## Pantallas faltantes
+## Mutations pendientes (v2)
 
-- [x] **Goals** — `/goals` dedicada, accesible desde Home e Insights
-- [x] **Installments** — `/installments` dedicada con progress dots y total mensual
-- [ ] **Calendar** — no existe screen ni componente
-- [ ] **Recurring** — solo summary en Insights, sin pantalla dedicada
-- [ ] **Transaction detail** — rows no son tappeables
+- [x] Editar transacción — EditTxSheet modal + PATCH /api/mobile/transactions
+- [x] Eliminar transacción — ya existía, long-press ahora ofrece Editar / Eliminar
+- [x] Editar bloque — EditBlockModal + useUpdateBlock (ya existía)
+- [x] Archivar bloque — useArchiveBlock + handleBlockMenu (ya existía)
+- [x] Calendar view mobile — grilla 7 cols + dots + lista por día, nextDueIso en API
+- [ ] Push notifications — vencimientos de cuotas
 
 ---
 
-## UX pendiente
+## Bugs conocidos (reportados 2026-05-22)
 
-- [x] Empty state en lista de transacciones ("Sin movimientos" / "Sin resultados")
-- [x] Empty state en lista de bloques ("Sin bloques")
-- [x] Error handling en mutations (CaptureSheet, forms)
-- [ ] Error boundary global
+- [ ] Crear bloque sin techo — validación bloquea aunque "sin techo" sea opción válida (budget=0 debería ser permitido)
+- [ ] Teclado numérico — CaptureSheet debería usar teclado numérico del sistema en vez del custom numpad
+- [ ] Day picker calendario — DatePicker nativo se ve muy chiquito/mal renderizado en mobile
+- [ ] Sidebar swipe — verificar que el edge swipe siga funcionando tras cambios en layout
+
+## UI/UX pendiente (reportado 2026-05-22)
+
+- [ ] Cuotas mobile — mostrar cuotas ya pagadas (historial, no solo las activas)
+- [ ] Cuotas — campo "cantidad de cuotas" solo debe aceptar números (keyboardType + validación)
+- [ ] Cuotas — agregar selector de categoría (web + mobile)
+- [ ] Cuotas web — mostrar monto total del crédito O valor de cada cuota de forma prominente
+- [ ] Dólar mobile — cards contenedoras no siguen el UI/UX del producto (rediseño)
+- [ ] Botones generales mobile — revisar y adaptar botones que no siguen el sistema de diseño
+
+---
+
+## UX pendiente (v2)
+
+- [x] Error boundary global — ErrorBoundary export en _layout.tsx (Expo Router v6)
+- [x] Reiniciar datos — POST /api/mobile/reset + useResetData + confirmación en settings
 - [ ] Swipe-to-delete / long-press menu en filas
-- [ ] Pull-to-refresh con feedback visual más claro
+- [ ] Transaction detail — rows tappeables
+- [x] Presupuesto mensual — settings input + PATCH /api/mobile/user
+- [x] Form validation — email regex + errores on-blur + indicador de fortaleza de contraseña en signup
 
 ---
 
-## API endpoints faltantes en web
+## Paridad mobile ↔ web (v2)
 
-El mobile consume `apps/web/src/app/api/mobile/*`. Faltan endpoints POST para:
-
-- [x] `GET /api/mobile/goals` — listar metas (implementado)
-- [x] `GET /api/mobile/transactions?month=YYYY-MM` — filtro por mes (implementado)
-- [ ] `POST /api/mobile/installments` — crear cuota
-- [ ] `POST /api/mobile/installments/[id]/pay` — pagar cuota
-- [ ] `DELETE /api/mobile/installments/[id]` — eliminar cuota
-- [ ] `POST /api/mobile/recurring` — crear recurrente
-- [ ] `POST /api/mobile/recurring/[id]/pay` — marcar pagado
-- [ ] `DELETE /api/mobile/recurring/[id]` — eliminar recurrente
-- [ ] `POST /api/mobile/goals` — crear meta
-- [ ] `PUT /api/mobile/goals/[id]` — contribuir / editar meta
-- [ ] `DELETE /api/mobile/goals/[id]` — eliminar meta
-- [ ] `PUT /api/mobile/transactions/[id]` — editar transacción
-- [ ] `DELETE /api/mobile/transactions/[id]` — eliminar transacción
-- [ ] `PUT /api/mobile/blocks/[id]` — editar bloque
-- [ ] `DELETE /api/mobile/blocks/[id]` — archivar bloque
-
----
-
-## Mobile avanzado
-
-- [x] Persistencia de preferencias — Zustand persist + expo-secure-store (theme/font/currency)
-- [ ] Offline-first de datos — React Query offline + MMKV para transacciones sin conexión
-- [ ] Push notifications — Expo Push para vencimientos de cuotas
-- [ ] Calendar view mobile
-- [ ] Error handling en forms de auth (signup, login)
-- [ ] Form validation (email, password strength)
-
----
-
-## Diferencias con webapp
-
-Lo que la webapp tiene y mobile todavía no.
-
-### Íconos / Glyphs
-- [ ] Web tiene 36 glyphs (Tabler Icons semánticos: Home, Car, Coffee, etc.)
-- [ ] Mobile tiene solo 12 (geométricos abstractos: circle, dot, square, etc.)
-- [ ] Expandir a 36 glyphs o migrar a Tabler Icons para paridad visual
-
-### Settings
-- [x] **Currency picker** — ARS/USD/BRL/EUR implementado, persiste entre sesiones
-- [ ] **Presupuesto mensual** — web tiene input + server action `setMonthlyBudget`
-- [ ] **CSV Export** — web tiene link `/api/export`
-
-### Transactions
-- [x] **Month filter** — navegación prev/next por mes, pasa `?month=YYYY-MM` al API
-- [x] **Text search** — input de búsqueda toggle con lupa
-- [ ] **Category filter** — dropdown de categorías únicas
-- [ ] **Column sorting** — ordenar por fecha, descripción, categoría, monto
-
-### Charts
-- [x] **SpendingHeatmap** — GitHub-style, 21 semanas, 4 niveles quantiles (paridad con web)
-- [ ] **AreaChart** — web usa recharts (gradient fill), mobile no tiene
-- [ ] **RadarChart** — web tiene spider chart de salud financiera en Insights
-- [x] **Donut / CategoryBreakdown** — web tiene gráfico de torta por categoría (mobile ya tiene SVG donut)
-- [ ] **Grouped BarChart** — web tenía barras lado a lado (ingreso vs gasto), ya quitado de web
-
-### Animaciones
-- [ ] Web tiene ScrollReveal, TextReveal, AnimatedNumber, PageTransition
-- [ ] Mobile solo usa Reanimated en CaptureSheet, login y onboarding
-- [ ] **Cero animaciones en tab screens** (home, transactions, blocks, insights)
-- [ ] Agregar entrance animations + stagger en listas
-
-### Export / Data
-- [ ] Web tiene CSV export en settings y transactions
-- [ ] Mobile no tiene export ni share sheet
-
-### Stats / Data shape
-- [ ] Web incluye `incomeTrend` (6 meses) — mobile no
-- [ ] Web balance es objeto `{total, currency, change}` — mobile es plain number
-- [ ] Unificar tipos entre `StatsResponse` mobile y `DashboardStats` web
+- [x] Animation parity — FadeInDown entrance + stagger en los 4 tabs, viewKey en transactions y blocks, respeta animationsEnabled
+- [x] Category filter en Transactions — pills horizontales bajo tabs de tipo
+- [ ] Data shape unification — `StatsResponse` mobile vs `DashboardStats` web
