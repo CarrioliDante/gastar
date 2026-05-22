@@ -1,7 +1,7 @@
 import { cache } from "react";
 import "server-only";
 import { db } from "@/lib/db";
-import type { SpendingPoint, Category, BalanceData, MonthlyStats, TodayStats, WeekStats, MonthDay } from "@gastar/shared";
+import type { SpendingPoint, Category, BalanceData, MonthlyStats, TodayStats, WeekStats, MonthDay, PreviousMonth } from "@gastar/shared";
 
 export const getDashboardStats = cache(async (userId: string) => {
   const now = new Date();
@@ -151,6 +151,14 @@ export const getDashboardStats = cache(async (userId: string) => {
     return { day, amount: Math.round(monthDailyMap.get(day) ?? 0) };
   });
 
+  // Previous month for period comparison
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthKey = `${prevMonthDate.getFullYear()}-${prevMonthDate.getMonth()}`;
+  const previousMonth: PreviousMonth = {
+    spending: Math.round(spendingMap.get(prevMonthKey) ?? 0),
+    income: Math.round(incomeMap.get(prevMonthKey) ?? 0),
+  };
+
   return {
     balance: { total: totalBalance, currency: "USD", change: 0 } as BalanceData,
     monthly: {
@@ -166,5 +174,6 @@ export const getDashboardStats = cache(async (userId: string) => {
     todayStats:  { spending: Math.round(todaySpending), buckets: todayBuckets } as TodayStats,
     weekStats:   { spending: Math.round(weekSpending), daily: weekDaily } as WeekStats,
     monthDaily,
+    previousMonth,
   };
 });

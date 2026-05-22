@@ -84,6 +84,11 @@ export interface MonthDay {
   amount: number;
 }
 
+export interface PreviousMonth {
+  spending: number;
+  income: number;
+}
+
 export interface TodayStats {
   spending: number;
   buckets: TodayBucket[];
