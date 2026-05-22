@@ -28,6 +28,7 @@ export const CATEGORY_GLYPH: Record<string, import("@/components/ui/primitives")
   Ocio:           "Music",
   // Suscripciones
   Suscripciones:  "CreditCard",
+  Subscripciones: "CreditCard",
   // Tecnología
   Technology:     "DeviceLaptop",
   Tecnología:     "DeviceLaptop",

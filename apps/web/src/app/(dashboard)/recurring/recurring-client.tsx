@@ -12,10 +12,11 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { parseNumeric } from "@/hooks/use-number-input";
 import { springGentle } from "@/components/motion/presets";
 import type { RecurringRow } from "@/hooks/queries";
+import type { CustomCategory } from "@/lib/custom-categories";
 
 // ── Category mapping ─────────────────────────────────────────────
 
-const CATS = ["Casa", "Salud", "Suscripciones", "Transporte", "Educación", "Tecnología", "Otros"];
+const DEFAULT_CATS = ["Casa", "Salud", "Suscripciones", "Transporte", "Educación", "Tecnología", "Otros"];
 const FREQS: { id: string; label: string }[] = [
   { id: "weekly",    label: "Semanal" },
   { id: "monthly",   label: "Mensual" },
@@ -52,7 +53,7 @@ const labelStyle: React.CSSProperties = {
 
 // ── AddForm ───────────────────────────────────────────────────────
 
-function AddForm({ onDone }: { onDone: () => void }) {
+function AddForm({ onDone, categories }: { onDone: () => void; categories: string[] }) {
   const [freq, setFreq] = useState("monthly");
   const createRec = useCreateRecurring();
 
@@ -102,7 +103,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
         <div>
           <div className="mono" style={labelStyle}>Categoría</div>
           <select name="category" style={fieldStyle}>
-            {CATS.map(c => <option key={c}>{c}</option>)}
+            {categories.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div>
@@ -142,13 +143,14 @@ function AddForm({ onDone }: { onDone: () => void }) {
 // ── Edit form for recurring ──────────────────────────────────────
 
 function EditRecurringForm({
-  item, onSave, onCancel, isPending, error,
+  item, onSave, onCancel, isPending, error, categories,
 }: {
   item: RecurringRow;
   onSave: (data: { name: string; amount: number; category: string; frequency: string; dayOfMonth: number | null; note: string | null }) => void;
   onCancel: () => void;
   isPending: boolean;
   error?: string;
+  categories: string[];
 }) {
   const [name, setName] = useState(item.name);
   const [amount, setAmount] = useState(String(item.amount));
@@ -210,7 +212,7 @@ function EditRecurringForm({
         <div>
           <div className="mono" style={labelStyle}>Categoría</div>
           <select value={category} onChange={e => setCategory(e.target.value)} style={fieldStyle}>
-            {CATS.map(c => <option key={c}>{c}</option>)}
+            {categories.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div>
@@ -246,7 +248,7 @@ function EditRecurringForm({
 
 // ── Single row ───────────────────────────────────────────────────
 
-function RecurringRowItem({ item }: { item: RecurringRow }) {
+function RecurringRowItem({ item, categories }: { item: RecurringRow; categories: string[] }) {
   const { format } = useCurrency();
   const pay = usePayRecurring();
   const del = useDeleteRecurring();
@@ -273,6 +275,7 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
         >
           <EditRecurringForm
             item={item}
+            categories={categories}
             onSave={(data) => {
               upd.mutate(
                 { id: item.id, data },
@@ -394,7 +397,7 @@ function RecurringRowItem({ item }: { item: RecurringRow }) {
 
 // ── Group section ────────────────────────────────────────────────
 
-function GroupSection({ title, items }: { title: string; items: RecurringRow[] }) {
+function GroupSection({ title, items, categories }: { title: string; items: RecurringRow[]; categories: string[] }) {
   if (items.length === 0) return null;
   return (
     <div>
@@ -409,19 +412,22 @@ function GroupSection({ title, items }: { title: string; items: RecurringRow[] }
           height: 1, flex: 1, background: "var(--hairline)",
         }} />
       </div>
-      {items.map(item => <RecurringRowItem key={item.id} item={item} />)}
+      {items.map(item => <RecurringRowItem key={item.id} item={item} categories={categories} />)}
     </div>
   );
 }
 
 // ── Main component ───────────────────────────────────────────────
 
-export function RecurringClient({ initialItems }: { initialItems: RecurringRow[] }) {
+export function RecurringClient({ initialItems, customCategories }: { initialItems: RecurringRow[]; customCategories?: CustomCategory[] }) {
   const [adding, setAdding] = useState(false);
   const { data: items } = useRecurring(initialItems);
   const { format } = useCurrency();
 
   const list = items ?? [];
+  const expenseCats = customCategories
+    ? customCategories.filter(c => c.type === "expense").map(c => c.label)
+    : DEFAULT_CATS;
 
   // Compute metrics
   const activeItems = useMemo(() => list.filter(i => !i.paused), [list]);
@@ -480,7 +486,7 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
 
       {/* Add button / form */}
       <div style={{ marginTop: 16 }}>
-        {adding && <AddForm onDone={() => setAdding(false)} />}
+        {adding && <AddForm onDone={() => setAdding(false)} categories={expenseCats} />}
 
         {!adding && (
           <button onClick={() => setAdding(true)} style={{
@@ -512,7 +518,7 @@ export function RecurringClient({ initialItems }: { initialItems: RecurringRow[]
         /* Grouped list */
         <>
           {GROUP_ORDER.map(g => (
-            <GroupSection key={g} title={g} items={groups[g]} />
+            <GroupSection key={g} title={g} items={groups[g]} categories={expenseCats} />
           ))}
         </>
       )}

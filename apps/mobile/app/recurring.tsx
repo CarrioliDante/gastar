@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
-import { useRecurring } from '../lib/hooks';
+import { useRecurring, useCategories } from '../lib/hooks';
 import {
   useCreateRecurring,
   usePayRecurring,
@@ -110,6 +110,7 @@ export default function RecurringScreen() {
   const payRecurring = usePayRecurring();
   const deleteRecurring = useDeleteRecurring();
   const togglePause = useToggleRecurringPause();
+  const { data: catsData } = useCategories();
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -128,6 +129,8 @@ export default function RecurringScreen() {
   const now = new Date();
   const raw = apiData ?? [];
   const items = raw.map(adaptRecurring);
+
+  const categoryLabels = (catsData?.expenses ?? []).map(c => c.label);
 
   // Metrics
   const totalMonthly = useMemo(() =>
@@ -268,14 +271,30 @@ export default function RecurringScreen() {
               keyboardType="decimal-pad"
               style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
             />
-            <TextInput
-              value={formCategory}
-              onChangeText={setFormCategory}
-              placeholder="Categoría"
-              placeholderTextColor={C.faint}
-              style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
-            />
           </View>
+
+          {/* Category picker */}
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>Categoría</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            {(categoryLabels.length > 0 ? categoryLabels : ['Casa', 'Salud', 'Suscripciones', 'Transporte', 'Educación', 'Tecnología', 'Otros']).map(c => {
+              const active = formCategory === c;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => setFormCategory(active ? '' : c)}
+                  style={{
+                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7,
+                    backgroundColor: active ? C.ink : C.surface,
+                    borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                  }}
+                >
+                  <Text style={{ fontFamily: fontBody, fontSize: 12, color: active ? C.bg : C.mute }}>
+                    {c}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
 
           {/* Frequency selector */}
           <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>Frecuencia</Text>

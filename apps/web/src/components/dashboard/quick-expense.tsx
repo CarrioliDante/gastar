@@ -8,11 +8,23 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useNumberInput } from "@/hooks/use-number-input";
 import { BlockGlyph, toGlyphKind, type GlyphKind } from "@/components/ui/primitives";
 import { inferCategory } from "@/lib/categorization";
+import type { CustomCategory } from "@/lib/custom-categories";
 
-const EXP_CATS = ["Comida", "Casa", "Transporte", "Ocio", "Salud", "Tecnología", "Educación", "Suscripciones", "Otros"];
-const INC_CATS = ["Salario", "Freelance", "Devolución", "Inversión", "Regalo", "Otros"];
+const DEFAULT_EXP_CATS = ["Comida", "Casa", "Transporte", "Ocio", "Salud", "Tecnología", "Educación", "Suscripciones", "Otros"];
+const DEFAULT_INC_CATS = ["Salario", "Freelance", "Devolución", "Inversión", "Regalo", "Otros"];
 
-export function QuickExpense({ open, onClose, initialType = "expense", initialBlockId }: { open: boolean; onClose: () => void; initialType?: "expense" | "income"; initialBlockId?: string }) {
+function buildCatList(cats: CustomCategory[] | undefined, type: "expense" | "income"): string[] {
+  if (cats && cats.length > 0) {
+    const filtered = cats.filter(c => c.type === type).map(c => c.label);
+    if (filtered.length > 0) return filtered;
+  }
+  return type === "expense" ? DEFAULT_EXP_CATS : DEFAULT_INC_CATS;
+}
+
+export function QuickExpense({ open, onClose, initialType = "expense", initialBlockId, customCategories }: {
+  open: boolean; onClose: () => void; initialType?: "expense" | "income"; initialBlockId?: string;
+  customCategories?: CustomCategory[];
+}) {
   const [type, setType]         = useState<"expense" | "income">(initialType);
   const [amount, setAmount]     = useState("");
   const [label, setLabel]       = useState("");
@@ -41,14 +53,16 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
       setSaved(false); setAmount(""); setLabel("");
       setBlockId(initialBlockId ?? null);
       setType(initialType);
-      setCategory(initialType === "income" ? "Salario" : "Comida");
+      const cats = buildCatList(customCategories, initialType);
+      setCategory(cats[0] ?? "Otros");
       setCatSource("default");
       setTimeout(() => num.ref.current?.focus(), 60);
     }
   }, [open, initialType, initialBlockId]);
 
   useEffect(() => {
-    setCategory(type === "income" ? "Salario" : "Comida");
+    const cats = buildCatList(customCategories, type);
+    setCategory(cats[0] ?? "Otros");
     setCatSource("default");
   }, [type]);
 
@@ -66,7 +80,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
   }, [label]);
 
   const isExp   = type === "expense";
-  const cats    = isExp ? EXP_CATS : INC_CATS;
+  const cats    = buildCatList(customCategories, type);
   const canSave = num.numericValue > 0;
 
   const save = () => {
