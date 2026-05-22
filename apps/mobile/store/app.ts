@@ -27,6 +27,7 @@ interface AppStore {
   captureOpen: boolean;
   captureType: 'expense' | 'income';
   lastCaptureType: 'expense' | 'income';
+  sidebarOpen: boolean;
   setTheme: (theme: Theme) => void;
   setFont: (font: FontFamily) => void;
   setCurrency: (currency: CurrencyCode) => void;
@@ -34,6 +35,8 @@ interface AppStore {
   setLastCaptureType: (type: 'expense' | 'income') => void;
   openCapture: (type: 'expense' | 'income') => void;
   closeCapture: () => void;
+  openSidebar: () => void;
+  closeSidebar: () => void;
   activeTabIndex: number;
   setActiveTabIndex: (i: number) => void;
 }
@@ -48,6 +51,7 @@ export const useAppStore = create<AppStore>()(
       captureOpen: false,
       captureType: 'expense',
       lastCaptureType: 'expense',
+      sidebarOpen: false,
       setTheme: (theme) => set({ theme }),
       setFont: (font) => set({ font }),
       setCurrency: (currency) => set({ currency }),
@@ -55,6 +59,8 @@ export const useAppStore = create<AppStore>()(
       setLastCaptureType: (type) => set({ lastCaptureType: type }),
       openCapture: (type) => set({ captureOpen: true, captureType: type }),
       closeCapture: () => set({ captureOpen: false }),
+      openSidebar: () => set({ sidebarOpen: true }),
+      closeSidebar: () => set({ sidebarOpen: false }),
       activeTabIndex: 0,
       setActiveTabIndex: (i) => set({ activeTabIndex: i }),
     }),

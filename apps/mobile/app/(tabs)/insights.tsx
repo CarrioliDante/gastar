@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -28,6 +29,8 @@ export default function InsightsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewKey, setViewKey] = useState(0);
   const activeTabIndex = useAppStore(s => s.activeTabIndex);
+  const animationsEnabled = useAppStore(s => s.animationsEnabled);
+  const e = (d: number) => animationsEnabled ? FadeInDown.duration(320).delay(d) : undefined;
   const lastAnimRef = useRef(0);
 
   useEffect(() => {
@@ -76,14 +79,14 @@ export default function InsightsScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
-      <View style={{ paddingBottom: 12 }}>
+      <Animated.View key={`hdr-${viewKey}`} entering={e(0)} style={{ paddingBottom: 12 }}>
         <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
           {monthName(now)} · Resumen
         </Text>
         <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
           Lectura
         </Text>
-      </View>
+      </Animated.View>
 
       {/* Error banner */}
       {isError && (
@@ -99,11 +102,13 @@ export default function InsightsScreen() {
       <Hairline style={{ marginTop: 28 }} />
 
       {/* Daily spend */}
+      <Animated.View key={`daily-${viewKey}`} entering={e(80)}>
       <Section title={`Gasto diario · ${monthName(now)}`} right={`prom · ${fmt(avgDaily, { decimals: 0, compact: true })}`} top={26}>
         <TickerAmount value={avgDaily} size={28} decimals={0} code="AR$" triggerKey={viewKey} />
         <View style={{ marginBottom: 18 }} />
         <BarChart data={monthSeries} width={300} height={62} gap={3} color={C.ink} trackColor={C.hairline2} />
       </Section>
+      </Animated.View>
 
       <Hairline style={{ marginTop: 28 }} />
 
@@ -125,6 +130,7 @@ export default function InsightsScreen() {
       <Hairline style={{ marginTop: 28 }} />
 
       {/* Distribution donut */}
+      <Animated.View key={`dist-${viewKey}`} entering={e(160)}>
       <Section title="Distribución" right={fmt(totalCats, { decimals: 0, compact: true })} top={26}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
           {/* Donut SVG */}
@@ -175,6 +181,7 @@ export default function InsightsScreen() {
           </View>
         </View>
       </Section>
+      </Animated.View>
 
       <Hairline style={{ marginTop: 28 }} />
 

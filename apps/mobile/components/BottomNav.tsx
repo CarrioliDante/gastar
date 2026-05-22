@@ -140,7 +140,7 @@ export function BottomNav({ activeIndex, onNavigate, onCapture, scrollX, screenW
   const after = TABS.slice(2);
 
   // The nav bar has horizontal padding of 8px on each side.
-  // Inside: [tab0 flex:1][tab1 flex:1][FAB ~62px][tab2 flex:1][tab3 flex:1]
+  // Inside: [tab0 flex:1][tab1 flex:1][FAB ~54px][tab2 flex:1][tab3 flex:1]
   // Nav bar total width ≈ screenWidth - 24px (12px paddingHorizontal each side).
   // FAB zone width = 46 + 2*4 margin = 54px (marginHorizontal:4 on the wrapping View).
   // Each tab slot = (navWidth - 54) / 4.
@@ -150,8 +150,8 @@ export function BottomNav({ activeIndex, onNavigate, onCapture, scrollX, screenW
   //   tab2: tabSlot * 2.5 + 54
   //   tab3: tabSlot * 3.5 + 54
   // Indicator is centered, width 20px, so translateX = centerOffset - 10.
-  const navWidth = screenWidth - 24; // 12px paddingHorizontal × 2
-  const fabZone = 54; // 46px button + 4px marginHorizontal × 2
+  const navWidth = screenWidth - 24;
+  const fabZone = 54;
   const tabSlot = (navWidth - fabZone) / 4;
 
   const tabCenters = [

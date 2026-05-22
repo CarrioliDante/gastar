@@ -23,7 +23,15 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passTouched, setPassTouched] = useState(false);
   const passRef = useRef<TextInput>(null);
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const passValid = password.length >= 6;
+  const emailError = emailTouched && email.length > 0 && !emailValid ? 'Email inválido' : null;
+  const passError = passTouched && password.length > 0 && !passValid ? 'Mínimo 6 caracteres' : null;
+  const canSubmit = emailValid && passValid;
 
   // Screen emerges from black (the zoom circle filled the screen)
   const bgOpacity = useSharedValue(1);
@@ -39,7 +47,6 @@ export default function LoginScreen() {
     opacity: bgOpacity.value,
   }));
 
-  const canSubmit = email.includes('@') && password.length >= 6;
 
   const handleLogin = async () => {
     if (!canSubmit || loading) return;
@@ -114,9 +121,10 @@ export default function LoginScreen() {
         <Animated.View entering={FadeIn.delay(120).duration(600)}>
           <Text style={labelStyle}>Email</Text>
           <TextInput
-            style={inputStyle}
+            style={[inputStyle, emailError ? { borderBottomColor: C.ink } : {}]}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={v => { setEmail(v); setEmailTouched(false); }}
+            onBlur={() => setEmailTouched(true)}
             placeholder="vos@ejemplo.com"
             placeholderTextColor={C.whisper}
             keyboardType="email-address"
@@ -125,6 +133,11 @@ export default function LoginScreen() {
             returnKeyType="next"
             onSubmitEditing={() => passRef.current?.focus()}
           />
+          {emailError && (
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.4, marginTop: -20, marginBottom: 20 }}>
+              {emailError}
+            </Text>
+          )}
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(200).duration(600)}>
@@ -132,9 +145,10 @@ export default function LoginScreen() {
           <View style={{ position: 'relative' }}>
             <TextInput
               ref={passRef}
-              style={inputStyle}
+              style={[inputStyle, passError ? { borderBottomColor: C.ink } : {}]}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={v => { setPassword(v); setPassTouched(false); }}
+              onBlur={() => setPassTouched(true)}
               placeholder="••••••••"
               placeholderTextColor={C.whisper}
               secureTextEntry={!showPass}
@@ -150,6 +164,11 @@ export default function LoginScreen() {
               </Text>
             </Pressable>
           </View>
+          {passError && (
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.4, marginTop: -20, marginBottom: 20 }}>
+              {passError}
+            </Text>
+          )}
         </Animated.View>
 
         {/* Error */}
