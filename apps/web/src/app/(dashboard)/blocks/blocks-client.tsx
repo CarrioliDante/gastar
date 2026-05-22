@@ -62,8 +62,8 @@ export function BlocksClient({
   const block = blocks.find(b => b.id === selId) ?? blocks[0];
   const showSplitView = !showArchived && block;
 
-  const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
-  const { data: blockTxs, isLoading: txLoading } = useBlockTransactions(block.id);
+  const pct = block ? (block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0) : 0;
+  const { data: blockTxs, isLoading: txLoading } = useBlockTransactions(block?.id ?? null);
 
   return (
     <>
