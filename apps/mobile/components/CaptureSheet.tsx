@@ -494,13 +494,14 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       >
         <Pressable
           onPress={() => setShowCalendar(false)}
-          style={{ flex: 1, backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.25)', justifyContent: 'center', padding: 20 }}
+          style={{ flex: 1, backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' }}
         >
           <View
             style={{
               backgroundColor: C.bg,
               borderRadius: 20,
               padding: 20,
+              margin: 20,
               maxHeight: '80%',
             }}
             onStartShouldSetResponder={() => true}

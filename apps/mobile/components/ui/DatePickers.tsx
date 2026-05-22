@@ -166,8 +166,8 @@ export function MonthCalendar({ value, onChange }: MonthCalendarProps) {
 
       {/* Day headers */}
       <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-        {DAY_HEADERS.map((h, i) => (
-          <View key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}>
+        {DAY_HEADERS.map(h => (
+          <View key={h} style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}>
             <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 0.5 }}>{h}</Text>
           </View>
         ))}
