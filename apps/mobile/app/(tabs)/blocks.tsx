@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Line, Path } from 'react-native-svg';
 import { useTheme } from '../../hooks/useTheme';
-import { useBlocks, useTransactions, useCreateBlock, useUpdateBlock, useArchiveBlock } from '../../lib/hooks';
+import { useBlocks, useTransactions, useCreateBlock, useUpdateBlock, useArchiveBlock, useArchivedBlocks, useUnarchiveBlock } from '../../lib/hooks';
 import { adaptBlock, adaptTxGroup, type BlockUI } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Eyebrow, Hairline, ProgressBar, Section } from '../../components/ui/primitives';
@@ -171,26 +171,30 @@ function BlockFormModal({ title, name, setName, icon, setIcon, budgetStr, setBud
       <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>Ícono</Text>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
         {QUICK_ICONS.map(kind => (
-          <Pressable key={kind} onPress={() => setIcon(kind)}
+          <Pressable key={kind} onPress={() => { setIcon(kind); setShowAll(false); }}
             style={{
               width: 42, height: 42, borderRadius: 10,
-              backgroundColor: icon === kind ? C.ink : C.surface,
-              borderWidth: 1, borderColor: icon === kind ? C.ink : C.hairline,
+              backgroundColor: icon === kind && !showAll ? C.ink : C.surface,
+              borderWidth: 1, borderColor: icon === kind && !showAll ? C.ink : C.hairline,
               alignItems: 'center', justifyContent: 'center',
             }}>
-            <BlockGlyph kind={kind} size={18} color={icon === kind ? C.inverse : C.ink} />
+            <BlockGlyph kind={kind} size={18} color={icon === kind && !showAll ? C.inverse : C.ink} />
           </Pressable>
         ))}
         <Pressable onPress={() => setShowAll(!showAll)}
           style={{
             width: 42, height: 42, borderRadius: 10,
-            backgroundColor: showAll ? C.ink : C.surface,
-            borderWidth: 1, borderColor: showAll ? C.ink : C.hairline,
+            backgroundColor: showAll || (!showAll && icon !== 'Home' && !QUICK_ICONS.includes(icon)) ? C.ink : C.surface,
+            borderWidth: 1, borderColor: showAll || (!showAll && icon !== 'Home' && !QUICK_ICONS.includes(icon)) ? C.ink : C.hairline,
             alignItems: 'center', justifyContent: 'center',
           }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: showAll ? C.inverse : C.faint }}>
-            +
-          </Text>
+          {!showAll && icon !== 'Home' && !QUICK_ICONS.includes(icon) ? (
+            <BlockGlyph kind={icon} size={18} color={C.inverse} />
+          ) : (
+            <Text style={{ fontFamily: fontDisplay, fontSize: 18, color: showAll ? C.inverse : C.faint }}>
+              +
+            </Text>
+          )}
         </Pressable>
       </View>
 
@@ -349,8 +353,11 @@ export default function BlocksScreen() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editBlock, setEditBlock] = useState<BlockUI | null>(null);
   const { data: apiBlocks, isLoading, isError } = useBlocks();
+  const { data: archivedApiBlocks } = useArchivedBlocks();
   const archiveBlock = useArchiveBlock();
+  const unarchiveBlock = useUnarchiveBlock();
   const [refreshing, setRefreshing] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -406,22 +413,24 @@ export default function BlocksScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-            {blocks.length} activos
+            {showArchived ? `${(archivedApiBlocks ?? []).length} archivados` : `${blocks.length} activos`}
           </Text>
           <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
             Bloques
           </Text>
         </View>
-        <Pressable onPress={() => setCreateOpen(true)} style={{
-          width: 34, height: 34, borderRadius: 99,
-          backgroundColor: C.ink,
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-            <Line x1={6} y1={2} x2={6} y2={10} stroke={C.bg} strokeWidth={1.4} strokeLinecap="round" />
-            <Line x1={2} y1={6} x2={10} y2={6} stroke={C.bg} strokeWidth={1.4} strokeLinecap="round" />
-          </Svg>
-        </Pressable>
+        {!showArchived && (
+          <Pressable onPress={() => setCreateOpen(true)} style={{
+            width: 34, height: 34, borderRadius: 99,
+            backgroundColor: C.ink,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
+              <Line x1={6} y1={2} x2={6} y2={10} stroke={C.bg} strokeWidth={1.4} strokeLinecap="round" />
+              <Line x1={2} y1={6} x2={10} y2={6} stroke={C.bg} strokeWidth={1.4} strokeLinecap="round" />
+            </Svg>
+          </Pressable>
+        )}
       </View>
 
       {/* Error banner */}
@@ -433,7 +442,73 @@ export default function BlocksScreen() {
         </View>
       )}
 
-      {/* Budget overview */}
+      {/* Toggle Activos / Archivados */}
+      <View style={{ flexDirection: 'row', gap: 18, marginTop: 16 }}>
+        {(['activos', 'archivados'] as const).map(tab => {
+          const active = tab === 'activos' ? !showArchived : showArchived;
+          const count = tab === 'activos' ? blocks.length : (archivedApiBlocks ?? []).length;
+          return (
+            <Pressable key={tab} onPress={() => setShowArchived(tab === 'archivados')}>
+              <Text style={{
+                fontFamily: fontMono, fontSize: 10, letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: active ? C.ink : C.faint,
+                borderBottomWidth: active ? 1 : 0,
+                borderBottomColor: C.ink,
+                paddingBottom: 4,
+              }}>
+                {tab === 'activos' ? 'Activos' : 'Archivados'} · {count}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Archived view */}
+      {showArchived && (
+        <View style={{ marginTop: 16 }}>
+          {(archivedApiBlocks ?? []).length === 0 ? (
+            <View style={{ paddingTop: 48, alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
+                Sin bloques archivados
+              </Text>
+            </View>
+          ) : (
+            (archivedApiBlocks ?? []).map(adaptBlock).map((b, i, arr) => {
+              const glyph = b.glyph;
+              return (
+                <View key={b.id}>
+                  {i > 0 && <Hairline />}
+                  <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                    <BlockGlyph kind={glyph} size={22} color={C.ink} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: '500', letterSpacing: -0.4, color: C.ink }}>{b.label}</Text>
+                      {b.budget > 0 && (
+                        <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.4, marginTop: 2 }}>
+                          ${fmt(b.budget, { decimals: 0, compact: true })}
+                        </Text>
+                      )}
+                    </View>
+                    <Pressable
+                      onPress={() => unarchiveBlock.mutate(b.id)}
+                      disabled={unarchiveBlock.isPending}
+                      style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: C.hairline }}
+                    >
+                      <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.6 }}>
+                        {unarchiveBlock.isPending ? '…' : 'Revivir'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
+
+      {/* Budget overview — only active */}
+      {!showArchived && (
+      <>
       <View style={{ paddingTop: isError ? 18 : 32, paddingBottom: 20 }}>
         <Eyebrow right={`${blocks.length} bloques`}>Asignado · {monthName(now)}</Eyebrow>
         <Text style={{ fontFamily: fontDisplay, fontSize: 36, fontWeight: '500', letterSpacing: -1.5, marginTop: 14, color: C.ink, fontVariant: ['tabular-nums'] }}>
@@ -524,6 +599,8 @@ export default function BlocksScreen() {
           </View>
         );
       })}
+
+      )}
 
       <CreateBlockModal open={createOpen} onClose={() => setCreateOpen(false)} />
       {editBlock && <EditBlockModal block={editBlock} onClose={() => setEditBlock(null)} />}

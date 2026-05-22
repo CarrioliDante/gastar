@@ -54,3 +54,14 @@ export async function archiveBlock(id: string) {
     throw err;
   }
 }
+
+export async function unarchiveBlock(id: string) {
+  const user = await requireUser();
+  try {
+    await db.block.updateMany({ where: { id, userId: user.id }, data: { archivedAt: null } });
+    revalidateTag(`user:${user.id}`, "default");
+  } catch (err) {
+    console.error("unarchiveBlock failed:", err);
+    throw err;
+  }
+}
