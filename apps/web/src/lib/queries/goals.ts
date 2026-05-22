@@ -21,4 +21,21 @@ export const getSavingsGoals = cache(async (userId: string) => {
   }));
 });
 
+export const getCompletedGoals = cache(async (userId: string) => {
+  const rows = await db.savingsGoal.findMany({
+    where: { userId, completedAt: { not: null } },
+    orderBy: { completedAt: "desc" },
+  });
+
+  return rows.map(g => ({
+    id: g.id, name: g.name,
+    targetAmount: Number(g.targetAmount),
+    currentAmount: Number(g.currentAmount),
+    deadline: g.deadline?.toLocaleDateString("es-AR", { month: "short", year: "numeric" }) ?? null,
+    deadlineISO: g.deadline ? g.deadline.toISOString().slice(0, 10) : null,
+    pct: 100,
+    remaining: 0,
+  }));
+});
+
 export type GoalRow = Awaited<ReturnType<typeof getSavingsGoals>>[number];

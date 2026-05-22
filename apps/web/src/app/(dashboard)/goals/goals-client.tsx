@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { useGoals } from "@/hooks/queries";
+import { useGoals, useCompletedGoals } from "@/hooks/queries";
 import { useCreateGoal, useContributeToGoal, useDeleteGoal, useUpdateGoal } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -23,7 +23,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: "uppercase", marginBottom: 6,
 };
 
-function GoalCard({ goal }: { goal: GoalRow }) {
+function GoalCard({ goal, readonly }: { goal: GoalRow; readonly?: boolean }) {
   const [contributing, setContributing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState("");
@@ -153,34 +153,36 @@ function GoalCard({ goal }: { goal: GoalRow }) {
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start" }}>
-          <button onClick={() => setContributing(v => !v)} style={{
-            padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer",
-            background: "var(--ink)", color: "var(--inverse)",
-            fontFamily: "inherit", fontSize: 11, fontWeight: 500, letterSpacing: "-0.005em",
-          }}>
-            + Aportar
-          </button>
-          <button
-            onClick={() => !isOpt && setEditing(true)}
-            disabled={isOpt}
-            style={{
-              padding: "6px 10px", background: "none", border: "none",
-              cursor: isOpt ? "default" : "pointer",
-              fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
-              borderBottom: "1px solid transparent",
-            }}
-          >Editar</button>
-          <button
-            onClick={() => !isOpt && del.mutate(goal.id)}
-            disabled={isOpt || del.isPending}
-            style={{
-              padding: "6px 8px", background: "none", border: "none",
-              cursor: isOpt || del.isPending ? "default" : "pointer",
-              fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
-            }}
-          >×</button>
-        </div>
+        {!readonly && (
+          <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start" }}>
+            <button onClick={() => setContributing(v => !v)} style={{
+              padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer",
+              background: "var(--ink)", color: "var(--inverse)",
+              fontFamily: "inherit", fontSize: 11, fontWeight: 500, letterSpacing: "-0.005em",
+            }}>
+              + Aportar
+            </button>
+            <button
+              onClick={() => !isOpt && setEditing(true)}
+              disabled={isOpt}
+              style={{
+                padding: "6px 10px", background: "none", border: "none",
+                cursor: isOpt ? "default" : "pointer",
+                fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+                borderBottom: "1px solid transparent",
+              }}
+            >Editar</button>
+            <button
+              onClick={() => !isOpt && del.mutate(goal.id)}
+              disabled={isOpt || del.isPending}
+              style={{
+                padding: "6px 8px", background: "none", border: "none",
+                cursor: isOpt || del.isPending ? "default" : "pointer",
+                fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+              }}
+            >×</button>
+          </div>
+        )}
       </div>
 
       {contributing && (
@@ -283,12 +285,16 @@ function AddGoalForm({ onDone }: { onDone: () => void }) {
 
 export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
   const [adding, setAdding] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const { data: goals } = useGoals(initialGoals);
+  const { data: completedGoals } = useCompletedGoals();
   const { format } = useCurrency();
 
-  const list = goals ?? [];
-  const totalSaved  = list.reduce((s, g) => s + g.currentAmount, 0);
-  const totalTarget = list.reduce((s, g) => s + g.targetAmount, 0);
+  const activeList = goals ?? [];
+  const completedList = completedGoals ?? [];
+  const list = showCompleted ? completedList : activeList;
+  const totalSaved  = activeList.reduce((s, g) => s + g.currentAmount, 0);
+  const totalTarget = activeList.reduce((s, g) => s + g.targetAmount, 0);
   const overallPct  = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
 
   return (
@@ -314,8 +320,33 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
         </motion.h1>
       </header>
 
-      {/* Metrics header */}
-      {totalTarget > 0 && (
+      {/* Toggle: Activas / Completadas */}
+      <div style={{ display: "flex", gap: 18, marginTop: 20, marginBottom: 4 }}>
+        {(["activas", "completadas"] as const).map(tab => {
+          const active = tab === "activas" ? !showCompleted : showCompleted;
+          const count = tab === "activas" ? activeList.length : completedList.length;
+          return (
+            <button
+              key={tab}
+              onClick={() => setShowCompleted(tab === "completadas")}
+              className="mono"
+              style={{
+                padding: "8px 0", background: "none", border: "none", cursor: "pointer",
+                fontFamily: "inherit", fontSize: 10, letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: active ? "var(--ink)" : "var(--faint)",
+                borderBottom: active ? "1px solid var(--ink)" : "1px solid transparent",
+                transition: "all 200ms ease",
+              }}
+            >
+              {tab === "activas" ? "Activas" : "Completadas"} · {count}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Metrics header — only for active goals */}
+      {!showCompleted && totalTarget > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -366,9 +397,9 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
 
       {/* Goal grid */}
       <div style={{ marginTop: 8 }}>
-        {adding && <AddGoalForm onDone={() => setAdding(false)} />}
+        {!showCompleted && adding && <AddGoalForm onDone={() => setAdding(false)} />}
 
-        {!adding && (
+        {!showCompleted && !adding && (
           <button onClick={() => setAdding(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "14px 0", background: "none", border: "none", cursor: "pointer",
@@ -383,13 +414,13 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
           </button>
         )}
 
-        {list.length === 0 && !adding ? (
+        {list.length === 0 ? (
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "center",
             justifyContent: "center", padding: "80px 0", gap: 16,
           }}>
             <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
-              Sin metas de ahorro. Creá tu primera meta.
+              {showCompleted ? "Sin metas completadas aún." : "Sin metas de ahorro. Creá tu primera meta."}
             </div>
           </div>
         ) : (
@@ -397,7 +428,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
             display: "grid", gridTemplateColumns: "1fr 1fr",
             gap: "0 40px",
           }}>
-            {list.map(g => <GoalCard key={g.id} goal={g} />)}
+            {list.map(g => <GoalCard key={g.id} goal={g} readonly={showCompleted} />)}
           </div>
         )}
       </div>

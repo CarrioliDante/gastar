@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
-import { useGoals, useCreateGoal } from '../lib/hooks';
+import { useGoals, useCreateGoal, useCompletedGoals } from '../lib/hooks';
 import { adaptGoal } from '../lib/adapters';
 import { fmt } from '../lib/format';
 import { Hairline } from '../components/ui/primitives';
@@ -18,8 +18,10 @@ export default function GoalsScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { data: apiData, isLoading, isError } = useGoals();
+  const { data: completedData } = useCompletedGoals();
   const createGoal = useCreateGoal();
   const [refreshing, setRefreshing] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -61,8 +63,10 @@ export default function GoalsScreen() {
   const saving = createGoal.isPending;
 
   const goals = (apiData ?? []).map(adaptGoal);
+  const completedGoals = (completedData ?? []).map(adaptGoal);
   const totalTarget  = goals.reduce((s, g) => s + g.target, 0);
   const totalCurrent = goals.reduce((s, g) => s + g.current, 0);
+  const displayGoals = showCompleted ? completedGoals : goals;
   const overallPct   = totalTarget > 0 ? Math.min(1, totalCurrent / totalTarget) : 0;
 
   if (isLoading && !apiData) {
@@ -102,7 +106,7 @@ export default function GoalsScreen() {
             Ahorro
           </Text>
         </View>
-        <Pressable onPress={() => setShowForm(v => !v)} style={{
+        {!showCompleted && <Pressable onPress={() => setShowForm(v => !v)} style={{
           width: 34, height: 34, borderRadius: 99,
           backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
           alignItems: 'center', justifyContent: 'center',
@@ -124,6 +128,27 @@ export default function GoalsScreen() {
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.5, textAlign: 'center' }}>Sin conexión</Text>
         </View>
       )}
+
+      {/* Toggle Activas / Completadas */}
+      <View style={{ flexDirection: 'row', gap: 18, marginTop: 16 }}>
+        {(['activas', 'completadas'] as const).map(tab => {
+          const active = tab === 'activas' ? !showCompleted : showCompleted;
+          return (
+            <Pressable key={tab} onPress={() => setShowCompleted(tab === 'completadas')}>
+              <Text style={{
+                fontFamily: fontMono, fontSize: 10, letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: active ? C.ink : C.faint,
+                borderBottomWidth: active ? 1 : 0,
+                borderBottomColor: C.ink,
+                paddingBottom: 4,
+              }}>
+                {tab === 'activas' ? 'Activas' : 'Completadas'} · {tab === 'activas' ? goals.length : completedGoals.length}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {/* Create form */}
       {showForm && (
@@ -195,19 +220,21 @@ export default function GoalsScreen() {
       )}
 
       {/* Empty state */}
-      {goals.length === 0 && !isError && !showForm && (
+      {displayGoals.length === 0 && !isError && !showForm && (
         <View style={{ paddingTop: 48, alignItems: 'center', gap: 10 }}>
           <Text style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
-            Sin objetivos
+            {showCompleted ? 'Sin metas completadas' : 'Sin objetivos'}
           </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, textAlign: 'center', lineHeight: 18 }}>
-            Tocá + para crear{'\n'}tu primer objetivo de ahorro
-          </Text>
+          {!showCompleted && (
+            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 0.6, textAlign: 'center', lineHeight: 18 }}>
+              Tocá + para crear{'\n'}tu primer objetivo de ahorro
+            </Text>
+          )}
         </View>
       )}
 
-      {/* Metrics header */}
-      {goals.length > 0 && (
+      {/* Metrics header — only for active goals */}
+      {!showCompleted && goals.length > 0 && (
         <>
           {/* Two stat blocks */}
           <View style={{ paddingTop: isError ? 16 : 28, paddingBottom: 24 }}>
@@ -239,7 +266,7 @@ export default function GoalsScreen() {
           <Hairline />
 
           {/* Goal cards — single column */}
-          {goals.map((g, i, arr) => (
+          {displayGoals.map((g, i, arr) => (
             <View key={g.id}>
               <View style={{ paddingVertical: 20 }}>
                 <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
