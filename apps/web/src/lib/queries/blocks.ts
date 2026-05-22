@@ -20,6 +20,22 @@ export async function getTransactionsByBlock(blockId: string, userId: string) {
   }));
 }
 
+export const getArchivedBlocks = cache(async (userId: string) => {
+  const rows = await db.block.findMany({
+    where: { userId, archivedAt: { not: null } },
+    orderBy: { archivedAt: "desc" },
+  });
+
+  return rows.map(b => ({
+    id: b.id, name: b.name, icon: b.icon,
+    budget: Number(b.budget),
+    spent: 0,
+    color: b.color,
+    expenses: 0,
+    goal: b.goal ?? "",
+  }));
+});
+
 export type BlockTransactionRow = Awaited<ReturnType<typeof getTransactionsByBlock>>[number];
 
 export const getBlocks = cache(async (userId: string) => {

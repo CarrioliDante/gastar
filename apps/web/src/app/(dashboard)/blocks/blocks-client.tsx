@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useUIStore } from "@/stores/ui";
-import { useBlocks, useBlockTransactions } from "@/hooks/queries";
-import { useArchiveBlock } from "@/hooks/mutations";
+import { useBlocks, useBlockTransactions, useArchivedBlocks } from "@/hooks/queries";
+import { useArchiveBlock, useUnarchiveBlock } from "@/hooks/mutations";
 import type { BlockRow } from "@/hooks/queries";
 import {
   BlockGlyph,
@@ -49,41 +49,18 @@ export function BlocksClient({
 }) {
   const { data: blocksRaw } = useBlocks(initialBlocks);
   const blocks = blocksRaw ?? [];
+  const { data: archivedBlocks } = useArchivedBlocks();
+  const archivedList = archivedBlocks ?? [];
   const [selId, setSelId]         = useState(blocks[0]?.id ?? null);
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit]   = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const { openCapture }           = useUIStore();
   const archiveBlock              = useArchiveBlock();
+  const unarchiveBlock            = useUnarchiveBlock();
 
   const block = blocks.find(b => b.id === selId) ?? blocks[0];
-  if (!block) return (
-    <>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-          Sin bloques todavía.
-        </div>
-        <motion.button
-          onClick={() => setShowCreate(true)}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          style={{
-            padding: "9px 18px 9px 14px", borderRadius: 9,
-            background: "var(--ink)", color: "var(--inverse)", border: "none",
-            fontFamily: "inherit", fontSize: 13, fontWeight: 500,
-            letterSpacing: "-0.005em", cursor: "pointer",
-            display: "inline-flex", alignItems: "center", gap: 8,
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-            <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-          </svg>
-          Nuevo bloque
-        </motion.button>
-      </div>
-      <CreateBlockModal open={showCreate} onClose={() => setShowCreate(false)} />
-    </>
-  );
+  const showSplitView = !showArchived && block;
 
   const pct = block.budget > 0 ? Math.min(1, block.spent / block.budget) : 0;
   const { data: blockTxs, isLoading: txLoading } = useBlockTransactions(block.id);
@@ -106,7 +83,7 @@ export function BlocksClient({
               textTransform: "uppercase", marginBottom: 8,
             }}
           >
-            {blocks.length} activos · 1 archivado
+            {blocks.length} activos · {archivedList.length} archivados
           </motion.div>
           <motion.h1
             className="display"
@@ -160,8 +137,95 @@ export function BlocksClient({
         </motion.div>
       </header>
 
+      {/* Toggle: Activos / Archivados */}
+      <div style={{ display: "flex", gap: 18, paddingLeft: 40, paddingTop: 12 }}>
+        {(["activos", "archivados"] as const).map(tab => {
+          const active = tab === "activos" ? !showArchived : showArchived;
+          const count = tab === "activos" ? blocks.length : archivedList.length;
+          return (
+            <button
+              key={tab}
+              onClick={() => setShowArchived(tab === "archivados")}
+              className="mono"
+              style={{
+                padding: "8px 0", background: "none", border: "none", cursor: "pointer",
+                fontFamily: "inherit", fontSize: 10, letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: active ? "var(--ink)" : "var(--faint)",
+                borderBottom: active ? "1px solid var(--ink)" : "1px solid transparent",
+                transition: "all 200ms ease",
+              }}
+            >
+              {tab === "activos" ? "Activos" : "Archivados"} · {count}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Archived view ── */}
+      {showArchived && (
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 40px 80px", minHeight: 0 }}>
+          {archivedList.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 16 }}>
+              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.06em", textAlign: "center" }}>
+                Sin bloques archivados.
+              </div>
+            </div>
+          ) : (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } } }}
+            >
+              {archivedList.map(b => {
+                const glyph = toGlyphKind(b.icon);
+                return (
+                  <motion.div
+                    key={b.id}
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: springGentle } }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "16px 0", borderBottom: "1px solid var(--hairline)",
+                    }}
+                  >
+                    <BlockGlyph kind={glyph} size={22} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="body-font" style={{ fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em", color: "var(--ink)" }}>
+                        {b.name}
+                      </div>
+                      {b.goal && (
+                        <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 2 }}>
+                          {b.goal}
+                        </div>
+                      )}
+                    </div>
+                    {b.budget > 0 && (
+                      <span className="mono tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>
+                        ${fmtCompact(b.budget)}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => unarchiveBlock.mutate(b.id)}
+                      disabled={unarchiveBlock.isPending}
+                      style={{
+                        padding: "6px 10px", background: "none", border: "none", cursor: "pointer",
+                        fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
+                        borderBottom: "1px solid var(--hairline)",
+                      }}
+                    >
+                      Revivir
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
+      )}
+
       {/* ── Split view ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", padding: "20px 40px 20px", gap: 0, minHeight: 0 }}>
+      {showSplitView && (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", padding: "20px 40px 20px", gap: 0, minHeight: 0 }}>
 
         {/* Left: block list */}
         <div style={{
@@ -395,13 +459,43 @@ export function BlocksClient({
           </AnimatePresence>
         </div>
       </div>
+      )}
+
+      {/* Empty state — no active blocks, not showing archived */}
+      {!showArchived && !block && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+          <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
+            Sin bloques todavía.
+          </div>
+          <motion.button
+            onClick={() => setShowCreate(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              padding: "9px 18px 9px 14px", borderRadius: 9,
+              background: "var(--ink)", color: "var(--inverse)", border: "none",
+              fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+              letterSpacing: "-0.005em", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", gap: 8,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            Nuevo bloque
+          </motion.button>
+        </div>
+      )}
 
       <CreateBlockModal open={showCreate} onClose={() => setShowCreate(false)} />
-      <EditBlockModal
-        open={showEdit}
-        onClose={() => setShowEdit(false)}
-        block={{ id: block.id, name: block.name, icon: block.icon, budget: block.budget, goal: block.goal ?? "" }}
-      />
+      {block && (
+        <EditBlockModal
+          open={showEdit}
+          onClose={() => setShowEdit(false)}
+          block={{ id: block.id, name: block.name, icon: block.icon, budget: block.budget, goal: block.goal ?? "" }}
+        />
+      )}
     </>
   );
 }

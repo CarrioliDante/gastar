@@ -6,18 +6,21 @@ export async function GET(req: NextRequest) {
   const auth = await requireMobileAuth(req);
   if (auth instanceof NextResponse) return auth;
 
+  const url = new URL(req.url);
+  const showArchived = url.searchParams.get('archived') === '1';
+
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const rows = await db.block.findMany({
-    where: { userId: auth.userId, archivedAt: null },
-    include: {
+    where: { userId: auth.userId, archivedAt: showArchived ? { not: null } : null },
+    include: showArchived ? undefined : {
       transactions: {
         where: { date: { gte: startOfMonth } },
         select: { amount: true },
       },
     },
-    orderBy: { createdAt: 'asc' },
+    orderBy: showArchived ? { archivedAt: 'desc' } : { createdAt: 'asc' },
   });
 
   const blocks = rows.map(b => ({
@@ -25,8 +28,8 @@ export async function GET(req: NextRequest) {
     name:   b.name,
     icon:   b.icon,
     budget: Number(b.budget),
-    spent:  b.transactions.reduce((s, t) => s + Math.abs(Number(t.amount)), 0),
-    txs:    b.transactions.length,
+    spent:  'transactions' in b ? (b.transactions as any[]).reduce((s: number, t: any) => s + Math.abs(Number(t.amount)), 0) : 0,
+    txs:    'transactions' in b ? (b.transactions as any[]).length : 0,
     goal:   b.goal ?? '',
   }));
 
@@ -129,6 +132,34 @@ export async function DELETE(req: NextRequest) {
     where: { id },
     data: { archivedAt: new Date() },
   });
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(req: NextRequest) {
+  const auth = await requireMobileAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await req.json() as { id: string; unarchive?: boolean };
+
+  if (!body.id) {
+    return NextResponse.json({ error: 'id es obligatorio' }, { status: 400 });
+  }
+
+  const existing = await db.block.findFirst({
+    where: { id: body.id, userId: auth.userId },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: 'Bloque no encontrado' }, { status: 404 });
+  }
+
+  if (body.unarchive) {
+    await db.block.update({
+      where: { id: body.id },
+      data: { archivedAt: null },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
