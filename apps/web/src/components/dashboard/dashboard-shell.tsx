@@ -26,6 +26,7 @@ import { RevealWords } from "@/components/motion/text-reveal";
 import { springGentle } from "@/components/motion/presets";
 
 import type { BalanceData, MonthlyStats, Category } from "@gastar/shared";
+import type { DolarRates } from "@/lib/dolar";
 
 interface Props {
   userName: string;
@@ -35,6 +36,8 @@ interface Props {
   initialBlocks: BlockRow[];
   initialRecurring: RecurringRow[];
   initialGoals: GoalRow[];
+  dolarRate?: DolarRates | null;
+  usdBalance?: number;
 }
 
 const BLOCK_GLYPHS: GlyphKind[] = ["Home", "Car", "Heart", "Coffee", "Briefcase", "Users"];
@@ -199,6 +202,8 @@ export function DashboardShell({
   initialBlocks,
   initialRecurring,
   initialGoals,
+  dolarRate,
+  usdBalance,
 }: Props) {
   const { openCapture } = useUIStore();
   const { format: formatCurrency } = useCurrency();
@@ -234,6 +239,7 @@ export function DashboardShell({
     .slice(0, 5);
 
   const [period, setPeriod] = useState<"semana" | "mes">("mes");
+  const [showUsd, setShowUsd] = useState(false);
 
   const weekStats   = stats?.weekStats  ?? { spending: 0, daily: [] };
   const goalList = goals ?? [];
@@ -254,6 +260,14 @@ export function DashboardShell({
   const displayPct = Math.min(1, displayPctRaw);
   const displayIsOverBudget = displayPctRaw > 1;
   const displayOverBy = displayIsOverBudget ? displaySpend - displayBudget : 0;
+
+  const prevMonth = stats?.previousMonth;
+  const deltaSpending = prevMonth && prevMonth.spending > 0
+    ? Math.round(((monthly.spending - prevMonth.spending) / prevMonth.spending) * 100)
+    : null;
+  const deltaIncome = prevMonth && prevMonth.income > 0
+    ? Math.round(((monthly.income - prevMonth.income) / prevMonth.income) * 100)
+    : null;
 
   const txList = transactions ?? [];
   const instList = installments ?? [];
@@ -348,7 +362,7 @@ export function DashboardShell({
       </header>
 
       {/* ── Scrollable content ── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 40px 100px" }}>
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, padding: "0 40px 100px" }}>
 
         {/* ── Hero balance + Ahorro ── */}
         <motion.div
@@ -358,14 +372,72 @@ export function DashboardShell({
           style={{ paddingTop: 52, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >
           <div>
-            <Eyebrow>Balance total</Eyebrow>
-            <div style={{ marginTop: 20 }}>
-              <span className="display tnum" style={{
-                fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
-              }}>
-                <AnimatedNumber value={balance.total} decimals={2} />
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Eyebrow>Balance total</Eyebrow>
+              {((usdBalance ?? 0) > 0) && (
+                <button
+                  onClick={() => setShowUsd(s => !s)}
+                  className="mono"
+                  style={{
+                    fontSize: 9, letterSpacing: "0.1em",
+                    padding: "2px 7px", borderRadius: 5,
+                    background: showUsd ? "var(--ink)" : "var(--surface)",
+                    color: showUsd ? "var(--inverse)" : "var(--mute)",
+                    border: `1px solid ${showUsd ? "transparent" : "var(--hairline)"}`,
+                    cursor: "pointer", fontFamily: "inherit",
+                    transition: "all 140ms ease",
+                  }}
+                >
+                  {showUsd ? "USD" : "ARS"}
+                </button>
+              )}
             </div>
+            <div style={{ marginTop: 20 }}>
+              {showUsd && (usdBalance ?? 0) > 0 ? (
+                <span className="display tnum" style={{
+                  fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
+                }}>
+                  <AnimatedNumber value={usdBalance ?? 0} decimals={2} />
+                </span>
+              ) : (
+                <span className="display tnum" style={{
+                  fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
+                }}>
+                  <AnimatedNumber value={balance.total} decimals={2} />
+                </span>
+              )}
+            </div>
+            {dolarRate && dolarRate.blue.venta > 0 && (
+              <div className="mono" style={{ fontSize: 12, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 12, display: "flex", gap: 16 }}>
+                {showUsd && (usdBalance ?? 0) > 0 ? (
+                  <>
+                    <span>
+                      ≈ $ {Math.round((usdBalance ?? 0) * dolarRate.blue.venta).toLocaleString("es-AR")}
+                      <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.45 }}>ARS (Blue)</span>
+                    </span>
+                    {dolarRate.oficial.venta > 0 && (
+                      <span>
+                        ≈ $ {Math.round((usdBalance ?? 0) * dolarRate.oficial.venta).toLocaleString("es-AR")}
+                        <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.45 }}>ARS (Oficial)</span>
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      ≈ USD {Math.round(balance.total / dolarRate.blue.venta).toLocaleString("es-AR")}
+                      <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.45 }}>Blue</span>
+                    </span>
+                    {dolarRate.oficial.venta > 0 && (
+                      <span>
+                        ≈ USD {Math.round(balance.total / dolarRate.oficial.venta).toLocaleString("es-AR")}
+                        <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.45 }}>Oficial</span>
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
           {goalList.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -471,21 +543,32 @@ export function DashboardShell({
               initial="hidden"
               animate="visible"
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } } }}
-              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}
+              style={{ display: "grid", gridTemplateColumns: `repeat(${period === "semana" ? 2 : 3}, 1fr)`, gap: 24 }}
             >
               {(period === "semana"
                 ? [
-                    { value: displaySpend, label: "Gastado", suffix: "" },
-                    { value: displayIncome, label: "Ingreso", suffix: "" },
+                    { value: displaySpend, label: "Gastado", suffix: "", delta: null as number | null },
+                    { value: displayIncome, label: "Ingreso", suffix: "", delta: null as number | null },
                   ]
                 : [
-                    { value: displaySpend, label: "Gastado", suffix: "" },
-                    { value: displayAvailable, label: "Disponible", suffix: "" },
-                    { value: displayIncome, label: "Ingreso", suffix: "" },
+                    { value: displaySpend, label: "Gastado", suffix: "", delta: deltaSpending },
+                    { value: displayAvailable, label: "Disponible", suffix: "", delta: null as number | null },
+                    { value: displayIncome, label: "Ingreso", suffix: "", delta: deltaIncome },
                   ]
               ).map(s => (
                 <motion.div key={s.label} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: springGentle } }}>
                   <Stat value={s.value} label={s.label} size={28} suffix={s.suffix} />
+                  {s.delta !== null && s.delta !== 0 && (
+                    <div className="mono" style={{
+                      fontSize: 9, color: "var(--mute)", letterSpacing: "0.06em",
+                      marginTop: 6, display: "flex", alignItems: "center", gap: 3,
+                    }}>
+                      <span style={{ color: s.delta > 0 ? "var(--ink)" : "var(--mute)", opacity: 0.6 }}>
+                        {s.delta > 0 ? "↑" : "↓"}
+                      </span>
+                      {s.delta > 0 ? "+" : ""}{s.delta}% vs mes anterior
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </motion.div>

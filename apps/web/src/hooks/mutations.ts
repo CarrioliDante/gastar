@@ -7,8 +7,9 @@ import type { TransactionRow, InstallmentRow, RecurringRow, GoalRow, BlockRow } 
 import { createTransaction, deleteTransaction } from "@/app/actions/transactions";
 import { createInstallment, payInstallment, deleteInstallment, updateInstallment } from "@/app/actions/installments";
 import { createRecurring, markRecurringPaid, deleteRecurring, toggleRecurringPause, updateRecurring } from "@/app/actions/recurring";
-import { createBlock, archiveBlock, updateBlock } from "@/app/actions/blocks";
+import { createBlock, archiveBlock, unarchiveBlock, updateBlock } from "@/app/actions/blocks";
 import { createGoal, contributeToGoal, deleteGoal, updateSavingsGoal } from "@/app/actions/goals";
+import { buyDollars, sellDollars } from "@/app/actions/dolar";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -510,6 +511,17 @@ export function useArchiveBlock() {
   });
 }
 
+export function useUnarchiveBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unarchiveBlock(id),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["blocks"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Goals
 // ---------------------------------------------------------------------------
@@ -603,6 +615,32 @@ export function useUpdateGoal() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+
+export function useBuyDollars() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fd: FormData) => buyDollars(fd),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qk.dollar });
+      qc.invalidateQueries({ queryKey: qk.dollarBalance });
+      qc.invalidateQueries({ queryKey: qk.stats });
+      qc.invalidateQueries({ queryKey: qk.transactions });
+    },
+  });
+}
+
+export function useSellDollars() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fd: FormData) => sellDollars(fd),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qk.dollar });
+      qc.invalidateQueries({ queryKey: qk.dollarBalance });
+      qc.invalidateQueries({ queryKey: qk.stats });
+      qc.invalidateQueries({ queryKey: qk.transactions });
     },
   });
 }
