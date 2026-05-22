@@ -130,6 +130,25 @@ export function useUser() {
   });
 }
 
+export function useResetData() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch('/reset', { method: 'POST' }),
+    onSuccess: () => qc.clear(),
+  });
+}
+
+export function useUpdateBudget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (monthlyBudget: number) =>
+      apiFetch('/user', { method: 'PATCH', body: JSON.stringify({ monthlyBudget }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
 export function useCategories() {
   const { isChecking } = useAuthStore();
   return useQuery({
@@ -163,6 +182,18 @@ export function useCreateTransaction() {
         qc.invalidateQueries({ queryKey: ['transactions'] });
         qc.invalidateQueries({ queryKey: ['blocks'] });
       }, 1200);
+    },
+  });
+}
+
+export function useUpdateTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { id: string; name?: string; amount?: number; category?: string; note?: string | null }) =>
+      apiFetch('/transactions', { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }
@@ -417,6 +448,7 @@ export function useDashboard() {
               meta:        `${t.category} · ${t.time}`,
               amount:      t.amount,
               glyph:       'Home' as const,
+              category:    t.category,
               installment: undefined,
               blockId:     t.blockId,
             })) ?? [],

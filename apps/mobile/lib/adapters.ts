@@ -16,6 +16,7 @@ export interface TransactionUI {
   meta: string;
   amount: number;
   glyph: GlyphKind;
+  category: string;
   installment?: string;
   blockId?: string;
 }
@@ -87,6 +88,7 @@ export interface StatsUI {
   todaySpending: number;
   weekDaily: { day: string; amount: number }[];
   weekSpending: number;
+  previousMonth?: { spending: number; income: number };
 }
 
 // ── Glyph mapping ────────────────────────────────────────────────
@@ -184,6 +186,7 @@ export function adaptTxGroup(g: TxGroup): TxGroupUI {
       meta:        `${t.category} · ${t.time}`,
       amount:      t.amount,
       glyph:       deriveGlyph(t.category),
+      category:    t.category,
       installment: t.note?.includes('cuota') || t.note?.includes('Cuota') ? t.note : undefined,
       blockId:     t.blockId,
     })),
@@ -223,7 +226,8 @@ export function adaptStats(s: StatsResponse): StatsUI {
     categories:   s.categories.map(adaptCategory),
     todayBuckets: s.todayStats.buckets,
     todaySpending: s.todayStats.spending,
-    weekDaily:    s.weekStats.daily,
-    weekSpending: s.weekStats.spending,
+    weekDaily:     s.weekStats.daily,
+    weekSpending:  s.weekStats.spending,
+    previousMonth: s.previousMonth,
   };
 }

@@ -72,12 +72,12 @@ export interface Block {
 
 export interface Installment {
   id: string; name: string;
-  paid: number; total: number; monthly: number; nextDue: string;
+  paid: number; total: number; monthly: number; nextDue: string; nextDueIso?: string;
 }
 
 export interface Recurring {
   id: string; name: string; amount: number;
-  category: string; freq: string; nextDue: string; blockId?: string;
+  category: string; freq: string; nextDue: string; nextDueIso?: string; blockId?: string;
   paid: boolean;
 }
 
