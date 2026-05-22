@@ -74,25 +74,25 @@ export function DatePicker({ value, onChange, placeholder = "Fecha", style }: Da
     return d === day && m - 1 === viewMonth && y === viewYear;
   };
 
-  const inputStyle: React.CSSProperties = {
+  const triggerStyle: React.CSSProperties = {
     width: "100%", padding: "9px 12px", borderRadius: 8,
     background: "var(--surface)", border: "1px solid var(--hairline)",
     outline: "none", fontFamily: "inherit", fontSize: 13,
-    color: value ? "var(--ink)" : "var(--mute)",
     letterSpacing: "-0.005em", boxSizing: "border-box",
-    cursor: "pointer", textAlign: "left",
     ...style,
+    cursor: "pointer", textAlign: "left",
   };
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button
-        type="button"
+      <input
+        readOnly
         onClick={() => setOpen(v => !v)}
-        style={inputStyle}
-      >
-        {value ? formatDisplay(value) : placeholder}
-      </button>
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(v => !v); } }}
+        style={triggerStyle}
+        value={value ? formatDisplay(value) : ""}
+        placeholder={placeholder}
+      />
 
       {open && (
         <div style={{

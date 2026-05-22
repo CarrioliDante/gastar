@@ -80,7 +80,7 @@ function GoalCard({ goal, readonly }: { goal: GoalRow; readonly?: boolean }) {
           </div>
           <div>
             <div className="mono" style={labelStyle}>Fecha límite</div>
-            <DatePicker value={editDeadline} onChange={setEditDeadline} placeholder="Fecha l\xedmite" style={fieldStyle} />
+            <DatePicker value={editDeadline} onChange={setEditDeadline} placeholder="Fecha límite" style={fieldStyle} />
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => setEditing(false)} style={{
@@ -237,39 +237,39 @@ function AddGoalForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <form onSubmit={save} style={{ padding: "16px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 80px auto", gap: 10, alignItems: "flex-end" }}>
+    <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div>
+        <div className="mono" style={labelStyle}>Nombre</div>
+        <input name="name" required placeholder="Viaje Japón, Fondo emergencia…" style={fieldStyle} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Nombre</div>
-          <input name="name" required placeholder="Viaje Japón, Fondo emergencia…" style={fieldStyle} />
-        </div>
-        <div>
-          <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Meta</div>
+          <div className="mono" style={labelStyle}>Meta</div>
           <AmountInput name="targetAmount" required placeholder="0" style={fieldStyle} />
         </div>
         <div>
-          <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Inicial</div>
+          <div className="mono" style={labelStyle}>Inicial</div>
           <AmountInput name="currentAmount" placeholder="0" style={{ ...fieldStyle, color: "var(--mute)" }} />
         </div>
-        <div>
-          <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>Fecha límite</div>
-          <DatePicker value={deadline} onChange={setDeadline} placeholder="Fecha l\xedmite" style={fieldStyle} />
-          <input type="hidden" name="deadline" value={deadline} />
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={onDone} style={{
-            padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
-          }}>Cancelar</button>
-          <button type="submit" disabled={createGoal.isPending} style={{
-            padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: createGoal.isPending ? "var(--surface)" : "var(--ink)",
-            color: createGoal.isPending ? "var(--faint)" : "var(--inverse)",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-          }}>
-            {createGoal.isPending ? "…" : "Crear meta"}
-          </button>
-        </div>
+      </div>
+      <div>
+        <div className="mono" style={labelStyle}>Fecha límite</div>
+        <DatePicker value={deadline} onChange={setDeadline} placeholder="Fecha límite" style={fieldStyle} />
+        <input type="hidden" name="deadline" value={deadline} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+        <button type="button" onClick={onDone} style={{
+          padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+        }}>Cancelar</button>
+        <button type="submit" disabled={createGoal.isPending} style={{
+          padding: "9px 20px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: createGoal.isPending ? "var(--surface)" : "var(--ink)",
+          color: createGoal.isPending ? "var(--faint)" : "var(--inverse)",
+          fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+        }}>
+          {createGoal.isPending ? "…" : "Crear meta"}
+        </button>
       </div>
       {createGoal.isError && (
         <div style={{
@@ -397,9 +397,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
 
       {/* Goal grid */}
       <div style={{ marginTop: 8 }}>
-        {!showCompleted && adding && <AddGoalForm onDone={() => setAdding(false)} />}
-
-        {!showCompleted && !adding && (
+        {!showCompleted && (
           <button onClick={() => setAdding(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "14px 0", background: "none", border: "none", cursor: "pointer",
@@ -432,6 +430,30 @@ export function GoalsClient({ initialGoals }: { initialGoals: GoalRow[] }) {
           </div>
         )}
       </div>
+
+      {adding && (
+        <div
+          onMouseDown={() => setAdding(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.40)", backdropFilter: "blur(12px)",
+            display: "flex", alignItems: "flex-start", justifyContent: "center",
+            paddingTop: "10vh",
+          }}
+        >
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              width: 540, maxWidth: "92vw",
+              background: "var(--bg)", borderRadius: 16,
+              boxShadow: "0 28px 80px rgba(0,0,0,0.32), 0 0 0 1px var(--hairline)",
+              padding: "22px 24px 18px",
+            }}
+          >
+            <AddGoalForm onDone={() => setAdding(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

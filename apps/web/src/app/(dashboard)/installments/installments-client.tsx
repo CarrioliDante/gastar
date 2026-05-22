@@ -52,7 +52,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <form onSubmit={save} style={{ padding: "18px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12, width: "100%" }}>
+    <form onSubmit={save} style={{ display: "grid", gap: 12, width: "100%" }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
@@ -399,7 +399,6 @@ export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }
       )}
 
       <div style={{ marginTop: 8 }}>
-        {adding && <AddForm onDone={() => setAdding(false)} />}
         {!adding && (
           <button onClick={() => setAdding(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -427,6 +426,30 @@ export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }
           list.map(item => <InstRowItem key={item.id} item={item} />)
         )}
       </div>
+
+      {adding && (
+        <div
+          onMouseDown={() => setAdding(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.40)", backdropFilter: "blur(12px)",
+            display: "flex", alignItems: "flex-start", justifyContent: "center",
+            paddingTop: "10vh",
+          }}
+        >
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              width: 720, maxWidth: "94vw",
+              background: "var(--bg)", borderRadius: 16,
+              boxShadow: "0 28px 80px rgba(0,0,0,0.32), 0 0 0 1px var(--hairline)",
+              padding: "22px 24px 18px",
+            }}
+          >
+            <AddForm onDone={() => setAdding(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

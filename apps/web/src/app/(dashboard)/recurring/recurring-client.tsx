@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useRecurring } from "@/hooks/queries";
 import { useCreateRecurring, usePayRecurring, useDeleteRecurring, usePauseRecurring, useUpdateRecurring } from "@/hooks/mutations";
@@ -10,6 +10,7 @@ import { AnimatedNumber } from "@/components/motion/animated-number";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
 import { parseNumeric } from "@/hooks/use-number-input";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { springGentle } from "@/components/motion/presets";
 import type { RecurringRow } from "@/hooks/queries";
 import type { CustomCategory } from "@/lib/custom-categories";
@@ -55,7 +56,12 @@ const labelStyle: React.CSSProperties = {
 
 function AddForm({ onDone, categories }: { onDone: () => void; categories: string[] }) {
   const [freq, setFreq] = useState("monthly");
+  const [category, setCategory] = useState(categories[0] ?? DEFAULT_CATS[0]);
   const createRec = useCreateRecurring();
+
+  useEffect(() => {
+    setCategory(c => categories.includes(c) ? c : (categories[0] ?? DEFAULT_CATS[0]));
+  }, [categories]);
 
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -64,7 +70,9 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
   };
 
   return (
-    <form onSubmit={save} style={{ padding: "20px 0", borderBottom: "1px solid var(--hairline)", display: "grid", gap: 12, width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+    <form onSubmit={save} style={{ display: "grid", gap: 12, width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+      <input type="hidden" name="frequency" value={freq} />
+      <input type="hidden" name="category" value={category} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 80px", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
@@ -76,9 +84,11 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
         </div>
         <div>
           <div className="mono" style={labelStyle}>Frecuencia</div>
-          <select name="frequency" value={freq} onChange={e => setFreq(e.target.value)} style={fieldStyle}>
-            {FREQS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
+          <SelectDropdown
+            options={FREQS.map(f => ({ value: f.id, label: f.label }))}
+            value={freq}
+            onChange={setFreq}
+          />
         </div>
         <div>
           {freq === "monthly" ? (
@@ -102,9 +112,11 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
         <div>
           <div className="mono" style={labelStyle}>Categoría</div>
-          <select name="category" style={fieldStyle}>
-            {categories.map(c => <option key={c}>{c}</option>)}
-          </select>
+          <SelectDropdown
+            options={categories.map(c => ({ value: c, label: c }))}
+            value={category}
+            onChange={setCategory}
+          />
         </div>
         <div>
           <div className="mono" style={labelStyle}>Nota</div>
@@ -189,9 +201,11 @@ function EditRecurringForm({
         </div>
         <div>
           <div className="mono" style={labelStyle}>Frecuencia</div>
-          <select value={freq} onChange={e => setFreq(e.target.value as typeof item.frequency)} style={fieldStyle}>
-            {FREQS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
+          <SelectDropdown
+            options={FREQS.map(f => ({ value: f.id, label: f.label }))}
+            value={freq}
+            onChange={v => setFreq(v as typeof item.frequency)}
+          />
         </div>
         <div>
           {freq === "monthly" ? (
@@ -211,9 +225,11 @@ function EditRecurringForm({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Categoría</div>
-          <select value={category} onChange={e => setCategory(e.target.value)} style={fieldStyle}>
-            {categories.map(c => <option key={c}>{c}</option>)}
-          </select>
+          <SelectDropdown
+            options={categories.map(c => ({ value: c, label: c }))}
+            value={category}
+            onChange={setCategory}
+          />
         </div>
         <div>
           <div className="mono" style={labelStyle}>Nota</div>
@@ -486,8 +502,6 @@ export function RecurringClient({ initialItems, customCategories }: { initialIte
 
       {/* Add button / form */}
       <div style={{ marginTop: 16 }}>
-        {adding && <AddForm onDone={() => setAdding(false)} categories={expenseCats} />}
-
         {!adding && (
           <button onClick={() => setAdding(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -521,6 +535,30 @@ export function RecurringClient({ initialItems, customCategories }: { initialIte
             <GroupSection key={g} title={g} items={groups[g]} categories={expenseCats} />
           ))}
         </>
+      )}
+
+      {adding && (
+        <div
+          onMouseDown={() => setAdding(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.40)", backdropFilter: "blur(12px)",
+            display: "flex", alignItems: "flex-start", justifyContent: "center",
+            paddingTop: "10vh",
+          }}
+        >
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              width: 640, maxWidth: "94vw",
+              background: "var(--bg)", borderRadius: 16,
+              boxShadow: "0 28px 80px rgba(0,0,0,0.32), 0 0 0 1px var(--hairline)",
+              padding: "22px 24px 18px",
+            }}
+          >
+            <AddForm onDone={() => setAdding(false)} categories={expenseCats} />
+          </div>
+        </div>
       )}
     </div>
   );

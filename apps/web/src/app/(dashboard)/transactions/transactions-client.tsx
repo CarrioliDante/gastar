@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/primitives";
 import { CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { springGentle } from "@/components/motion/presets";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 
 type Tx = TransactionRow;
 
@@ -44,14 +45,21 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
   const txs = transactions ?? [];
 
   const blockMap = new Map(blocks.map(b => [b.id, b.name]));
-  const cats     = ["Todas", ...Array.from(new Set(txs.map(t => t.category))).sort()];
 
-  const months = ["Todos", ...Array.from(new Set(txs.map(t => t.isoDate.slice(0, 7)))).sort().reverse()];
   const fmtMonth = (m: string) => {
     if (m === "Todos") return "Todos los meses";
     const [y, mo] = m.split("-");
     return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
   };
+  const monthOptions = [
+    { value: "Todos", label: "Todos los meses" },
+    ...Array.from(new Set(txs.map(t => t.isoDate.slice(0, 7)))).sort().reverse()
+      .map(m => ({ value: m, label: fmtMonth(m) })),
+  ];
+  const catOptions = [
+    { value: "Todas", label: "Todas las categorías" },
+    ...Array.from(new Set(txs.map(t => t.category))).sort().map(c => ({ value: c, label: c })),
+  ];
 
   let filtered = txs.slice();
   if (tab === "Salida")       filtered = filtered.filter(t => t.amount < 0);
@@ -190,32 +198,20 @@ export function TransactionsClient({ initialTransactions, initialBlocks }: Props
           </div>
 
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <select
+            <SelectDropdown
+              options={monthOptions}
               value={monthFilter}
-              onChange={e => setMonthFilter(e.target.value)}
-              style={{
-                padding: "7px 28px 7px 12px", borderRadius: 8,
-                background: "var(--surface)", color: "var(--ink)",
-                border: "1px solid var(--hairline)", outline: "none",
-                fontFamily: "inherit", fontSize: 12, letterSpacing: "-0.005em",
-                appearance: "none", cursor: "pointer",
-              }}
-            >
-              {months.map(m => <option key={m} value={m}>{fmtMonth(m)}</option>)}
-            </select>
-            <select
+              onChange={setMonthFilter}
+              align="right"
+              triggerStyle={{ width: "auto", fontSize: 12, padding: "7px 12px" }}
+            />
+            <SelectDropdown
+              options={catOptions}
               value={catFilter}
-              onChange={e => setCatFilter(e.target.value)}
-              style={{
-                padding: "7px 28px 7px 12px", borderRadius: 8,
-                background: "var(--surface)", color: "var(--ink)",
-                border: "1px solid var(--hairline)", outline: "none",
-                fontFamily: "inherit", fontSize: 12, letterSpacing: "-0.005em",
-                appearance: "none", cursor: "pointer",
-              }}
-            >
-              {cats.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+              onChange={setCatFilter}
+              align="right"
+              triggerStyle={{ width: "auto", fontSize: 12, padding: "7px 12px" }}
+            />
             <div style={{
               display: "flex", alignItems: "center", gap: 8, padding: "6px 12px",
               borderRadius: 8, background: "var(--surface)", border: "1px solid var(--hairline)",
