@@ -38,3 +38,18 @@ export async function updateUserName(name: string) {
   const { error } = await supabase.auth.updateUser({ data: { full_name: trimmed } });
   if (error) throw new Error(error.message);
 }
+
+export async function resetUserData() {
+  const user = await requireUser();
+
+  await db.$transaction([
+    // DollarOperation cascades from Transaction (onDelete: Cascade)
+    db.transaction.deleteMany({ where: { userId: user.id } }),
+    db.block.deleteMany({ where: { userId: user.id } }),
+    db.installment.deleteMany({ where: { userId: user.id } }),
+    db.savingsGoal.deleteMany({ where: { userId: user.id } }),
+    db.recurringExpense.deleteMany({ where: { userId: user.id } }),
+  ]);
+
+  revalidateTag(`user:${user.id}`, "default");
+}

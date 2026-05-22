@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
-import { useStats, useUser, useCategories, useSaveCategories } from '../lib/hooks';
+import { useStats, useUser, useCategories, useSaveCategories, useUpdateBudget, useResetData } from '../lib/hooks';
 import { useAppStore, CURRENCY_SYMBOLS, type CurrencyCode } from '../store/app';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
@@ -53,7 +53,12 @@ export default function SettingsScreen() {
   const { data: user, error: userErr } = useUser();
   const { data: apiCategories } = useCategories();
   const saveCats = useSaveCategories();
+  const updateBudget = useUpdateBudget();
+  const resetData = useResetData();
   const [refreshing, setRefreshing] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [budgetSaved, setBudgetSaved] = useState(false);
   const [categories, setCategories] = useState<CategoryItem[] | null>(null);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [catEditLabel, setCatEditLabel] = useState('');
@@ -61,6 +66,13 @@ export default function SettingsScreen() {
   const [addingType, setAddingType] = useState<'expense' | 'income' | null>(null);
   const [newCatLabel, setNewCatLabel] = useState('');
   const [newCatGlyph, setNewCatGlyph] = useState<GlyphKind>('Home');
+
+  // Sync budget input from stats (only on first load)
+  useEffect(() => {
+    if (statsData && !budgetInput) {
+      setBudgetInput(String(statsData.monthly.budget || ''));
+    }
+  }, [statsData]);
 
   // Sync local categories from API data, or fall back to defaults
   const effectiveCategories = categories ?? (apiCategories
@@ -158,6 +170,47 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
+
+      {/* Finanzas */}
+      <Section title="Finanzas" top={26}>
+        <Eyebrow style={{ marginBottom: 10 }}>Presupuesto mensual</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TextInput
+            value={budgetInput}
+            onChangeText={v => { setBudgetInput(v.replace(/[^0-9]/g, '')); setBudgetSaved(false); }}
+            keyboardType="number-pad"
+            placeholder="0"
+            placeholderTextColor={C.whisper}
+            style={{
+              flex: 1, fontFamily: fontDisplay, fontSize: 20, color: C.ink,
+              backgroundColor: C.surface, borderRadius: 10,
+              borderWidth: 1, borderColor: C.hairline,
+              paddingHorizontal: 14, paddingVertical: 12,
+              fontVariant: ['tabular-nums'],
+            }}
+          />
+          <Pressable
+            onPress={() => {
+              const val = parseInt(budgetInput, 10);
+              if (!val || val <= 0) return;
+              updateBudget.mutate(val, { onSuccess: () => setBudgetSaved(true) });
+            }}
+            disabled={updateBudget.isPending}
+            style={({ pressed }) => ({
+              paddingHorizontal: 18, paddingVertical: 14, borderRadius: 10,
+              backgroundColor: budgetSaved ? C.surface : C.ink,
+              borderWidth: 1, borderColor: budgetSaved ? C.hairline : C.ink,
+              opacity: pressed || updateBudget.isPending ? 0.6 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: budgetSaved ? C.mute : C.bg }}>
+              {updateBudget.isPending ? '…' : budgetSaved ? 'Guardado' : 'Guardar'}
+            </Text>
+          </Pressable>
+        </View>
+      </Section>
+
+      <Hairline style={{ marginTop: 28 }} />
 
       {/* Apariencia */}
       <Section title="Apariencia" top={26}>
@@ -557,6 +610,64 @@ export default function SettingsScreen() {
 
       {/* Datos */}
       <Section title="Datos" top={26}>
+        {/* Reset */}
+        {resetConfirm ? (
+          <View style={{ paddingVertical: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: C.hairline }}>
+            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.4, lineHeight: 16 }}>
+              Borrás todos los movimientos, bloques, cuotas y metas. No se puede deshacer.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable
+                onPress={() => {
+                  resetData.mutate(undefined, {
+                    onSuccess: () => {
+                      setResetConfirm(false);
+                      router.replace('/');
+                    },
+                  });
+                }}
+                disabled={resetData.isPending}
+                style={({ pressed }) => ({
+                  flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+                  backgroundColor: resetData.isPending ? C.surface : C.ink,
+                  borderWidth: 1, borderColor: resetData.isPending ? C.hairline : C.ink,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: resetData.isPending ? C.mute : C.bg }}>
+                  {resetData.isPending ? 'Eliminando…' : 'Confirmar'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setResetConfirm(false)}
+                disabled={resetData.isPending}
+                style={({ pressed }) => ({
+                  flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+                  backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ fontFamily: fontBody, fontSize: 13, color: C.mute }}>Cancelar</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setResetConfirm(true)}
+            style={({ pressed }) => ({
+              paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              borderBottomWidth: 1, borderBottomColor: C.hairline,
+              opacity: pressed ? 0.55 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', letterSpacing: -0.2, color: C.ink }}>
+              Reiniciar datos
+            </Text>
+            {CHEVRON(C.faint)}
+          </Pressable>
+        )}
+
+        {/* Logout */}
         <Pressable
           onPress={handleLogout}
           style={({ pressed }) => ({

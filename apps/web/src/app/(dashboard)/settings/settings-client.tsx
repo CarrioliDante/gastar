@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useUIStore } from "@/stores/ui";
 import { logout } from "@/app/(auth)/actions";
 import { springGentle } from "@/components/motion/presets";
-import { setMonthlyBudget, updateUserName, updateCustomCategories } from "@/app/actions/settings";
+import { setMonthlyBudget, updateUserName, updateCustomCategories, resetUserData } from "@/app/actions/settings";
 import { useNumberInput } from "@/hooks/use-number-input";
 import { BlockGlyph, type GlyphKind } from "@/components/ui/primitives";
 import { qk } from "@/hooks/query-keys";
@@ -162,10 +163,13 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
   email: string; name: string; monthlyBudget: number;
   customCategories: { expenses: CustomCategory[]; incomes: CustomCategory[] };
 }) {
+  const router = useRouter();
   const { theme, font, currency, setTheme, setFont, setCurrency } = useTheme();
   const animationsEnabled = useUIStore((s) => s.animationsEnabled);
   const setAnimationsEnabled = useUIStore((s) => s.setAnimationsEnabled);
   const [saving, setSaving] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [budgetValue, setBudgetValue] = useState(String(initialBudget));
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(name);
@@ -215,6 +219,18 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
     fd.set("budget", String(val));
     await setMonthlyBudget(fd);
     setSaving(false);
+  };
+
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      await resetUserData();
+      qc.clear();
+      router.push("/");
+    } finally {
+      setResetting(false);
+      setResetConfirm(false);
+    }
   };
 
   const startCatEdit = (cat: CustomCategory) => {
@@ -657,6 +673,58 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           ),
         },
       ]} />
+
+      {/* Reset data row — outside Section to allow full-width confirm state */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "16px 0", borderBottom: "1px solid var(--hairline)", gap: 16,
+      }}>
+        <span style={{ fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em", flexShrink: 0 }}>
+          Reiniciar datos
+        </span>
+        {resetConfirm ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end" }}>
+            <span style={{ fontSize: 11, color: "var(--mute)", letterSpacing: "-0.005em" }}>
+              Borrás todos los datos financieros. No se puede deshacer.
+            </span>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              style={{
+                padding: "6px 12px", borderRadius: 7, border: "1px solid var(--hairline)",
+                cursor: resetting ? "default" : "pointer",
+                background: "none", fontFamily: "inherit", fontSize: 12,
+                color: resetting ? "var(--faint)" : "var(--ink)",
+                fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0,
+              }}
+            >
+              {resetting ? "Eliminando…" : "Confirmar"}
+            </button>
+            <button
+              onClick={() => setResetConfirm(false)}
+              disabled={resetting}
+              style={{
+                padding: "6px 0", background: "none", border: "none",
+                cursor: "pointer", fontFamily: "inherit", fontSize: 12,
+                color: "var(--faint)", flexShrink: 0,
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setResetConfirm(true)}
+            style={{
+              padding: "7px 0", background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+              letterSpacing: "-0.005em",
+            }}
+          >
+            Borrar todos los datos
+          </button>
+        )}
+      </div>
 
       <Section title="Sesión" rows={[
         {
