@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
 import type { MonthlyStats, Category, Transaction, WeekStats } from "@gastar/shared";
-import { ScrollReveal } from "@/components/motion/scroll-reveal";
+
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { springGentle } from "@/components/motion/presets";
 import { useCurrency } from "@/hooks/use-currency";
@@ -524,7 +524,7 @@ export function InsightsClient({ monthly, categories, transactions, weekStats, p
   const displayCategories = isMonthOrMore ? categories : computeCategoriesFromTxs(filteredTx);
 
   return (
-    <div style={{ flex: 1, overflowY: "auto" }}>
+    <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 40px 80px" }}>
       {/* Header */}
       <header style={{ paddingBottom: 28, borderBottom: "1px solid var(--hairline)" }}>
@@ -615,96 +615,101 @@ export function InsightsClient({ monthly, categories, transactions, weekStats, p
 
       {/* Daily spending chart — only for current month */}
       {isMonth && (
-        <ScrollReveal direction="up" distance={20}>
-          <div style={{ marginTop: 48 }}>
-            <Eyebrow right={<AnimatedNumber value={dailyTotal} prefix="$" />}>
-              Gasto diario
-            </Eyebrow>
-            <DailySpendingChart dailySeries={dailySeries} />
-          </div>
-        </ScrollReveal>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          style={{ marginTop: 48 }}
+        >
+          <Eyebrow right={<AnimatedNumber value={dailyTotal} prefix="$" />}>
+            Gasto diario
+          </Eyebrow>
+          <DailySpendingChart dailySeries={dailySeries} />
+        </motion.div>
       )}
 
       {/* Week bar chart — only for week */}
       {period === "semana" && (
-        <ScrollReveal direction="up" distance={20}>
-          <div style={{ marginTop: 48 }}>
-            <Eyebrow right={`Total ${formatCurrency(weekStats.spending, true)}`}>
-              Gasto diario · Esta semana
-            </Eyebrow>
-            <WeekBarChart weekStats={weekStats} />
-          </div>
-        </ScrollReveal>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          style={{ marginTop: 48 }}
+        >
+          <Eyebrow right={`Total ${formatCurrency(weekStats.spending, true)}`}>
+            Gasto diario · Esta semana
+          </Eyebrow>
+          <WeekBarChart weekStats={weekStats} />
+        </motion.div>
       )}
 
       {/* Two-column chart grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, marginTop: 48 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, marginTop: 48 }}
+      >
         {/* LEFT: Donut + CategoryBreakdown */}
-        <ScrollReveal direction="up" distance={24}>
-          <div>
-            <Eyebrow right={displayCategories.length > 0 ? <AnimatedNumber value={displayCategories.reduce((s, c) => s + c.amount, 0)} prefix="$" /> : undefined}>
-              Por categoría
-            </Eyebrow>
-            <SpendingDonut categories={displayCategories} />
-            <div style={{ marginTop: 24 }}>
-              <CategoryBreakdown categories={displayCategories} />
-            </div>
+        <div>
+          <Eyebrow right={displayCategories.length > 0 ? <AnimatedNumber value={displayCategories.reduce((s, c) => s + c.amount, 0)} prefix="$" /> : undefined}>
+            Por categoría
+          </Eyebrow>
+          <SpendingDonut categories={displayCategories} />
+          <div style={{ marginTop: 24 }}>
+            <CategoryBreakdown categories={displayCategories} />
           </div>
-        </ScrollReveal>
+        </div>
 
         {/* RIGHT: Heatmap + Merchants — only for month or longer */}
         {isMonthOrMore && (
           <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
             {/* Heatmap */}
-            <ScrollReveal direction="up" distance={24}>
-              <div>
-                <Eyebrow>Intensidad de gasto</Eyebrow>
-                <SpendingHeatmap transactions={transactions} />
-              </div>
-            </ScrollReveal>
+            <div>
+              <Eyebrow>Intensidad de gasto</Eyebrow>
+              <SpendingHeatmap transactions={transactions} />
+            </div>
 
             {/* Merchants */}
-            <ScrollReveal direction="up" distance={20}>
-              <div>
-                <Eyebrow>Frecuencia de compra</Eyebrow>
-                {topMerchants.length === 0 ? (
-                  <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 20 }}>Sin datos</div>
-                ) : (
-                  <motion.div
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                      hidden: {},
-                      visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
-                    }}
-                    style={{ marginTop: 14 }}
-                  >
-                    {topMerchants.map(([name, count], i) => (
-                      <motion.div
-                        key={name}
-                        variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: springGentle } }}
-                      >
-                        {i > 0 && <div style={{ height: 1, background: "var(--hairline)" }} />}
-                        <div style={{ padding: "12px 0", display: "flex", alignItems: "center", gap: 12 }}>
-                          <span style={{
-                            flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em",
-                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                          }}>
-                            {name}
-                          </span>
-                          <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em" }}>
-                            ×{count}
-                          </div>
+            <div>
+              <Eyebrow>Frecuencia de compra</Eyebrow>
+              {topMerchants.length === 0 ? (
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 20 }}>Sin datos</div>
+              ) : (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    hidden: {},
+                    visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+                  }}
+                  style={{ marginTop: 14 }}
+                >
+                  {topMerchants.map(([name, count], i) => (
+                    <motion.div
+                      key={name}
+                      variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: springGentle } }}
+                    >
+                      {i > 0 && <div style={{ height: 1, background: "var(--hairline)" }} />}
+                      <div style={{ padding: "12px 0", display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{
+                          flex: 1, fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em",
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}>
+                          {name}
+                        </span>
+                        <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: "0.04em" }}>
+                          ×{count}
                         </div>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            </ScrollReveal>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Transaction list — for week view */}
       {period === "semana" && (

@@ -130,6 +130,15 @@ export async function GET(req: NextRequest) {
     }));
   const weekSpending = weekTx.reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
+  // Previous month for period comparison
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthTx = netWorthTx.filter(t => {
+    const d = new Date(t.date);
+    return d.getFullYear() === prevMonthDate.getFullYear() && d.getMonth() === prevMonthDate.getMonth();
+  });
+  const prevMonthIncome = prevMonthTx.filter(t => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
+  const prevMonthSpending = prevMonthTx.filter(t => Number(t.amount) < 0).reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+
   return NextResponse.json({
     balance,
     monthly: {
@@ -137,6 +146,10 @@ export async function GET(req: NextRequest) {
       spending:    Math.round(monthSpend),
       budget:      monthlyBudget,
       available:   Math.round(monthlyBudget - monthSpend),
+    },
+    previousMonth: {
+      spending: Math.round(prevMonthSpending),
+      income: Math.round(prevMonthIncome),
     },
     dailySeries,
     netWorth24mo,

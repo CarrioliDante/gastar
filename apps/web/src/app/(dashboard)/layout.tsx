@@ -8,7 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--bg)", color: "var(--ink)" }}>
       <Sidebar />
-      <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <main style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
         <DashboardContent>{children}</DashboardContent>
       </main>
       <CommandPalette />

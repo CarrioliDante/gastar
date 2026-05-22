@@ -89,6 +89,14 @@ export default function HomeScreen() {
   const displayPct = displayBudget > 0 ? Math.min(1, displaySpend / displayBudget) : 0;
   const displayPctRaw = displayBudget > 0 ? displaySpend / displayBudget : 0;
   const isOverBudget = displayPctRaw > 1;
+
+  const prevMonth = stats?.previousMonth;
+  const deltaSpending = prevMonth && prevMonth.spending > 0
+    ? Math.round(((monthSpend - prevMonth.spending) / prevMonth.spending) * 100)
+    : null;
+  const deltaIncome = prevMonth && prevMonth.income > 0
+    ? Math.round(((income - prevMonth.income) / prevMonth.income) * 100)
+    : null;
   const totalSaved = goals.reduce((s, g) => s + g.current, 0);
   const totalTarget = goals.reduce((s, g) => s + g.target, 0);
   const totalPct = totalTarget > 0 ? Math.min(1, totalSaved / totalTarget) : 0;
@@ -189,13 +197,13 @@ export default function HomeScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             {(period === 'semana'
                 ? [
-                    { value: displaySpend, label: 'Gastado' },
-                    { value: income, label: 'Ingreso' },
+                    { value: displaySpend, label: 'Gastado', delta: null as number | null },
+                    { value: income, label: 'Ingreso', delta: null as number | null },
                   ]
                 : [
-                    { value: displaySpend, label: 'Gastado' },
-                    { value: displayAvailable, label: 'Disponible' },
-                    { value: income, label: 'Ingreso' },
+                    { value: displaySpend, label: 'Gastado', delta: deltaSpending },
+                    { value: displayAvailable, label: 'Disponible', delta: null as number | null },
+                    { value: income, label: 'Ingreso', delta: deltaIncome },
                   ]
               ).map(s => (
               <View key={s.label} style={{ flex: 1 }}>
@@ -203,6 +211,11 @@ export default function HomeScreen() {
                 <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>
                   {s.label}
                 </Text>
+                {s.delta !== null && s.delta !== 0 && (
+                  <Text style={{ fontFamily: fontMono, fontSize: 8, color: C.faint, letterSpacing: 0.4, marginTop: 2 }}>
+                    {s.delta > 0 ? '↑' : '↓'} {s.delta > 0 ? '+' : ''}{s.delta}% vs mes ant.
+                  </Text>
+                )}
               </View>
             ))}
           </View>
