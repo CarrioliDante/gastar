@@ -1,15 +1,189 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../hooks/useTheme';
-import { useTransactions, useDeleteTransaction } from '../../lib/hooks';
-import { adaptTxGroup } from '../../lib/adapters';
+import { useAppStore } from '../../store/app';
+import { useTransactions, useDeleteTransaction, useUpdateTransaction, useCategories } from '../../lib/hooks';
+import { adaptTxGroup, type TransactionUI } from '../../lib/adapters';
 import { fmt } from '../../lib/format';
 import { Hairline } from '../../components/ui/primitives';
 import { TxRow } from '../../components/ui/TxRow';
+import { BlockGlyph } from '../../components/ui/BlockGlyph';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
+import type { GlyphKind } from '../../lib/data';
+
+// ── EditTxSheet ──────────────────────────────────────────────────
+
+function EditTxSheet({ tx, onClose }: { tx: TransactionUI | null; onClose: () => void }) {
+  const { C, fontBody, fontDisplay, fontMono } = useTheme();
+  const insets = useSafeAreaInsets();
+  const upd = useUpdateTransaction();
+  const { data: cats } = useCategories();
+
+  const isExpense = (tx?.amount ?? 0) < 0;
+  const catList = isExpense
+    ? (cats?.expenses ?? [])
+    : (cats?.incomes ?? []);
+
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+
+  // Sync state when tx changes
+  React.useEffect(() => {
+    if (tx) {
+      setName(tx.label);
+      setAmount(String(Math.abs(tx.amount)));
+      setCategory(tx.category);
+    }
+  }, [tx?.id]);
+
+  const handleSave = () => {
+    if (!tx || !name.trim()) return;
+    const absAmt = parseFloat(amount.replace(',', '.'));
+    if (!absAmt || absAmt <= 0) return;
+    const sign = tx.amount < 0 ? -1 : 1;
+    upd.mutate(
+      { id: tx.id, name: name.trim(), amount: sign * absAmt, category },
+      { onSuccess: onClose },
+    );
+  };
+
+  return (
+    <Modal visible={tx !== null} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }}
+        onPress={onClose}
+      />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={{
+          backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          paddingTop: 20, paddingHorizontal: 24,
+          paddingBottom: Math.max(insets.bottom, 24),
+        }}>
+          {/* Handle */}
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.hairline, alignSelf: 'center', marginBottom: 20 }} />
+
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <Text style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: '500', letterSpacing: -0.6, color: C.ink }}>
+              Editar movimiento
+            </Text>
+            <Pressable onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={{ fontFamily: fontMono, fontSize: 16, color: C.faint }}>×</Text>
+            </Pressable>
+          </View>
+
+          {/* Name */}
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>
+            Nombre
+          </Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            autoFocus
+            placeholder="Descripción"
+            placeholderTextColor={C.whisper}
+            style={{
+              fontFamily: fontBody, fontSize: 14, color: C.ink,
+              backgroundColor: C.surface, borderRadius: 10,
+              borderWidth: 1, borderColor: C.hairline,
+              paddingHorizontal: 14, paddingVertical: 12,
+              marginBottom: 14,
+            }}
+          />
+
+          {/* Amount */}
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>
+            Monto
+          </Text>
+          <TextInput
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={C.whisper}
+            style={{
+              fontFamily: fontDisplay, fontSize: 20, color: C.ink,
+              backgroundColor: C.surface, borderRadius: 10,
+              borderWidth: 1, borderColor: C.hairline,
+              paddingHorizontal: 14, paddingVertical: 12,
+              marginBottom: 14, fontVariant: ['tabular-nums'],
+            }}
+          />
+
+          {/* Category pills */}
+          {catList.length > 0 && (
+            <>
+              <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>
+                Categoría
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
+                {catList.map(cat => {
+                  const active = cat.label === category;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => setCategory(cat.label)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 6,
+                        paddingHorizontal: 12, paddingVertical: 8,
+                        borderRadius: 99,
+                        backgroundColor: active ? C.ink : C.surface,
+                        borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                      }}
+                    >
+                      <BlockGlyph kind={cat.glyph as GlyphKind} size={12} color={active ? C.bg : C.ink} />
+                      <Text style={{ fontFamily: fontBody, fontSize: 12, color: active ? C.bg : C.ink, fontWeight: '500' }}>
+                        {cat.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
+
+          {/* Error */}
+          {upd.isError && (
+            <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 0.4, marginBottom: 12, textAlign: 'center' }}>
+              {upd.error?.message ?? 'Algo salió mal. Intentá de nuevo.'}
+            </Text>
+          )}
+
+          {/* Actions */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Pressable
+              onPress={onClose}
+              style={{
+                flex: 1, paddingVertical: 14, borderRadius: 12,
+                backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontFamily: fontBody, fontSize: 14, color: C.mute, fontWeight: '500' }}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              disabled={upd.isPending || !name.trim()}
+              style={{
+                flex: 2, paddingVertical: 14, borderRadius: 12,
+                backgroundColor: upd.isPending || !name.trim() ? C.surface : C.ink,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontFamily: fontBody, fontSize: 14, fontWeight: '500', color: upd.isPending || !name.trim() ? C.faint : C.bg }}>
+                {upd.isPending ? 'Guardando…' : 'Guardar'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
 
 const FILTERS = ['Todo', 'Salida', 'Entrada', 'Cuotas', 'Bloques'] as const;
 type Filter = typeof FILTERS[number];
@@ -37,13 +211,29 @@ export default function TransactionsScreen() {
   const { C, fontBody, fontDisplay, fontMono } = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const animationsEnabled = useAppStore(s => s.animationsEnabled);
+  const activeTabIndex = useAppStore(s => s.activeTabIndex);
+  const [viewKey, setViewKey] = useState(0);
+  const lastAnimRef = useRef(0);
+  const e = (d: number) => animationsEnabled ? FadeInDown.duration(320).delay(d) : undefined;
+
+  useEffect(() => {
+    if (activeTabIndex !== 1) return;
+    const now = Date.now();
+    if (now - lastAnimRef.current < 3000) return;
+    lastAnimRef.current = now;
+    setViewKey(k => k + 1);
+  }, [activeTabIndex]);
+
   const [activeFilter, setActiveFilter] = useState<Filter>('Todo');
+  const [catFilter, setCatFilter] = useState('Todas');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(() => toMonthKey(new Date()));
   const isCurrentMonth = selectedMonth === toMonthKey(new Date());
   const { data: apiData, isLoading, isError } = useTransactions(undefined, selectedMonth);
   const del = useDeleteTransaction();
+  const [editingTx, setEditingTx] = useState<TransactionUI | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -52,7 +242,14 @@ export default function TransactionsScreen() {
     setRefreshing(false);
   }, [qc, selectedMonth]);
 
+  const handleMonthChange = (delta: number) => {
+    setSelectedMonth(m => addMonth(m, delta));
+    setCatFilter('Todas');
+  };
+
   const rawGroups = (apiData?.groups ?? []).map(adaptTxGroup);
+
+  const uniqueCats = Array.from(new Set(rawGroups.flatMap(g => g.txs.map(tx => tx.category)))).sort();
 
   const filteredGroups = rawGroups.map(g => {
     let txs = g.txs;
@@ -67,6 +264,11 @@ export default function TransactionsScreen() {
         default:        return true;
       }
     });
+
+    // Category filter
+    if (catFilter !== 'Todas') {
+      txs = txs.filter(tx => tx.category === catFilter);
+    }
 
     // Search filter
     if (searchQuery.trim()) {
@@ -90,6 +292,8 @@ export default function TransactionsScreen() {
   }
 
   return (
+    <>
+    <EditTxSheet tx={editingTx} onClose={() => setEditingTx(null)} />
     <ScrollView
       style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 130, paddingHorizontal: 24 }}
@@ -97,7 +301,7 @@ export default function TransactionsScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
+      <Animated.View key={`hdr-${viewKey}`} entering={e(0)} style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
         <View>
           <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
             {totalTx} mov
@@ -120,11 +324,11 @@ export default function TransactionsScreen() {
             <Line x1={9.6} y1={9.6} x2={12.5} y2={12.5} stroke={searchOpen ? C.bg : C.ink} strokeWidth={1.3} strokeLinecap="round" />
           </Svg>
         </Pressable>
-      </View>
+      </Animated.View>
 
       {/* Month navigator */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, marginBottom: 4 }}>
-        <Pressable onPress={() => setSelectedMonth(m => addMonth(m, -1))} style={{ padding: 8 }}>
+        <Pressable onPress={() => handleMonthChange(-1)} style={{ padding: 8 }}>
           <Svg width={8} height={13} viewBox="0 0 8 13" fill="none">
             <Path d="M6.5 1.5L1.5 6.5l5 5" stroke={C.ink} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
@@ -133,7 +337,7 @@ export default function TransactionsScreen() {
           {formatMonthKey(selectedMonth)}
         </Text>
         <Pressable
-          onPress={() => !isCurrentMonth && setSelectedMonth(m => addMonth(m, 1))}
+          onPress={() => !isCurrentMonth && handleMonthChange(1)}
           style={{ padding: 8, opacity: isCurrentMonth ? 0.25 : 1 }}
         >
           <Svg width={8} height={13} viewBox="0 0 8 13" fill="none">
@@ -191,6 +395,30 @@ export default function TransactionsScreen() {
         ))}
       </ScrollView>
 
+      {/* Category pills */}
+      {uniqueCats.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
+          {['Todas', ...uniqueCats].map(cat => {
+            const active = catFilter === cat;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setCatFilter(cat)}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99,
+                  backgroundColor: active ? C.ink : C.surface,
+                  borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                }}
+              >
+                <Text style={{ fontFamily: fontBody, fontSize: 11, fontWeight: '500', color: active ? C.bg : C.mute }}>
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <Hairline />
 
       {/* Empty state */}
@@ -219,9 +447,10 @@ export default function TransactionsScreen() {
             <View key={tx.id}>
               <Pressable
                 onLongPress={() => {
-                  Alert.alert('Eliminar movimiento', tx.label, [
-                    { text: 'Cancelar', style: 'cancel' },
+                  Alert.alert(tx.label, undefined, [
+                    { text: 'Editar', onPress: () => setEditingTx(tx) },
                     { text: 'Eliminar', style: 'destructive', onPress: () => del.mutate(tx.id) },
+                    { text: 'Cancelar', style: 'cancel' },
                   ]);
                 }}
                 delayLongPress={300}
@@ -236,5 +465,6 @@ export default function TransactionsScreen() {
         </View>
       ))}
     </ScrollView>
+    </>
   );
 }
