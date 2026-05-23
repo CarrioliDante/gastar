@@ -63,6 +63,7 @@ export default function InstallmentsScreen() {
   const [formMonthly, setFormMonthly] = useState('');
   const [formStart, setFormStart] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [formAmountMode, setFormAmountMode] = useState<'cuota' | 'total'>('cuota');
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,15 +95,17 @@ export default function InstallmentsScreen() {
 
   const handleCreate = async () => {
     const name = formName.trim();
-    const total = parseInt(formTotal, 10);
-    const monthly = parseFloat(formMonthly);
-    if (!name || isNaN(total) || isNaN(monthly)) return;
+    const count = parseInt(formTotal, 10);
+    const raw = parseFloat(formMonthly);
+    if (!name || isNaN(count) || isNaN(raw)) return;
+
+    const monthly = formAmountMode === 'total' ? raw / count : raw;
 
     try {
       await createInstallment.mutateAsync({
         name,
         monthlyAmount: monthly,
-        totalInstallments: total,
+        totalInstallments: count,
         startedAt: formStart || undefined,
       });
       setShowForm(false);
@@ -111,6 +114,7 @@ export default function InstallmentsScreen() {
       setFormMonthly('');
       setFormStart(null);
       setShowCalendar(false);
+      setFormAmountMode('cuota');
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }
@@ -152,6 +156,14 @@ export default function InstallmentsScreen() {
 
   const savingForm = createInstallment.isPending;
   const savingEdit = updateInstallment.isPending;
+
+  const hintCount = parseInt(formTotal, 10);
+  const hintRaw = parseFloat(formMonthly);
+  const amountHint = (!isNaN(hintCount) && !isNaN(hintRaw) && hintCount > 0 && hintRaw > 0)
+    ? formAmountMode === 'cuota'
+      ? `= ${fmt(hintRaw * hintCount, { decimals: 0 })} total`
+      : `= ${fmt(hintRaw / hintCount, { decimals: 0 })} / mes`
+    : null;
 
   if (isLoading && !apiData) {
     return (
@@ -242,12 +254,38 @@ export default function InstallmentsScreen() {
             <TextInput
               value={formMonthly}
               onChangeText={setFormMonthly}
-              placeholder="Monto mensual"
+              placeholder={formAmountMode === 'cuota' ? 'Monto mensual' : 'Total'}
               placeholderTextColor={C.faint}
               keyboardType="decimal-pad"
               style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
             />
           </View>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {(['cuota', 'total'] as const).map(mode => {
+              const active = formAmountMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => setFormAmountMode(mode)}
+                  style={{
+                    flex: 1, paddingVertical: 7, borderRadius: 8,
+                    backgroundColor: active ? C.ink : C.bg,
+                    borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: active ? C.inverse : C.mute, letterSpacing: 0.5, textTransform: 'uppercase' }} numberOfLines={1}>
+                    {mode === 'cuota' ? 'Cuota' : 'Total'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {amountHint !== null && (
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.4, textAlign: 'right' }}>
+              {amountHint}
+            </Text>
+          )}
           <Pressable
             onPress={() => setShowCalendar(v => !v)}
             style={{
