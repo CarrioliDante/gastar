@@ -32,20 +32,23 @@ function AddForm({ onDone }: { onDone: () => void }) {
   const [paid, setPaid] = useState("0");
   const [startedAt, setStartedAt] = useState("");
   const [nextDueDate, setNextDueDate] = useState("");
+  const [mode, setMode] = useState<'total' | 'cuota'>('total');
   const { format } = useCurrency();
   const createInst = useCreateInstallment();
 
   const paidN = Math.max(0, parseInt(paid) || 0);
   const totalN = Math.max(1, parseInt(n) || 1);
   const remaining = Math.max(0, totalN - paidN);
-  const monthlyAmt = total ? parseNumeric(total) / totalN : 0;
-  const monthly = monthlyAmt > 0 ? format(monthlyAmt) : "";
+  const parsedInput = total ? parseNumeric(total) : 0;
+  const monthlyAmt = mode === 'total' ? parsedInput / totalN : parsedInput;
 
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const monthlyAmt = parseNumeric(total) / totalN || 0;
-    fd.set("monthlyAmount", monthlyAmt.toString());
+    const inputVal = parseNumeric(total);
+    const mAmt = mode === 'total' ? inputVal / totalN : inputVal;
+    fd.set("monthlyAmount", mAmt.toString());
+    if (mode === 'cuota') fd.set("totalAmount", String(inputVal * totalN));
     fd.set("paidInstallments", String(paidN));
 
     createInst.mutate(fd, { onSuccess: () => onDone() });
@@ -59,7 +62,25 @@ function AddForm({ onDone }: { onDone: () => void }) {
           <input name="name" required placeholder="iPhone, Notebook, Silla…" style={fieldStyle} />
         </div>
         <div>
-          <div className="mono" style={labelStyle}>Total</div>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
+            <div className="mono" style={{ ...labelStyle, marginBottom: 0, flex: 1 }}>
+              {mode === 'total' ? 'Total' : 'Cuota mensual'}
+            </div>
+            <div style={{ display: "flex", gap: 3 }}>
+              {(['total', 'cuota'] as const).map(m => (
+                <button key={m} type="button" onClick={() => setMode(m)} style={{
+                  padding: "1px 7px", borderRadius: 4,
+                  border: "1px solid var(--hairline)",
+                  background: mode === m ? "var(--ink)" : "transparent",
+                  color: mode === m ? "var(--inverse)" : "var(--faint)",
+                  fontSize: 8, fontFamily: "inherit", cursor: "pointer",
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                }}>
+                  {m === 'total' ? 'Total' : 'Cuota'}
+                </button>
+              ))}
+            </div>
+          </div>
           <AmountInput
             name="totalAmount" required
             value={total} onChange={setTotal}
@@ -96,9 +117,11 @@ function AddForm({ onDone }: { onDone: () => void }) {
           <input type="hidden" name="nextDueDate" value={nextDueDate} />
         </div>
         <div>
-          {monthly && (
+          {monthlyAmt > 0 && (
             <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.06em", padding: "9px 0" }}>
-              ${monthly} / mes
+              {mode === 'total'
+                ? `${format(monthlyAmt)} / mes`
+                : `${format(parsedInput * totalN)} total`}
               {paidN > 0 ? ` · ${paidN} pagadas · quedan ${remaining}` : ` · ${totalN} cuotas`}
             </div>
           )}
