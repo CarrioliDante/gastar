@@ -1,6 +1,6 @@
 # Gastar — Roadmap
 
-> Actualizado 2026-05-21. Orden: primero frontend, luego funcionalidad.
+> Actualizado 2026-05-24. Orden: primero frontend, luego funcionalidad.
 
 ---
 
@@ -107,8 +107,9 @@ Cuotas
 Lista con barras segmentadas por cuota (cuadraditos)
 Botón "Pagar cuota" solo si no pagada este mes
 ```
-- [x] Web: header 3 stats, barras segmentadas, "Pagada" badge, edit con AnimatePresence
-- [x] Mobile: header 3 stats, barras segmentadas, CRUD completo
+- [x] Web: header 3 stats, barras segmentadas, "Pagada" badge, edit con AnimatePresence, monto restante en fila
+- [x] Mobile: header 3 stats, barras segmentadas, CRUD completo, sección "Completadas" con tachado
+- [x] Web + Mobile: selector de categoría — campo `category` en schema, chips en AddForm y EditForm
 
 ### 5.2 Vista Recurrentes ✅
 Formato:
@@ -280,8 +281,7 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Sidebar nav item "Dólar" bajo Crecimiento
 
 ### 11.3 Emergency fund widget
-- [ ] Cálculo: saldo Goals / promedio gasto mensual = N meses
-- [ ] Widget en Dashboard o Insights
+- [ ] Cálculo: saldo Goals / promedio gasto mensual = N meses — widget en Dashboard o Insights
 
 ---
 
@@ -379,8 +379,8 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Calendario muestra todas las cuotas (pagadas tachadas + pendientes)
 
 ### 17.2 Vista Movimientos
-- [ ] Selector nativo de meses (nuestro, no nativo del browser)
-- [x] Arreglar filtro por "Cuotas" y por "Recurrentes" (B9, resuelto en sesión paralela)
+- [ ] Selector nativo de meses — calendario popover propio (no el nativo del browser)
+- [x] Filtro "Cuotas" y "Recurrentes" — resuelto (B9)
 
 ### 17.3 Vista Bloques ✅
 - [x] Al anotar en un bloque seleccionado, la transacción tarda en aparecer → optimistic update en ["block-transactions", blockId]
@@ -393,6 +393,22 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 - [x] Ver metas completadas — toggle Activas/Completadas, query `getCompletedGoals`
 - [x] Ver bloques archivados — toggle Activos/Archivados, query `getArchivedBlocks`
 - [x] Revivir bloques archivados — `unarchiveBlock` server action + botón "Revivir"
+
+---
+
+---
+
+## Fase 19 — 2026-05-24 Bugs + Migración categoría cuotas ✅
+
+- [x] Bloques sin techo — `budget >= 0` en canSave (CreateBlockModal + EditBlockModal). Stat "Disponible" oculto cuando budget=0. subText solo movimientos cuando budget=0.
+- [x] Teclado numérico CaptureSheet — `keyboardType="decimal-pad"` + auto-focus. Keypad custom eliminado.
+- [x] DayPicker chips — 44×44 (era 38×38), fontSize 13 (era 12).
+- [x] Cuotas ya pagadas mobile — API retorna todas (sin filtro `completedAt: null`), sección "Completadas" con opacity 0.4 y tachado.
+- [x] Campo cantidad de cuotas — solo dígitos via `v.replace(/[^0-9]/g, '')`.
+- [x] Monto restante en fila cuotas web — `/ mes · {format(monthly * remaining)} restante`.
+- [x] Dólar mobile UI — cards → stats planos (tenencia/costo font:28, cotizaciones font:18).
+- [x] Botones mobile — settings back button y budget save, dólar back button. Sistema: `8` forms, `12` modales, `14` CaptureSheet primary, `99` icon pills.
+- [x] **Migración categoría cuotas** — `category String @default("Cuotas")` en `Installment`. Schema → db push → generate → server actions → query → web UI (chips) → mobile API → mobile types + adapter → mobile hooks → mobile UI.
 
 ---
 
