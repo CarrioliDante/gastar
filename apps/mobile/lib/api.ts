@@ -71,8 +71,9 @@ export interface Block {
 }
 
 export interface Installment {
-  id: string; name: string;
+  id: string; name: string; category: string;
   paid: number; total: number; monthly: number; nextDue: string; nextDueIso?: string;
+  completedAt?: string | null;
 }
 
 export interface Recurring {

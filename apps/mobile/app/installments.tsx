@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
-import { useInstallments } from '../lib/hooks';
+import { useInstallments, useCategories } from '../lib/hooks';
 import {
   useCreateInstallment,
   useUpdateInstallment,
@@ -17,6 +17,8 @@ import { fmt } from '../lib/format';
 import { Hairline, Stat } from '../components/ui/primitives';
 import { BlockGlyph } from '../components/ui/BlockGlyph';
 import { MonthCalendar } from '../components/ui/DatePickers';
+
+const DEFAULT_INST_CATS = ['Cuotas', 'Tecnología', 'Electrodomésticos', 'Viajes', 'Ropa', 'Salud', 'Otros'];
 
 
 const CHEVRON_LEFT = (color: string) => (
@@ -49,6 +51,7 @@ export default function InstallmentsScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { data: apiData, isLoading, isError } = useInstallments();
+  const { data: catsData } = useCategories();
   const [refreshing, setRefreshing] = useState(false);
 
   const createInstallment = useCreateInstallment();
@@ -56,11 +59,14 @@ export default function InstallmentsScreen() {
   const payInstallment = usePayInstallment();
   const deleteInstallment = useDeleteInstallment();
 
+  const categoryLabels = catsData?.expenses?.length ? catsData.expenses.map(c => c.label) : DEFAULT_INST_CATS;
+
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState('');
   const [formTotal, setFormTotal] = useState('');
   const [formMonthly, setFormMonthly] = useState('');
+  const [formCategory, setFormCategory] = useState(categoryLabels[0] ?? 'Cuotas');
   const [formStart, setFormStart] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [formAmountMode, setFormAmountMode] = useState<'cuota' | 'total'>('cuota');
@@ -78,7 +84,9 @@ export default function InstallmentsScreen() {
 
   const now = new Date();
   const rawInstallments = apiData ?? [];
-  const installments = rawInstallments.map(adaptInstallment);
+  const allInstallments = rawInstallments.map(adaptInstallment);
+  const installments = allInstallments.filter(i => !i.completedAt);
+  const completedInstallments = allInstallments.filter(i => !!i.completedAt);
   const totalMonthly = installments.reduce((s, i) => s + i.monthly, 0);
   const totalPending = installments.reduce((s, i) => s + i.monthly * (i.total - i.paid), 0);
   const activeCount = installments.filter(i => i.paid < i.total).length;
@@ -104,6 +112,7 @@ export default function InstallmentsScreen() {
     try {
       await createInstallment.mutateAsync({
         name,
+        category: formCategory,
         monthlyAmount: monthly,
         totalInstallments: count,
         startedAt: formStart || undefined,
@@ -112,6 +121,7 @@ export default function InstallmentsScreen() {
       setFormName('');
       setFormTotal('');
       setFormMonthly('');
+      setFormCategory(categoryLabels[0] ?? 'Cuotas');
       setFormStart(null);
       setShowCalendar(false);
       setFormAmountMode('cuota');
@@ -245,7 +255,7 @@ export default function InstallmentsScreen() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TextInput
               value={formTotal}
-              onChangeText={setFormTotal}
+              onChangeText={v => setFormTotal(v.replace(/[^0-9]/g, ''))}
               placeholder="Cant. cuotas"
               placeholderTextColor={C.faint}
               keyboardType="number-pad"
@@ -286,6 +296,26 @@ export default function InstallmentsScreen() {
               {amountHint}
             </Text>
           )}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {categoryLabels.map(c => {
+              const active = formCategory === c;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => setFormCategory(c)}
+                  style={{
+                    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6,
+                    backgroundColor: active ? C.ink : C.bg,
+                    borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                  }}
+                >
+                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: active ? C.inverse : C.mute, letterSpacing: 0.4 }}>
+                    {c}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <Pressable
             onPress={() => setShowCalendar(v => !v)}
             style={{
@@ -342,8 +372,8 @@ export default function InstallmentsScreen() {
         </View>
       )}
 
-      {/* Installments list */}
-      {installments.map((it, i, arr) => {
+      {/* Active installments */}
+      {installments.map((it, i) => {
         const remaining = it.total - it.paid;
         const pct = it.total > 0 ? it.paid / it.total : 0;
         const isEditing = editingId === it.id;
@@ -459,10 +489,50 @@ export default function InstallmentsScreen() {
                 )}
               </View>
             </View>
-            {i < arr.length - 1 && <Hairline />}
+            {i < installments.length - 1 && <Hairline />}
           </View>
         );
       })}
+
+      {/* Completed installments */}
+      {completedInstallments.length > 0 && (
+        <>
+          <View style={{ paddingTop: 28, paddingBottom: 8 }}>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 1.4, textTransform: 'uppercase' }}>
+              Completadas · {completedInstallments.length}
+            </Text>
+          </View>
+          <Hairline />
+          {completedInstallments.map((it, i) => (
+            <View key={it.id}>
+              <View style={{ paddingVertical: 16, opacity: 0.4 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                    <BlockGlyph kind={it.glyph} size={18} color={C.ink} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink, textDecorationLine: 'line-through' }}>
+                        {it.label}
+                      </Text>
+                      <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, marginTop: 3 }}>
+                        {it.total} cuotas · {fmt(it.monthly, { decimals: 0 })}/mes
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                    Completa
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 2, marginTop: 10 }}>
+                  {Array.from({ length: it.total }).map((_, j) => (
+                    <View key={j} style={{ flex: 1, height: 3, borderRadius: 99, backgroundColor: C.ink }} />
+                  ))}
+                </View>
+              </View>
+              {i < completedInstallments.length - 1 && <Hairline />}
+            </View>
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 }

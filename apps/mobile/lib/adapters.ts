@@ -34,11 +34,13 @@ export interface BlockUI {
 export interface InstallmentUI {
   id: string;
   label: string;
+  category: string;
   monthly: number;
   paid: number;
   total: number;
   glyph: GlyphKind;
   nextDue: string;
+  completedAt: string | null;
 }
 
 export interface RecurringUI {
@@ -151,13 +153,15 @@ export function adaptBlock(b: ApiBlock): BlockUI {
 
 export function adaptInstallment(i: ApiInstallment): InstallmentUI {
   return {
-    id:      i.id,
-    label:   i.name,
-    monthly: i.monthly,
-    paid:    i.paid,
-    total:   i.total,
-    glyph:   'Home',
-    nextDue: i.nextDue,
+    id:          i.id,
+    label:       i.name,
+    category:    i.category,
+    monthly:     i.monthly,
+    paid:        i.paid,
+    total:       i.total,
+    glyph:       deriveGlyph(i.category),
+    nextDue:     i.nextDue,
+    completedAt: i.completedAt ?? null,
   };
 }
 

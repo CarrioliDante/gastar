@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useInstallments } from "@/hooks/queries";
+import { useInstallments, useCustomCategories } from "@/hooks/queries";
 import { useCreateInstallment, usePayInstallment, useDeleteInstallment, useUpdateInstallment } from "@/hooks/mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -11,6 +11,8 @@ import { Stat } from "@/components/ui/primitives";
 import { parseNumeric } from "@/hooks/use-number-input";
 import { springGentle } from "@/components/motion/presets";
 import type { InstallmentRow } from "@/hooks/queries";
+
+const DEFAULT_INST_CATS = ["Cuotas", "Tecnología", "Electrodomésticos", "Viajes", "Ropa", "Salud", "Otros"];
 
 type InstRow = InstallmentRow;
 
@@ -26,13 +28,14 @@ const labelStyle: React.CSSProperties = {
   textTransform: "uppercase", marginBottom: 6,
 };
 
-function AddForm({ onDone }: { onDone: () => void }) {
+function AddForm({ onDone, categories }: { onDone: () => void; categories: string[] }) {
   const [total, setTotal] = useState("");
   const [n, setN] = useState("12");
   const [paid, setPaid] = useState("0");
   const [startedAt, setStartedAt] = useState("");
   const [nextDueDate, setNextDueDate] = useState("");
   const [mode, setMode] = useState<'total' | 'cuota'>('total');
+  const [category, setCategory] = useState(categories[0] ?? DEFAULT_INST_CATS[0]);
   const { format } = useCurrency();
   const createInst = useCreateInstallment();
 
@@ -50,6 +53,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
     fd.set("monthlyAmount", mAmt.toString());
     if (mode === 'cuota') fd.set("totalAmount", String(inputVal * totalN));
     fd.set("paidInstallments", String(paidN));
+    fd.set("category", category);
 
     createInst.mutate(fd, { onSuccess: () => onDone() });
   };
@@ -128,6 +132,22 @@ function AddForm({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
+      <div>
+        <div className="mono" style={labelStyle}>Categoría</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {categories.map(c => (
+            <button key={c} type="button" onClick={() => setCategory(c)} style={{
+              padding: "4px 10px", borderRadius: 6,
+              border: "1px solid var(--hairline)",
+              background: category === c ? "var(--ink)" : "transparent",
+              color: category === c ? "var(--inverse)" : "var(--mute)",
+              fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+              letterSpacing: "0.04em",
+            }}>{c}</button>
+          ))}
+        </div>
+      </div>
+
       {createInst.isError && (
         <div style={{
           padding: "9px 12px", borderRadius: 8,
@@ -155,7 +175,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function InstRowItem({ item }: { item: InstRow }) {
+function InstRowItem({ item, categories }: { item: InstRow; categories: string[] }) {
   const [editing, setEditing] = useState(false);
   const { format } = useCurrency();
   const pay = usePayInstallment();
@@ -193,9 +213,10 @@ function InstRowItem({ item }: { item: InstRow }) {
           <EditInstallmentForm
             item={item}
             paidCount={paidCount}
-            onSave={(name, monthlyAmount, paidInstallments) => {
+            categories={categories}
+            onSave={(name, monthlyAmount, paidInstallments, category) => {
               upd.mutate(
-                { id: item.id, name, monthlyAmount, paidInstallments },
+                { id: item.id, name, monthlyAmount, paidInstallments, category },
                 { onSuccess: () => setEditing(false) },
               );
             }}
@@ -233,7 +254,9 @@ function InstRowItem({ item }: { item: InstRow }) {
                 <div className="display tnum" style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.025em" }}>
                   {format(item.monthly)}
                 </div>
-                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>/ mes</div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
+                  / mes · {format(item.monthly * item.remaining)} restante
+                </div>
               </div>
 
               {/* Status badge */}
@@ -297,25 +320,27 @@ function InstRowItem({ item }: { item: InstRow }) {
 }
 
 function EditInstallmentForm({
-  item, paidCount, onSave, onCancel, isPending, error,
+  item, paidCount, onSave, onCancel, isPending, error, categories,
 }: {
   item: InstRow;
   paidCount: number;
-  onSave: (name: string, monthlyAmount: number, paidInstallments: number) => void;
+  onSave: (name: string, monthlyAmount: number, paidInstallments: number, category: string) => void;
   onCancel: () => void;
   isPending: boolean;
   error?: string;
+  categories: string[];
 }) {
   const [name, setName] = useState(item.name);
   const [monthly, setMonthly] = useState(String(item.monthly));
   const [paid, setPaid] = useState(String(paidCount));
+  const [category, setCategory] = useState(item.category ?? "Cuotas");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const monthlyAmt = parseNumeric(monthly);
     const paidN = Math.max(0, parseInt(paid) || 0);
     if (!name.trim() || monthlyAmt <= 0) return;
-    onSave(name.trim(), monthlyAmt, paidN);
+    onSave(name.trim(), monthlyAmt, paidN, category);
   };
 
   return (
@@ -347,6 +372,22 @@ function EditInstallmentForm({
         </div>
       </div>
 
+      <div>
+        <div className="mono" style={labelStyle}>Categoría</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {categories.map(c => (
+            <button key={c} type="button" onClick={() => setCategory(c)} style={{
+              padding: "4px 10px", borderRadius: 6,
+              border: "1px solid var(--hairline)",
+              background: category === c ? "var(--ink)" : "transparent",
+              color: category === c ? "var(--inverse)" : "var(--mute)",
+              fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+              letterSpacing: "0.04em",
+            }}>{c}</button>
+          ))}
+        </div>
+      </div>
+
       {error && (
         <div style={{
           padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
@@ -375,6 +416,10 @@ function EditInstallmentForm({
 export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }) {
   const [adding, setAdding] = useState(false);
   const { data: items } = useInstallments(initialItems);
+  const { data: catsData } = useCustomCategories();
+  const categories = catsData?.expenses?.length
+    ? catsData.expenses.map(c => c.label)
+    : DEFAULT_INST_CATS;
 
   const list = items ?? [];
   const totalMonthly = list.reduce((s, i) => s + i.monthly, 0);
@@ -446,7 +491,7 @@ export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }
             </div>
           </div>
         ) : (
-          list.map(item => <InstRowItem key={item.id} item={item} />)
+          list.map(item => <InstRowItem key={item.id} item={item} categories={categories} />)
         )}
       </div>
 
@@ -469,7 +514,7 @@ export function InstallmentsClient({ initialItems }: { initialItems: InstRow[] }
               padding: "22px 24px 18px",
             }}
           >
-            <AddForm onDone={() => setAdding(false)} />
+            <AddForm onDone={() => setAdding(false)} categories={categories} />
           </div>
         </div>
       )}
