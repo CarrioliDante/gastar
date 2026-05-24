@@ -47,6 +47,7 @@ model Installment {
   id                String    @id @default(cuid())
   userId            String
   name              String
+  category          String    @default("Cuotas")
   totalAmount       Decimal
   monthlyAmount     Decimal
   totalInstallments Int

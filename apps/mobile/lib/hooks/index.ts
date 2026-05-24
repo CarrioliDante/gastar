@@ -281,6 +281,7 @@ export function useCreateInstallment() {
   return useMutation({
     mutationFn: (body: {
       name: string;
+      category?: string;
       monthlyAmount: number;
       totalInstallments: number;
       paidInstallments?: number;

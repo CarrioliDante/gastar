@@ -7,18 +7,20 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const rows = await db.installment.findMany({
-    where: { userId: auth.userId, completedAt: null },
-    orderBy: { nextDueDate: 'asc' },
+    where: { userId: auth.userId },
+    orderBy: [{ completedAt: 'asc' }, { nextDueDate: 'asc' }],
   });
 
   const installments = rows.map(inst => ({
     id:          inst.id,
     name:        inst.name,
+    category:    inst.category,
     paid:        inst.paidInstallments,
     total:       inst.totalInstallments,
     monthly:     Number(inst.monthlyAmount),
     nextDue:     inst.nextDueDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
     nextDueIso:  inst.nextDueDate.toISOString().slice(0, 10),
+    completedAt: inst.completedAt ? inst.completedAt.toISOString() : null,
   }));
 
   return NextResponse.json(installments);
@@ -30,6 +32,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     name: string;
+    category?: string;
     monthlyAmount: number;
     totalInstallments: number;
     paidInstallments?: number;
@@ -45,6 +48,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: auth.userId,
       name: body.name,
+      category: body.category ?? 'Cuotas',
       totalAmount: body.monthlyAmount * body.totalInstallments,
       monthlyAmount: body.monthlyAmount,
       totalInstallments: body.totalInstallments,
@@ -64,6 +68,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json() as {
     id: string;
     name?: string;
+    category?: string;
     monthlyAmount?: number;
     paidInstallments?: number;
     nextDueDate?: string;
@@ -84,6 +89,7 @@ export async function PUT(req: NextRequest) {
     where: { id: body.id },
     data: {
       ...(body.name !== undefined && { name: body.name }),
+      ...(body.category !== undefined && { category: body.category }),
       ...(body.monthlyAmount !== undefined && { monthlyAmount: body.monthlyAmount }),
       ...(body.paidInstallments !== undefined && { paidInstallments: body.paidInstallments }),
       ...(body.nextDueDate !== undefined && { nextDueDate: new Date(body.nextDueDate) }),

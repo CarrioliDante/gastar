@@ -11,6 +11,7 @@ export const getActiveInstallments = cache(async (userId: string) => {
   return rows.map(inst => ({
     id: inst.id,
     name: inst.name,
+    category: inst.category,
     total: Number(inst.totalAmount),
     paid: inst.paidInstallments * Number(inst.monthlyAmount),
     remaining: inst.totalInstallments - inst.paidInstallments,

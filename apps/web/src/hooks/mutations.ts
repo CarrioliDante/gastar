@@ -128,6 +128,7 @@ export function useCreateInstallment() {
       const opt: InstallmentRow = {
         id: `opt-${Date.now()}`,
         name: fd.get("name") as string,
+        category: (fd.get("category") as string) || "Cuotas",
         total: totalAmount,
         paid: paidInstallments * monthlyAmount,
         remaining: totalInstallments - paidInstallments,
@@ -209,8 +210,8 @@ export function useDeleteInstallment() {
 export function useUpdateInstallment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; name: string; monthlyAmount: number; paidInstallments: number }) =>
-      updateInstallment(vars.id, { name: vars.name, monthlyAmount: vars.monthlyAmount, paidInstallments: vars.paidInstallments }),
+    mutationFn: (vars: { id: string; name: string; monthlyAmount: number; paidInstallments: number; category?: string }) =>
+      updateInstallment(vars.id, { name: vars.name, monthlyAmount: vars.monthlyAmount, paidInstallments: vars.paidInstallments, category: vars.category }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["installments"] });
       const prev = snapshot<InstallmentRow[]>(qc, qk.installments);
@@ -224,6 +225,7 @@ export function useUpdateInstallment() {
             monthly: vars.monthlyAmount,
             remaining: newRemaining,
             paid: vars.paidInstallments * vars.monthlyAmount,
+            ...(vars.category !== undefined && { category: vars.category }),
           };
         })
       );
