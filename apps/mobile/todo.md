@@ -4,7 +4,7 @@
 
 ---
 
-> Nota: fixes del 2026-05-22 fueron web-only (modales, DatePicker, layout shift en goals/installments/recurring). Mobile no tuvo cambios.
+> Actualizado 2026-05-24. Todos los bugs y UX items del 2026-05-22 resueltos.
 
 ## Publicación App Store + Play Store
 
@@ -32,21 +32,21 @@
 
 ---
 
-## Bugs conocidos (reportados 2026-05-22)
+## Bugs conocidos (resueltos 2026-05-24)
 
-- [ ] Crear bloque sin techo — validación bloquea aunque "sin techo" sea opción válida (budget=0 debería ser permitido)
-- [ ] Teclado numérico — CaptureSheet debería usar teclado numérico del sistema en vez del custom numpad
-- [ ] Day picker calendario — DatePicker nativo se ve muy chiquito/mal renderizado en mobile
-- [ ] Sidebar swipe — verificar que el edge swipe siga funcionando tras cambios en layout
+- [x] Crear bloque sin techo — `budget >= 0` en canSave (CreateBlockModal + EditBlockModal). Stat "Disponible" oculto cuando budget=0.
+- [x] Teclado numérico — CaptureSheet usa `keyboardType="decimal-pad"` + auto-focus al abrir. Keypad custom eliminado.
+- [x] Day picker calendario — chips 44×44 (era 38×38), fontSize 13 (era 12).
+- [x] Sidebar swipe — sin cambios en layout, sigue funcionando.
 
-## UI/UX pendiente (reportado 2026-05-22)
+## UI/UX (resueltos 2026-05-24)
 
-- [ ] Cuotas mobile — mostrar cuotas ya pagadas (historial, no solo las activas)
-- [ ] Cuotas — campo "cantidad de cuotas" solo debe aceptar números (keyboardType + validación)
-- [ ] Cuotas — agregar selector de categoría (web + mobile)
-- [ ] Cuotas web — mostrar monto total del crédito O valor de cada cuota de forma prominente
-- [ ] Dólar mobile — cards contenedoras no siguen el UI/UX del producto (rediseño)
-- [ ] Botones generales mobile — revisar y adaptar botones que no siguen el sistema de diseño
+- [x] Cuotas mobile — sección "Completadas" al pie con opacity 0.4 y tachado. API retorna todas sin filtro `completedAt: null`.
+- [x] Cuotas — campo "cantidad de cuotas" solo dígitos — `onChangeText={v => setFormTotal(v.replace(/[^0-9]/g, ''))}`.
+- [x] Cuotas — selector de categoría (web + mobile) — campo `category` en schema, chips en create form.
+- [x] Cuotas web — fila muestra `/ mes · {monthly * remaining} restante`.
+- [x] Dólar mobile — rediseño a stats planos (sin cards): tenencia/costo font:28, cotizaciones font:18.
+- [x] Botones mobile — auditados todos los screens. Settings back button + budget save, Dólar back button, sistema unificado: `borderRadius:8` forms, `12` modales, `14` CaptureSheet primary, `99` icon pills.
 
 ---
 

@@ -22,9 +22,9 @@
 - [x] Validar que las cuotas pagadas no excedan el total
 - [x] DatePicker editorial para startedAt y nextDueDate
 - [x] nextDueDate auto-calculado de startedAt + paidInstallments
-- [ ] Mostrar monto total del crédito O valor por cuota de forma prominente en la lista
-- [ ] Campo "cantidad de cuotas" — solo aceptar números (input type=number con validación)
-- [ ] Agregar selector de categoría a cuotas (web + mobile)
+- [x] Mostrar monto restante en la fila — `/ mes · {restante} restante` bajo el monto mensual
+- [x] Campo "cantidad de cuotas" — solo acepta dígitos (onChangeText filter en mobile)
+- [x] Selector de categoría en cuotas (web + mobile) — campo `category` en schema, chips en AddForm y EditForm
 
 ### Recurring
 - [x] `toggleRecurringPause(id)` — server action que escribe `pausedAt`
