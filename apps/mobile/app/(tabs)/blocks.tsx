@@ -102,12 +102,14 @@ function BlockDetail({ block, onBack }: { block: BlockUI; onBack: () => void }) 
           </Text>
           <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Gastado</Text>
         </View>
-        <View>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.8, color: C.ink, fontVariant: ['tabular-nums'] }}>
-            {fmt(Math.max(0, block.budget - block.spent), { decimals: 0, compact: true })}
-          </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Disponible</Text>
-        </View>
+        {block.budget > 0 && (
+          <View>
+            <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.8, color: C.ink, fontVariant: ['tabular-nums'] }}>
+              {fmt(Math.max(0, block.budget - block.spent), { decimals: 0, compact: true })}
+            </Text>
+            <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Disponible</Text>
+          </View>
+        )}
         <View>
           <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
             {block.txs}
@@ -273,7 +275,7 @@ function CreateBlockModal({ open, onClose }: { open: boolean; onClose: () => voi
   const createBlock = useCreateBlock();
 
   const budget = parseInt(budgetStr.replace(/\D/g, ''), 10) || 0;
-  const canSave = name.trim().length > 0 && budget > 0 && !createBlock.isPending;
+  const canSave = name.trim().length > 0 && budget >= 0 && !createBlock.isPending;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -315,7 +317,7 @@ function EditBlockModal({ block, onClose }: { block: BlockUI; onClose: () => voi
   const updateBlock = useUpdateBlock();
 
   const budget = parseInt(budgetStr.replace(/\D/g, ''), 10) || 0;
-  const canSave = name.trim().length > 0 && budget > 0 && !updateBlock.isPending;
+  const canSave = name.trim().length > 0 && budget >= 0 && !updateBlock.isPending;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -558,7 +560,9 @@ export default function BlocksScreen() {
         const bpct = b.budget > 0 ? Math.min(1, b.spent / b.budget) : 0;
         const bpctRaw = b.budget > 0 ? b.spent / b.budget : 0;
         const rightAmount = fmt(b.spent, { decimals: 0, compact: true });
-        const subText = `/${fmt(b.budget, { decimals: 0, compact: true })} · ${b.txs} mov`;
+        const subText = b.budget > 0
+          ? `/${fmt(b.budget, { decimals: 0, compact: true })} · ${b.txs} mov`
+          : `${b.txs} mov`;
 
         return (
           <Animated.View key={`${b.id}-${viewKey}`} entering={e(120 + i * 50)}>

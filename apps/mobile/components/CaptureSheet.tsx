@@ -42,8 +42,6 @@ const DEFAULT_INCOME = [
   { id: 'otros',      label: 'Otros',      glyph: 'Globe'      as GlyphKind },
 ];
 
-const KEYS = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
-
 const { height: SCREEN_H } = Dimensions.get('window');
 const SPRING = { damping: 22, stiffness: 280, mass: 0.9 };
 
@@ -137,6 +135,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       setVisible(true);
       scrimOpacity.value = withTiming(1, { duration: 220 });
       translateY.value = withSpring(0, SPRING);
+      setTimeout(() => amountRef.current?.focus(), 380);
     } else if (visible) {
       scrimOpacity.value = withTiming(0, { duration: 240 });
       translateY.value = withTiming(SCREEN_H, { duration: 280, easing: Easing.in(Easing.cubic) }, () => {
@@ -151,20 +150,15 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
 
   const scrimStyle = useAnimatedStyle(() => ({ opacity: scrimOpacity.value }));
 
-  const press = (k: string) => {
-    if (k === '⌫') { setAmount(a => a.slice(0, -1)); return; }
-    if (k === '.') { if (!amount.includes('.')) setAmount(a => (a || '0') + '.'); return; }
-    setAmount(a => {
-      if (a === '0') return k;
-      const dot = a.indexOf('.');
-      if (dot >= 0 && a.length - dot > 2) return a;
-      return a + k;
-    });
-  };
+  const amountRef = useRef<TextInput>(null);
 
-  const display = amount || '0';
-  const [whole, frac] = display.split('.');
-  const wholeFmt = parseInt(whole || '0', 10).toLocaleString('en-US');
+  const handleAmountChange = (text: string) => {
+    let cleaned = text.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
+    if (parts[1] && parts[1].length > 2) cleaned = parts[0] + '.' + parts[1].slice(0, 2);
+    setAmount(cleaned);
+  };
 
   const save = () => {
     const amt = parseFloat(amount || '0');
@@ -334,8 +328,8 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               ))}
             </View>
 
-            {/* Amount display */}
-            <View style={{ alignItems: 'center', paddingVertical: 6, marginBottom: 12 }}>
+            {/* Amount input */}
+            <Pressable onPress={() => amountRef.current?.focus()} style={{ alignItems: 'center', paddingVertical: 6, marginBottom: 12 }}>
               <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 }}>
                 {currencyCode}
               </Text>
@@ -343,14 +337,23 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
                 <Text style={{ fontFamily: fontDisplay, fontSize: 38, color: C.faint, fontWeight: '400', letterSpacing: -1 }}>
                   {isExp ? '−' : '+'}
                 </Text>
-                <Text style={{ fontFamily: fontDisplay, fontSize: 52, fontWeight: '500', letterSpacing: -3, color: amount ? C.ink : C.whisper, lineHeight: 56, fontVariant: ['tabular-nums'] }}>
-                  {wholeFmt}
-                  {frac !== undefined && (
-                    <Text style={{ fontSize: 28, color: C.faint, fontWeight: '400' }}>.{frac.padEnd(2, '0').slice(0, 2)}</Text>
-                  )}
-                </Text>
+                <TextInput
+                  ref={amountRef}
+                  value={amount}
+                  onChangeText={handleAmountChange}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                  placeholder="0"
+                  placeholderTextColor={C.whisper}
+                  style={{
+                    fontFamily: fontDisplay, fontSize: 52, fontWeight: '500',
+                    letterSpacing: -3, color: C.ink,
+                    minWidth: 60, textAlign: 'center',
+                    fontVariant: ['tabular-nums'],
+                  }}
+                />
               </View>
-            </View>
+            </Pressable>
 
             {/* Name input */}
             <View style={{
@@ -445,26 +448,6 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               </View>
               <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute }}>›</Text>
             </Pressable>
-
-            {/* Keypad */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-              {KEYS.map(k => (
-                <Pressable key={k} onPress={() => press(k)}
-                  style={({ pressed }) => ({
-                    width: '30%', flexGrow: 1,
-                    height: 48, borderRadius: 12,
-                    backgroundColor: pressed ? C.surfaceAlt : C.surface,
-                    borderWidth: 1, borderColor: C.hairline,
-                    alignItems: 'center', justifyContent: 'center',
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                  })}
-                >
-                  <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
-                    {k}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
 
             {/* Save */}
             <Pressable

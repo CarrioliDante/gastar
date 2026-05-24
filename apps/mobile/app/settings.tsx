@@ -148,18 +148,24 @@ export default function SettingsScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.ink} />}
     >
       {/* Header */}
-      <View style={{ paddingBottom: 12 }}>
-        <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
-          <Svg width={18} height={18} viewBox="0 0 20 20">
-            <Path d="M12 4L6 10l6 6" fill="none" stroke={C.ink} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 12 }}>
+        <View>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
+            Calma · gast.ar
+          </Text>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
+            Ajustes
+          </Text>
+        </View>
+        <Pressable onPress={() => router.back()} style={{
+          width: 34, height: 34, borderRadius: 99,
+          backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Svg width={13} height={13} viewBox="0 0 14 14">
+            <Path d="M9 2L4 7l5 5" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </Pressable>
-        <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-          Calma · gast.ar
-        </Text>
-        <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
-          Ajustes
-        </Text>
       </View>
 
       {/* Error banner */}
@@ -197,7 +203,7 @@ export default function SettingsScreen() {
             }}
             disabled={updateBudget.isPending}
             style={({ pressed }) => ({
-              paddingHorizontal: 18, paddingVertical: 14, borderRadius: 10,
+              paddingHorizontal: 18, paddingVertical: 14, borderRadius: 12,
               backgroundColor: budgetSaved ? C.surface : C.ink,
               borderWidth: 1, borderColor: budgetSaved ? C.hairline : C.ink,
               opacity: pressed || updateBudget.isPending ? 0.6 : 1,

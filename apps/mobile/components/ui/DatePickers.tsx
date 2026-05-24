@@ -28,7 +28,7 @@ export function DayPicker({
           <Pressable
             onPress={() => onChange(null)}
             style={{
-              width: 38, height: 38, borderRadius: 10,
+              width: 44, height: 44, borderRadius: 11,
               borderWidth: 1, borderColor: C.hairline,
               alignItems: 'center', justifyContent: 'center',
             }}
@@ -43,7 +43,7 @@ export function DayPicker({
               key={d}
               onPress={() => onChange(d)}
               style={{
-                width: 38, height: 38, borderRadius: 10,
+                width: 44, height: 44, borderRadius: 11,
                 backgroundColor: sel ? C.ink : 'transparent',
                 borderWidth: sel ? 0 : 1,
                 borderColor: C.hairline,
@@ -52,7 +52,7 @@ export function DayPicker({
             >
               <Text style={{
                 fontFamily: sel ? fontDisplay : fontMono,
-                fontSize: sel ? 16 : 12,
+                fontSize: sel ? 16 : 13,
                 fontWeight: sel ? '500' : '400',
                 color: sel ? C.inverse : C.ink,
               }}>
