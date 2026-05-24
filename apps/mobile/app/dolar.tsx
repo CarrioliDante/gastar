@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../hooks/useTheme';
 import { useDolar, useCreateDolarOp } from '../lib/hooks';
 import { Eyebrow, Hairline } from '../components/ui/primitives';
@@ -9,6 +11,7 @@ import { Eyebrow, Hairline } from '../components/ui/primitives';
 export default function DolarScreen() {
   const { C, fontDisplay, fontMono, fontBody } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useDolar();
   const mutation = useCreateDolarOp();
@@ -69,13 +72,24 @@ export default function DolarScreen() {
       }
     >
       {/* Header */}
-      <View style={{ marginBottom: 24 }}>
-        <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-          Dólar
-        </Text>
-        <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
-          Tenencia
-        </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
+        <View>
+          <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.mute, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
+            Dólar
+          </Text>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 30, fontWeight: '500', letterSpacing: -1.2, color: C.ink }}>
+            Tenencia
+          </Text>
+        </View>
+        <Pressable onPress={() => router.back()} style={{
+          width: 34, height: 34, borderRadius: 99,
+          backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Svg width={13} height={13} viewBox="0 0 14 14">
+            <Path d="M9 2L4 7l5 5" stroke={C.ink} strokeWidth={1.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </Pressable>
       </View>
 
       {isError && !data && (
@@ -86,34 +100,34 @@ export default function DolarScreen() {
         </View>
       )}
 
-      {/* Summary cards */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-        <View style={{ flex: 1, padding: 16, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.hairline }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.6, color: C.ink, fontVariant: ['tabular-nums'] }}>
-            USD {totalUsd.toFixed(2)}
+      {/* Summary stats */}
+      <View style={{ flexDirection: 'row', gap: 32, paddingBottom: 24 }}>
+        <View>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: '500', letterSpacing: -1.2, color: C.ink, fontVariant: ['tabular-nums'] }}>
+            {totalUsd > 0 ? `USD ${totalUsd.toFixed(2)}` : '—'}
           </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 6 }}>Total USD</Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Tenencia</Text>
         </View>
-        <View style={{ flex: 1, padding: 16, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.hairline }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: '500', letterSpacing: -0.6, color: C.ink, fontVariant: ['tabular-nums'] }}>
-            $ {avgCost.toFixed(2)}
+        <View>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: '500', letterSpacing: -1.2, color: C.ink, fontVariant: ['tabular-nums'] }}>
+            {avgCost > 0 ? fmtArs(Math.round(avgCost)) : '—'}
           </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 6 }}>Costo prom.</Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Costo prom.</Text>
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-        <View style={{ flex: 1, padding: 12, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.hairline }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', letterSpacing: -0.4, color: C.ink }}>
-            {blueVenta > 0 ? `${fmtArs(blueVenta)}` : '—'}
+      <View style={{ flexDirection: 'row', gap: 32, paddingBottom: 24 }}>
+        <View>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
+            {blueVenta > 0 ? fmtArs(blueVenta) : '—'}
           </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 8, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>Blue · Venta</Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Blue · Venta</Text>
         </View>
-        <View style={{ flex: 1, padding: 12, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.hairline }}>
-          <Text style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: '500', letterSpacing: -0.4, color: C.ink }}>
-            {oficialVenta > 0 ? `${fmtArs(oficialVenta)}` : '—'}
+        <View>
+          <Text style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: '500', letterSpacing: -0.8, color: C.ink }}>
+            {oficialVenta > 0 ? fmtArs(oficialVenta) : '—'}
           </Text>
-          <Text style={{ fontFamily: fontMono, fontSize: 8, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>Oficial · Venta</Text>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 }}>Oficial · Venta</Text>
         </View>
       </View>
 
