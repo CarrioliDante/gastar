@@ -23,6 +23,7 @@ function advanceByMonth(from: Date, dayOfMonth: number): Date {
 export async function createRecurring(formData: FormData) {
   const user = await requireUser();
   const name       = formData.get("name") as string;
+  const icon       = (formData.get("icon") as string) || "CreditCard";
   const amount     = parseNumeric(formData.get("amount"));
   const category   = formData.get("category") as string;
   const frequency  = (formData.get("frequency") as string) || "monthly";
@@ -42,7 +43,7 @@ export async function createRecurring(formData: FormData) {
 
   try {
     await db.recurringExpense.create({
-      data: { userId: user.id, name, amount, category, frequency, dayOfMonth, nextDueDate, note },
+      data: { userId: user.id, name, icon, amount, category, frequency, dayOfMonth, nextDueDate, note },
     });
     revalidateTag(`user:${user.id}`, "default");
   } catch (err) {
@@ -103,7 +104,7 @@ export async function toggleRecurringPause(id: string) {
 }
 
 export async function updateRecurring(id: string, data: {
-  name: string; amount: number; category: string;
+  name: string; amount: number; category: string; icon?: string;
   frequency: string; dayOfMonth: number | null; note: string | null;
 }) {
   const user = await requireUser();
@@ -126,6 +127,7 @@ export async function updateRecurring(id: string, data: {
         name: data.name,
         amount: data.amount,
         category: data.category,
+        ...(data.icon !== undefined && { icon: data.icon }),
         frequency: data.frequency,
         dayOfMonth: data.dayOfMonth,
         note: data.note,

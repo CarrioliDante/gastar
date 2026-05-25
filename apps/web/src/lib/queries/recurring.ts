@@ -12,6 +12,7 @@ export const getRecurringExpenses = cache(async (userId: string) => {
 
   return rows.map(r => ({
     id: r.id, name: r.name,
+    icon: r.icon,
     amount: Number(r.amount),
     category: r.category,
     frequency: r.frequency as "monthly" | "weekly" | "bimonthly" | "yearly",

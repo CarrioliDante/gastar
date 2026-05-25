@@ -270,6 +270,7 @@ export function useCreateRecurring() {
       const opt: RecurringRow = {
         id: `opt-${Date.now()}`,
         name: fd.get("name") as string,
+        icon: (fd.get("icon") as string) || "CreditCard",
         amount: parseFloat(fd.get("amount") as string) || 0,
         category: fd.get("category") as string,
         frequency: frequency as RecurringRow["frequency"],
@@ -383,7 +384,7 @@ export function usePauseRecurring() {
 export function useUpdateRecurring() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; data: { name: string; amount: number; category: string; frequency: string; dayOfMonth: number | null; note: string | null } }) =>
+    mutationFn: (vars: { id: string; data: { name: string; amount: number; category: string; icon?: string; frequency: string; dayOfMonth: number | null; note: string | null } }) =>
       updateRecurring(vars.id, vars.data),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["recurring"] });

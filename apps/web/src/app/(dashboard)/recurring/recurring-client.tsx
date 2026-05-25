@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useRecurring } from "@/hooks/queries";
 import { useCreateRecurring, usePayRecurring, useDeleteRecurring, usePauseRecurring, useUpdateRecurring } from "@/hooks/mutations";
-import { Glyph, CATEGORY_GLYPH } from "@/components/ui/glyph";
-import { Stat } from "@/components/ui/primitives";
+import { Glyph } from "@/components/ui/glyph";
+import { BlockGlyph, Stat } from "@/components/ui/primitives";
+import type { GlyphKind } from "@/components/ui/primitives";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { useCurrency } from "@/hooks/use-currency";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -13,6 +14,8 @@ import { parseNumeric } from "@/hooks/use-number-input";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { springGentle } from "@/components/motion/presets";
 import type { RecurringRow } from "@/hooks/queries";
+
+const RECURRING_QUICK_ICONS: GlyphKind[] = ["CreditCard", "Home", "Droplet", "DeviceMobile", "Music", "Car", "Heart", "Briefcase"];
 import type { CustomCategory } from "@/lib/custom-categories";
 
 // ── Category mapping ─────────────────────────────────────────────
@@ -57,6 +60,7 @@ const labelStyle: React.CSSProperties = {
 function AddForm({ onDone, categories }: { onDone: () => void; categories: string[] }) {
   const [freq, setFreq] = useState("monthly");
   const [category, setCategory] = useState(categories[0] ?? DEFAULT_CATS[0]);
+  const [icon, setIcon] = useState<GlyphKind>("CreditCard");
   const createRec = useCreateRecurring();
 
   useEffect(() => {
@@ -73,6 +77,7 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
     <form onSubmit={save} style={{ display: "grid", gap: 12, width: "100%", minWidth: 0, boxSizing: "border-box" }}>
       <input type="hidden" name="frequency" value={freq} />
       <input type="hidden" name="category" value={category} />
+      <input type="hidden" name="icon" value={icon} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 80px", gap: 10 }}>
         <div>
           <div className="mono" style={labelStyle}>Nombre</div>
@@ -109,44 +114,65 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
-          <div className="mono" style={labelStyle}>Categoría</div>
-          <SelectDropdown
-            options={categories.map(c => ({ value: c, label: c }))}
-            value={category}
-            onChange={setCategory}
-          />
+          <div className="mono" style={labelStyle}>Ícono</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {RECURRING_QUICK_ICONS.map(k => (
+              <button key={k} type="button" onClick={() => setIcon(k)} style={{
+                width: 30, height: 30, borderRadius: 6, border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: icon === k ? "var(--ink)" : "var(--surface)",
+                boxShadow: `inset 0 0 0 1px ${icon === k ? "transparent" : "var(--hairline)"}`,
+              }}>
+                <BlockGlyph kind={k} size={14} color={icon === k ? "var(--inverse)" : "var(--mute)"} />
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <div className="mono" style={labelStyle}>Nota</div>
           <input name="note" placeholder="Opcional" style={fieldStyle} />
         </div>
-        {createRec.isError && (
-          <div style={{
-            padding: "9px 12px", borderRadius: 8,
-            background: "rgba(0,0,0,0.05)",
-            fontSize: 12, color: "var(--ink)",
-            fontFamily: "inherit", letterSpacing: "-0.005em",
-          }}>
-            {createRec.error?.message || "Algo salió mal. Intentá de nuevo."}
-          </div>
-        )}
+      </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={onDone} style={{
-            padding: "9px 14px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
-          }}>Cancelar</button>
-          <button type="submit" disabled={createRec.isPending} style={{
-            padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
-            background: createRec.isPending ? "var(--surface)" : "var(--ink)",
-            color: createRec.isPending ? "var(--faint)" : "var(--inverse)",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-          }}>
-            Agregar
-          </button>
+      <div>
+        <div className="mono" style={labelStyle}>Categoría</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {categories.map(c => (
+            <button key={c} type="button" onClick={() => setCategory(c)} style={{
+              padding: "4px 10px", borderRadius: 6,
+              border: "1px solid var(--hairline)",
+              background: category === c ? "var(--ink)" : "transparent",
+              color: category === c ? "var(--inverse)" : "var(--mute)",
+              fontSize: 11, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.04em",
+            }}>{c}</button>
+          ))}
         </div>
+      </div>
+
+      {createRec.isError && (
+        <div style={{
+          padding: "9px 12px", borderRadius: 8, background: "rgba(0,0,0,0.05)",
+          fontSize: 12, color: "var(--ink)", fontFamily: "inherit", letterSpacing: "-0.005em",
+        }}>
+          {createRec.error?.message || "Algo salió mal. Intentá de nuevo."}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={onDone} style={{
+          padding: "9px 14px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: "none", fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
+        }}>Cancelar</button>
+        <button type="submit" disabled={createRec.isPending} style={{
+          padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: createRec.isPending ? "var(--surface)" : "var(--ink)",
+          color: createRec.isPending ? "var(--faint)" : "var(--inverse)",
+          fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+        }}>
+          Agregar
+        </button>
       </div>
     </form>
   );
@@ -158,7 +184,7 @@ function EditRecurringForm({
   item, onSave, onCancel, isPending, error, categories,
 }: {
   item: RecurringRow;
-  onSave: (data: { name: string; amount: number; category: string; frequency: string; dayOfMonth: number | null; note: string | null }) => void;
+  onSave: (data: { name: string; amount: number; category: string; icon: string; frequency: string; dayOfMonth: number | null; note: string | null }) => void;
   onCancel: () => void;
   isPending: boolean;
   error?: string;
@@ -167,6 +193,7 @@ function EditRecurringForm({
   const [name, setName] = useState(item.name);
   const [amount, setAmount] = useState(String(item.amount));
   const [category, setCategory] = useState(item.category);
+  const [icon, setIcon] = useState<GlyphKind>((item.icon as GlyphKind) ?? "CreditCard");
   const [freq, setFreq] = useState(item.frequency);
   const [dayOfMonth, setDayOfMonth] = useState(item.dayOfMonth ? String(item.dayOfMonth) : "");
   const [note, setNote] = useState(item.note ?? "");
@@ -179,6 +206,7 @@ function EditRecurringForm({
       name: name.trim(),
       amount: amt,
       category,
+      icon,
       frequency: freq,
       dayOfMonth: dayOfMonth ? parseInt(dayOfMonth) : null,
       note: note.trim() || null,
@@ -224,16 +252,38 @@ function EditRecurringForm({
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
-          <div className="mono" style={labelStyle}>Categoría</div>
-          <SelectDropdown
-            options={categories.map(c => ({ value: c, label: c }))}
-            value={category}
-            onChange={setCategory}
-          />
+          <div className="mono" style={labelStyle}>Ícono</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {RECURRING_QUICK_ICONS.map(k => (
+              <button key={k} type="button" onClick={() => setIcon(k)} style={{
+                width: 30, height: 30, borderRadius: 6, border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: icon === k ? "var(--ink)" : "var(--surface)",
+                boxShadow: `inset 0 0 0 1px ${icon === k ? "transparent" : "var(--hairline)"}`,
+              }}>
+                <BlockGlyph kind={k} size={14} color={icon === k ? "var(--inverse)" : "var(--mute)"} />
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <div className="mono" style={labelStyle}>Nota</div>
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="Opcional" style={fieldStyle} />
+        </div>
+      </div>
+
+      <div>
+        <div className="mono" style={labelStyle}>Categoría</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {categories.map(c => (
+            <button key={c} type="button" onClick={() => setCategory(c)} style={{
+              padding: "4px 10px", borderRadius: 6,
+              border: "1px solid var(--hairline)",
+              background: category === c ? "var(--ink)" : "transparent",
+              color: category === c ? "var(--inverse)" : "var(--mute)",
+              fontSize: 11, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.04em",
+            }}>{c}</button>
+          ))}
         </div>
       </div>
 
@@ -318,7 +368,7 @@ function RecurringRowItem({ item, categories }: { item: RecurringRow; categories
             transition: "opacity 200ms",
           }}>
             <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Glyph kind={CATEGORY_GLYPH[item.category] ?? "Home"} size={14} />
+              <BlockGlyph kind={(item.icon as GlyphKind) ?? "CreditCard"} size={14} color="var(--mute)" />
             </div>
 
             <div style={{ flex: 1 }}>

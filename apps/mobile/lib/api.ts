@@ -77,7 +77,7 @@ export interface Installment {
 }
 
 export interface Recurring {
-  id: string; name: string; amount: number;
+  id: string; name: string; icon?: string; amount: number;
   category: string; freq: string; nextDue: string; nextDueIso?: string; blockId?: string;
   paid: boolean;
 }

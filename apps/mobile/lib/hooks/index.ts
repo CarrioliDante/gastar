@@ -348,6 +348,7 @@ export function useCreateRecurring() {
   return useMutation({
     mutationFn: (body: {
       name: string;
+      icon?: string;
       amount: number;
       category: string;
       frequency: string;
