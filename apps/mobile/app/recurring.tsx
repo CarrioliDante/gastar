@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import type { GlyphKind } from '../lib/data';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -112,11 +113,14 @@ export default function RecurringScreen() {
   const togglePause = useToggleRecurringPause();
   const { data: catsData } = useCategories();
 
+  const RECURRING_QUICK_ICONS: GlyphKind[] = ['CreditCard', 'Home', 'Droplet', 'DeviceMobile', 'Music', 'Car', 'Heart', 'Briefcase'];
+
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState('');
+  const [formIcon, setFormIcon] = useState<GlyphKind>('CreditCard');
   const [formFreq, setFormFreq] = useState('monthly');
   const [formDay, setFormDay] = useState<number | null>(null);
 
@@ -157,6 +161,7 @@ export default function RecurringScreen() {
     try {
       await createRecurring.mutateAsync({
         name,
+        icon: formIcon,
         amount,
         category: formCategory.trim() || 'Otros',
         frequency: formFreq,
@@ -166,6 +171,7 @@ export default function RecurringScreen() {
       setFormName('');
       setFormAmount('');
       setFormCategory('');
+      setFormIcon('CreditCard');
       setFormFreq('monthly');
       setFormDay(null);
     } catch (e) {
@@ -271,6 +277,28 @@ export default function RecurringScreen() {
               keyboardType="decimal-pad"
               style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
             />
+          </View>
+
+          {/* Icon picker */}
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>Ícono</Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {RECURRING_QUICK_ICONS.map(k => {
+              const active = formIcon === k;
+              return (
+                <Pressable
+                  key={k}
+                  onPress={() => setFormIcon(k)}
+                  style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    backgroundColor: active ? C.ink : C.bg,
+                    borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <BlockGlyph kind={k} size={16} color={active ? C.inverse : C.mute} />
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Category picker */}

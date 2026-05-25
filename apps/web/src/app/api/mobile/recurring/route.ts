@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     return {
       id:       r.id,
       name:     r.name,
+      icon:     r.icon,
       amount:   Number(r.amount),
       category: r.category,
       freq:     FREQ_ES[r.frequency] ?? r.frequency,
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     name: string;
+    icon?: string;
     amount: number;
     category: string;
     frequency: string;
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: auth.userId,
       name: body.name,
+      icon: body.icon ?? 'CreditCard',
       amount: body.amount,
       category: body.category,
       frequency: body.frequency,
@@ -97,6 +100,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json() as {
     id: string;
     name?: string;
+    icon?: string;
     amount?: number;
     category?: string;
     frequency?: string;
@@ -118,6 +122,7 @@ export async function PUT(req: NextRequest) {
     where: { id: body.id },
     data: {
       ...(body.name !== undefined && { name: body.name }),
+      ...(body.icon !== undefined && { icon: body.icon }),
       ...(body.amount !== undefined && { amount: body.amount }),
       ...(body.category !== undefined && { category: body.category }),
       ...(body.frequency !== undefined && { frequency: body.frequency }),

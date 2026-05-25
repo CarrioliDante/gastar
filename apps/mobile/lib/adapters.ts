@@ -173,7 +173,7 @@ export function adaptRecurring(r: ApiRecurring): RecurringUI {
     monthly:  isBimestral ? r.amount / 2 : r.amount,
     freq:     r.freq,
     nextDue:  r.nextDue,
-    glyph:    deriveGlyph(r.category),
+    glyph:    r.icon ? (r.icon as GlyphKind) : deriveGlyph(r.category),
     category: r.category,
     paid:     r.paid,
   };
