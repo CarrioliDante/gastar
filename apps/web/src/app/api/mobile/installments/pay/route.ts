@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
         amount: -Number(inst.monthlyAmount),
         category: 'Cuotas',
         note: `Cuota ${newPaid} de ${inst.totalInstallments}`,
+        installmentId: body.id,
       },
     }),
   ]);

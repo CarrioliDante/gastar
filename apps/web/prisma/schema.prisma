@@ -8,22 +8,25 @@ datasource db {
 }
 
 model Transaction {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  amount    Decimal
-  category  String
-  date      DateTime @default(now())
-  note      String?
-  blockId   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  amount        Decimal
+  category      String
+  date          DateTime @default(now())
+  note          String?
+  blockId       String?
+  installmentId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   block           Block?            @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  installment     Installment?      @relation(fields: [installmentId], references: [id], onDelete: SetNull)
   dollarOperation DollarOperation?
 
   @@index([userId, date])
   @@index([blockId])
+  @@index([installmentId])
 }
 
 model Block {
@@ -57,6 +60,8 @@ model Installment {
   completedAt       DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  transactions Transaction[]
 
   @@index([userId, nextDueDate])
 }
