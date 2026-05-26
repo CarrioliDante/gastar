@@ -43,7 +43,6 @@ function TopBar({
   const navItems = [
     { href: "#principios", label: "Principios" },
     { href: "#producto", label: "Producto" },
-    { href: "#precios", label: "Precios" },
     { href: "#preguntas", label: "Preguntas" },
     { href: "#", label: "Workspace ↗" },
     { href: "#", label: "iPhone ↗" },
@@ -65,11 +64,7 @@ function TopBar({
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.22, ...springGentle }}
         >
-          <motion.span
-            className="dot"
-            animate={{ scale: [1, 1.28, 1] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          />
+          <span className="dot anim-dot-pulse" style={{ animationDelay: "1s" }} />
           <span>gast.ar</span>
           <span className="v">v0.2 · beta</span>
         </motion.a>
@@ -113,19 +108,13 @@ function TopBar({
           </motion.button>
           <motion.a
             className="btn"
-            href="#precios"
+            href="#"
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             transition={springGentle}
           >
             <span>Empezar</span>
-            <motion.span
-              className="arrow"
-              animate={{ x: [0, 3, 0] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            >
-              →
-            </motion.span>
+            <span className="arrow anim-arrow-nudge">→</span>
           </motion.a>
         </motion.div>
       </div>
@@ -181,11 +170,7 @@ function HeroSection() {
             </motion.h2>
 
             <motion.span className="eyebrow" variants={fadeUp}>
-              <motion.span
-                className="dot"
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-              />
+              <span className="dot anim-dot-pulse-fast" style={{ animationDelay: "0.8s" }} />
               Cuaderno calmo de finanzas · Buenos Aires
             </motion.span>
 
@@ -207,8 +192,7 @@ function HeroSection() {
 
             <motion.div variants={fadeUp}>
               <RevealWords className="lede" stagger={0.06} delay={0.8}>
-                gast.ar es un cuaderno calmo para tu dinero. Sin notificaciones urgentes,
-                sin colores estridentes, sin gamificación que te empuje a gastar más.
+                gast.ar es un cuaderno calmo para tu dinero. Cuotas, recurrentes, bloques, metas y dólar — todo en un solo lugar, sin notificaciones urgentes ni colores estridentes.
                 Solo claridad — escrita como un editorial, no como un tablero.
               </RevealWords>
             </motion.div>
@@ -222,13 +206,7 @@ function HeroSection() {
                 transition={springGentle}
               >
                 <span>Abrir workspace</span>
-                <motion.span
-                  className="arrow"
-                  animate={{ x: [0, 3, 0] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  →
-                </motion.span>
+                <span className="arrow anim-arrow-nudge">→</span>
               </motion.a>
               <motion.a
                 className="btn ghost"
@@ -239,7 +217,7 @@ function HeroSection() {
               >
                 <span>Ver app móvil</span>
               </motion.a>
-              <span className="meta">sin tarjeta · 30 días</span>
+              <span className="meta">gratis · sin restricciones</span>
             </motion.div>
           </motion.div>
 
@@ -257,13 +235,7 @@ function HeroSection() {
               perspective: 800,
             }}
           >
-            <motion.div
-              style={{ width: "100%", height: "100%" }}
-              animate={{ y: [0, -5, 0] }}
-              transition={{
-                y: { duration: 4.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 1.6 },
-              }}
-            >
+            <div className="anim-float-y" style={{ width: "100%", height: "100%", animationDelay: "1.6s" }}>
               <div className="vol-extras"><i /><i /></div>
               <div className="screen">
                 <div className="island" />
@@ -302,8 +274,8 @@ function HeroSection() {
                       <div className="l">Gastado · mayo</div>
                     </div>
                     <div>
-                      <div className="v">78<span style={{ fontSize: "11px", color: "var(--faint)" }}>/100</span></div>
-                      <div className="l">Pulso · tranquilo</div>
+                      <div className="v">−7.5%</div>
+                      <div className="l">vs mes anterior</div>
                     </div>
                   </div>
 
@@ -368,49 +340,48 @@ function HeroSection() {
                   <div className="tabbar">
                     <button className="active">
                       <svg width="14" height="14" viewBox="0 0 14 14">
-                        <rect x="2" y="2" width="4" height="4" fill="currentColor" />
-                        <rect x="8" y="2" width="4" height="4" stroke="currentColor" strokeWidth="1" fill="none" />
-                        <rect x="2" y="8" width="4" height="4" stroke="currentColor" strokeWidth="1" fill="none" />
-                        <rect x="8" y="8" width="4" height="4" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="1.5" y="1.5" width="4.5" height="4.5" rx="0.8" fill="currentColor" />
+                        <rect x="8" y="1.5" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="1.5" y="8" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="8" y="8" width="4.5" height="4.5" rx="0.8" stroke="currentColor" strokeWidth="1" fill="none" />
                       </svg>
+                      <span className="tab-label">Inicio</span>
                     </button>
                     <button>
                       <svg width="14" height="14" viewBox="0 0 14 14">
-                        <line x1="3" y1="5" x2="11" y2="5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                        <line x1="3" y1="8" x2="11" y2="8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                        <line x1="3" y1="11" x2="8" y2="11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        <line x1="3" y1="4.5" x2="11" y2="4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        <line x1="3" y1="7.5" x2="11" y2="7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        <line x1="3" y1="10.5" x2="8" y2="10.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
                       </svg>
+                      <span className="tab-label">Movim.</span>
                     </button>
-                    <div className="fab-pair">
-                      <div className="fab">
-                        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
-                      </div>
-                      <div className="fab alt">
-                        <svg width="10" height="10" viewBox="0 0 10 10">
-                          <line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                          <line x1="5" y1="2" x2="5" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        </svg>
-                      </div>
+                    <div className="fab">
+                      <svg width="10" height="10" viewBox="0 0 10 10">
+                        <line x1="2" y1="5" x2="8" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
                     </div>
                     <button>
                       <svg width="14" height="14" viewBox="0 0 14 14">
                         <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="1.1" fill="none" />
-                        <rect x="7.5" y="2" width="4" height="4" stroke="currentColor" strokeWidth="1.1" fill="none" />
+                        <rect x="8" y="2" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.1" fill="none" />
                         <path d="M2 12l2-3.4L6 12" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round" />
-                        <circle cx="9.7" cy="9.7" r="2" stroke="currentColor" strokeWidth="1.1" fill="none" />
+                        <circle cx="10" cy="10" r="2" stroke="currentColor" strokeWidth="1.1" fill="none" />
                       </svg>
+                      <span className="tab-label">Bloques</span>
                     </button>
                     <button>
                       <svg width="14" height="14" viewBox="0 0 14 14">
-                        <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.1" fill="none" />
-                        <path d="M7 7 L7 2.5 A 4.5 4.5 0 0 1 11 9 Z" fill="currentColor" />
+                        <rect x="2" y="8" width="2.5" height="4" rx="0.5" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="5.5" y="5" width="2.5" height="7" rx="0.5" stroke="currentColor" strokeWidth="1" fill="none" />
+                        <rect x="9" y="6.5" width="2.5" height="5.5" rx="0.5" stroke="currentColor" strokeWidth="1" fill="none" />
                       </svg>
+                      <span className="tab-label">Lectura</span>
                     </button>
                   </div>
                 </div>
                 <div className="home-bar" />
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         </div>
 
@@ -425,7 +396,7 @@ function HeroSection() {
           {[
             { k: "3 seg", l: "Anotar un gasto" },
             { k: "0 ads", l: "Cero publicidad" },
-            { k: "100%", l: "Local primero" },
+            { k: "AR$·USD", l: "Cuotas incluidas" },
             { k: "AR$ · USD", l: "Multimoneda" },
           ].map((s) => (
             <motion.div key={s.l} variants={fadeUp}>
@@ -456,11 +427,7 @@ function PrinciplesSection() {
         >
           <motion.div variants={fadeUp}>
             <span className="eyebrow">
-              <motion.span
-                className="dot"
-                animate={{ scale: [1, 1.25, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
+              <span className="dot anim-dot-pulse-fast" />
               01 · Principios
             </span>
           </motion.div>
@@ -490,13 +457,13 @@ function PrinciplesSection() {
             },
             {
               n: "P / 02",
-              title: <>Local <em>primero</em>.</>,
-              text: "Todo se guarda primero en tu dispositivo. Sincronizar es opcional y cifrado. No vendemos tus datos, no los analizamos para anunciantes, no entrenamos modelos con ellos. Cifrado de extremo a extremo cuando elegís compartir.",
+              title: <>Tu dinero, <em>tuyo</em>.</>,
+              text: "No vendemos tus datos, no los analizamos para anunciantes, no entrenamos modelos con ellos. Tu historial financiero es tuyo y de nadie más. Sin publicidad, sin rastreo de comportamiento, sin sorpresas.",
             },
             {
               n: "P / 03",
               title: <>Sin <em>slot machines</em>.</>,
-              text: "Nada de notificaciones rojas, rachas de días o medallas. El éxito en gast.ar es ahorrar y dormir tranquilo, no abrir la app. Por eso reemplazamos métricas vacías por un solo número: el Pulso.",
+              text: "Nada de notificaciones rojas, rachas de días o medallas. El éxito en gast.ar es ahorrar y dormir tranquilo, no abrir la app. Por eso no hay badges, puntos ni ninguna mecánica que te empuje a gastar más.",
             },
           ].map((p) => (
             <motion.div key={p.n} variants={fadeUp}>
@@ -535,11 +502,7 @@ function ProductSection() {
         >
           <motion.div variants={fadeUp}>
             <span className="eyebrow">
-              <motion.span
-                className="dot"
-                animate={{ scale: [1, 1.25, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
+              <span className="dot anim-dot-pulse-fast" />
               02 · Producto
             </span>
           </motion.div>
@@ -564,29 +527,81 @@ function ProductSection() {
           <div className="frame">
             <div className="titlebar">
               <div className="traffic">
-                <motion.span
-                  animate={{ opacity: [0.4, 0.9, 0.4] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                />
-                <motion.span
-                  animate={{ opacity: [0.4, 0.9, 0.4] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.3 }}
-                />
-                <motion.span
-                  animate={{ opacity: [0.4, 0.9, 0.4] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.6 }}
-                />
+                <span className="anim-traffic-1" />
+                <span className="anim-traffic-2" />
+                <span className="anim-traffic-3" />
               </div>
-              <div className="url">gast.ar / workspace / inicio</div>
+              <div className="url">gast.ar / inicio</div>
               <div style={{ width: "36px" }} />
             </div>
-            <div className="preview">
+            <div style={{ display: "flex", overflow: "hidden" }}>
+              {/* ── Sidebar ── */}
+              <div style={{
+                width: 148, flexShrink: 0,
+                background: "var(--surf)",
+                borderRight: "1px solid var(--hair)",
+                display: "flex", flexDirection: "column",
+                padding: "10px 8px",
+                gap: 1,
+              }}>
+                {/* Logo */}
+                <div style={{ padding: "4px 8px 10px", marginBottom: 4, borderBottom: "1px solid var(--hair)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="18" height="18" viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
+                    <rect width="32" height="32" rx="7" fill="var(--ink)" />
+                    <circle cx="16" cy="16" r="5.12" fill="var(--bg)" />
+                  </svg>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "'Inter Tight', sans-serif", color: "var(--ink)" }}>gast</span>
+                    <em style={{ fontSize: 11, fontFamily: "'Newsreader', Georgia, serif", fontStyle: "italic", color: "var(--ink)", letterSpacing: "-0.03em" }}>.ar</em>
+                    <div className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 1 }}>Personal</div>
+                  </div>
+                </div>
+                {/* Main nav */}
+                {[
+                  { label: "Inicio", active: true },
+                  { label: "Movimientos", active: false },
+                  { label: "Bloques", active: false },
+                ].map((item) => (
+                  <div key={item.label} style={{
+                    padding: "5px 8px", borderRadius: 6, fontSize: 11,
+                    background: item.active ? "var(--paper)" : "transparent",
+                    color: item.active ? "var(--ink)" : "var(--mute)",
+                    fontWeight: item.active ? 500 : 400,
+                    letterSpacing: "-0.005em",
+                  }}>
+                    {item.label}
+                  </div>
+                ))}
+                {/* Section: Compromisos */}
+                <div className="mono" style={{ padding: "10px 8px 4px", fontSize: 8, color: "var(--faint)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                  Compromisos
+                </div>
+                {["Cuotas", "Recurrentes", "Calendario"].map((label) => (
+                  <div key={label} style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, color: "var(--mute)", letterSpacing: "-0.005em" }}>
+                    {label}
+                  </div>
+                ))}
+                {/* Section: Crecimiento */}
+                <div className="mono" style={{ padding: "10px 8px 4px", fontSize: 8, color: "var(--faint)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                  Crecimiento
+                </div>
+                {["Ahorro", "Dólar", "Lectura"].map((label) => (
+                  <div key={label} style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, color: "var(--mute)", letterSpacing: "-0.005em" }}>
+                    {label}
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Main content ── */}
+              <div className="preview" style={{ flex: 1, minWidth: 0 }}>
               <div className="top">
                 <div>
                   <div className="eyebrow">Jueves · 14 mayo 2026</div>
                   <h4>Buen día, Tomás</h4>
                 </div>
-                <div className="eyebrow">Sincronizado · hace 2 min</div>
+                <div className="eyebrow">
+                  <span style={{ padding: "3px 8px", borderRadius: 99, border: "1px solid var(--hair)", fontSize: 9 }}>mes</span>
+                </div>
               </div>
 
               <div className="eyebrow">Balance total · 3 cuentas</div>
@@ -610,11 +625,8 @@ function ProductSection() {
                   <div className="l">Disponible</div>
                 </div>
                 <div className="stat">
-                  <div className="v">
-                    <AnimatedNumber value={78} />
-                    <span style={{ fontSize: "13px", color: "var(--faint)" }}>/100</span>
-                  </div>
-                  <div className="l">Pulso · tranquilo</div>
+                  <div className="v">−7.5%</div>
+                  <div className="l">vs mes anterior</div>
                 </div>
               </div>
 
@@ -679,6 +691,7 @@ function ProductSection() {
                 </svg>
               </div>
             </div>
+            </div>{/* end flex body */}
           </div>
         </motion.div>
       </div>
@@ -695,7 +708,7 @@ function FeaturesSection() {
     {
       num: "F / 01",
       title: <>Bloques de <em>vida</em>.</>,
-      text: "Agrupá tus gastos por proyectos que sí importan: el apartamento, el auto, el viaje a Japón, el setup freelance. Cada bloque tiene su presupuesto, su tendencia y su propio Pulso.",
+      text: "Agrupá tus gastos por proyectos que sí importan: el apartamento, el auto, el viaje a Japón, el setup freelance. Cada bloque tiene su presupuesto, su barra de progreso y su historial propio.",
       demo: (
         <div className="demo-blocks">
           {[
@@ -728,85 +741,102 @@ function FeaturesSection() {
     {
       num: "F / 02",
       title: <>Captura en <em>3 segundos</em>.</>,
-      text: "Anotá un gasto sin pensar. Widget en la pantalla principal, atajo en la pantalla de bloqueo, comando ⌘N en escritorio. Categoría sugerida automáticamente.",
+      text: "Anotá un gasto sin pensar. Formulario minimal desde web o móvil, con categoría sugerida. Dos toques y listo — sin formularios de 8 campos, sin seleccionar moneda, sin navegar menús.",
       demo: (
         <div className="demo-capture">
           <div className="line">
             <span className="l">Monto</span>
             <span className="v amount">−AR$ 3,200</span>
-            <span className="kbd">⌘↵</span>
           </div>
           <div className="line">
             <span className="l">Qué</span>
             <span className="v">Café Lattente</span>
           </div>
           <div className="line">
-            <span className="l">Bloque</span>
+            <span className="l">Categoría</span>
             <span className="v" style={{ color: "var(--mute)" }}>Comida · sugerido</span>
-            <span className="kbd">↹</span>
           </div>
         </div>
       ),
     },
     {
       num: "F / 03",
-      title: <>Pulso <em>financiero</em>.</>,
-      text: "Un solo número del 0 al 100 que resume tu mes. Sube cuando ahorrás, seguís tu plan y registrás a diario. Reemplaza dashboards llenos de KPIs por algo que sí podés sentir.",
+      title: <>Cuotas sin <em>dolor</em>.</>,
+      text: "En Argentina las compras en cuotas son la norma. gast.ar lo entiende: registrá una compra en 12 cuotas y el sistema sabe cuánto pagaste, cuánto falta y cuándo vence cada una. Con categoría propia para filtrarlas.",
       demo: (
-        <div className="demo-pulso">
-          <div className="num">78<small>/100</small></div>
-          <div className="breakdown">
-            {[
-              { lbl: "Ahorro", w: "82%", v: "82" },
-              { lbl: "Adherencia", w: "71%", v: "71" },
-              { lbl: "Consistencia", w: "88%", v: "88" },
-              { lbl: "Cuotas", w: "65%", v: "65" },
-            ].map((r, i) => (
-              <div className="row" key={r.lbl}>
-                <span className="lbl">{r.lbl}</span>
-                <span className="bar"><motion.i
-                  initial={{ width: "0%" }}
-                  whileInView={{ width: r.w }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8, delay: 0.5 + i * 0.12, ...springGentle }}
-                /></span>
-                <span className="v">{r.v}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {[
+            { name: "MacBook Pro", paid: 9, total: 12, monthly: "58.4k" },
+            { name: "Smart TV", paid: 3, total: 6, monthly: "42.1k" },
+            { name: "Heladera", paid: 1, total: 18, monthly: "24.6k" },
+          ].map((c, i) => (
+            <div key={c.name} style={{
+              padding: "10px 0",
+              borderBottom: i < 2 ? "1px solid var(--hair)" : "none",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, alignItems: "baseline" }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>{c.name}</span>
+                <span className="mono" style={{ fontSize: 9, color: "var(--mute)", letterSpacing: "0.06em" }}>
+                  {c.paid}/{c.total} · ${c.monthly}/mes
+                </span>
               </div>
-            ))}
-          </div>
+              <div style={{ display: "flex", gap: 2 }}>
+                {Array.from({ length: c.total }).map((_, j) => (
+                  <motion.div
+                    key={j}
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.2, delay: 0.4 + i * 0.1 + j * 0.04 }}
+                    style={{
+                      flex: 1, height: 2, borderRadius: 99,
+                      background: j < c.paid ? "var(--ink)" : "var(--hair2)",
+                      willChange: "opacity",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ),
     },
     {
       num: "F / 04",
-      title: <>Lectura del <em>mes</em>.</>,
-      text: "Cada lunes te llega tu semana en una página. Cada fin de mes, un editorial: patrones, tendencias, lo que cambió. Calmo, breve, sin alertas.",
+      title: <>El mapa de tu <em>año</em>.</>,
+      text: "21 semanas de gastos, día a día, en un mapa de calor. Patrones que no verías en una lista: los miércoles gastás más, agosto fue tranquilo, diciembre te pasa factura. Se construye solo con tu historia.",
       demo: (
-        <div className="demo-reading">
-          <div className="stat-row">
-            <div>
-              <div className="v">−7.5%</div>
-              <div className="l">vs mes anterior</div>
-            </div>
-            <div>
-              <div className="v">Mié</div>
-              <div className="l">día de más gasto</div>
-            </div>
-            <div>
-              <div className="v">13</div>
-              <div className="l">días sin ocio</div>
-            </div>
+        <div>
+          <div style={{ display: "flex", gap: 24, marginBottom: 14 }}>
+            {[
+              { v: "Mié", l: "día pico" },
+              { v: "−7.5%", l: "vs anterior" },
+              { v: "21", l: "semanas" },
+            ].map((s) => (
+              <div key={s.l}>
+                <div style={{ fontFamily: "'Inter Tight', sans-serif", fontWeight: 500, fontSize: 18, letterSpacing: "-0.03em", color: "var(--ink)" }}>{s.v}</div>
+                <div className="mono" style={{ fontSize: 9, color: "var(--mute)", letterSpacing: "0.14em", textTransform: "uppercase", marginTop: 3 }}>{s.l}</div>
+              </div>
+            ))}
           </div>
-          <svg className="spark" viewBox="0 0 300 40" preserveAspectRatio="none">
-            <motion.polyline
-              points="0,20 30,18 60,22 90,15 120,17 150,11 180,14 210,9 240,11 270,6 300,8"
-              fill="none" stroke="currentColor" strokeWidth="1.2"
-              initial={{ pathLength: 0 }}
-              whileInView={{ pathLength: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.2, delay: 0.6, ease: "easeInOut" }}
-            />
-          </svg>
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <div key={row} style={{ display: "flex", gap: 3, marginBottom: 3 }}>
+              {Array.from({ length: 21 }).map((_, col) => {
+                const val = Math.abs(Math.sin((row + 1) * 1.3 + col * 0.7));
+                const alpha = col < 3 ? 0.05 : val > 0.72 ? 0.82 : val > 0.48 ? 0.48 : val > 0.24 ? 0.22 : 0.07;
+                return (
+                  <motion.div
+                    key={col}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.2, delay: 0.2 + col * 0.02 + row * 0.015 }}
+                    style={{ width: 10, height: 10, borderRadius: 2, background: `rgba(0,0,0,${alpha})`, willChange: "transform, opacity" }}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
       ),
     },
@@ -875,132 +905,6 @@ function QuoteSection() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Pricing
-// ═══════════════════════════════════════════════════════════════
-
-function PricingSection() {
-  const plans = [
-    {
-      name: "Plan / 01 · Apunte",
-      tier: "Apunte",
-      cost: "AR$ 0",
-      period: "· para siempre",
-      desc: "Lo básico para arrancar a anotar tus gastos. Sin cuentas conectadas, hasta 2 bloques.",
-      features: [
-        "Captura manual ilimitada",
-        "2 bloques de vida",
-        "Lectura mensual",
-      ],
-      crossed: [
-        "Cuentas conectadas",
-        "Sincronización entre dispositivos",
-        "Pulso completo",
-      ],
-      cta: "Empezar gratis",
-      ghost: true,
-    },
-    {
-      name: "Plan / 02 · Tranquilo",
-      tier: <><em>Tranquilo</em></>,
-      cost: "AR$ 3.900",
-      period: "· por mes",
-      desc: "El plan para quien quiere ver su dinero entero. Bloques sin límite, Pulso, calendario, todo.",
-      features: [
-        "Captura manual + atajos",
-        "Bloques ilimitados",
-        "Pulso financiero completo",
-        "Cuentas conectadas (MP · bancos · Wise)",
-        "Sincronización móvil + escritorio",
-        "Exportar a CSV / AFIP",
-      ],
-      crossed: [],
-      cta: "Probar 30 días",
-      ghost: false,
-      featured: true,
-    },
-    {
-      name: "Plan / 03 · Acompañado",
-      tier: "Acompañado",
-      cost: "AR$ 5.900",
-      period: "· por mes",
-      desc: "Compartido entre dos, con bloques propios y compartidos. Para parejas y convivientes.",
-      features: [
-        "Todo lo del plan Tranquilo",
-        "2 usuarios + 1 workspace compartido",
-        "Bloques privados y compartidos",
-        "División justa automática",
-        "Lectura conjunta del mes",
-        "Soporte prioritario",
-      ],
-      crossed: [],
-      cta: "Probar 30 días",
-      ghost: true,
-    },
-  ];
-
-  return (
-    <section id="precios">
-      <div className="wrap">
-        <motion.div
-          className="sec-head"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={staggerContainer}
-        >
-          <motion.div variants={fadeUp}>
-            <span className="eyebrow">
-              <motion.span
-                className="dot"
-                animate={{ scale: [1, 1.25, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-              03 · Precios
-            </span>
-          </motion.div>
-          <motion.h2 className="sec-title" variants={fadeUp}>
-            Pagás una vez por <em>mes</em>.<br />Nada más.
-          </motion.h2>
-        </motion.div>
-
-        <motion.div
-          className="prices"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          variants={staggerSlow}
-        >
-          {plans.map((p) => (
-            <motion.div
-              key={p.name}
-              className={p.featured ? "featured" : ""}
-              variants={p.featured ? scaleIn : fadeUp}
-            >
-              <div className="name">{p.name}</div>
-              <div className="tier">{p.tier}</div>
-              <div className="cost"><span>{p.cost}</span><small>{p.period}</small></div>
-              <p className="desc">{p.desc}</p>
-              <ul>
-                {p.features.map((f) => <li key={f}>{f}</li>)}
-                {p.crossed.map((f) => <li key={f} className="x">{f}</li>)}
-              </ul>
-              <motion.a
-                className={`btn${p.ghost ? " ghost" : ""}`}
-                href="#"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                transition={springGentle}
-              >
-                {p.cta}
-              </motion.a>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════
 // FAQ
@@ -1010,15 +914,15 @@ function FAQSection() {
   const items = [
     {
       q: "¿Mis datos están seguros? ¿Quién los ve?",
-      a: "Cero personas en gast.ar ve tus movimientos. Local-first significa que los datos se guardan primero en tu dispositivo. Si activás sincronización, viajan cifrados extremo a extremo: nuestro servidor solo guarda blobs encriptados que ni nosotros podemos leer. No vendemos datos, no entrenamos modelos con ellos, no hay publicidad.",
+      a: "Cero personas en gast.ar ve tus movimientos. Los datos se guardan en Supabase, una base de datos cifrada con acceso restringido a tu cuenta. No vendemos datos, no los analizamos para anunciantes, no entrenamos modelos con ellos. Podés exportar todo a CSV en cualquier momento.",
     },
     {
       q: "¿Funciona si no tengo internet?",
-      a: "Sí. La app entera funciona sin conexión, incluyendo capturas, búsqueda y reportes. La sincronización con cuentas bancarias (opcional) sí necesita internet, pero el resto vive 100% offline.",
+      a: "El workspace web necesita conexión para funcionar. La app móvil muestra tus últimos datos mientras estás sin señal y sincroniza automáticamente en cuanto volvés a conectarte.",
     },
     {
       q: "¿Conecta con mi banco o con Mercado Pago?",
-      a: "Hoy soportamos Mercado Pago, Galicia, Santander, BBVA, Brubank, Wise y Belo. Las conexiones son de solo lectura — gast.ar nunca puede mover plata. También podés importar resúmenes en PDF o CSV de cualquier banco.",
+      a: "Hoy el ingreso de datos es manual o por importación de extractos CSV (Mercado Pago, BBVA, Galicia). Las conexiones bancarias en tiempo real son roadmap — queremos hacerlo bien antes de lanzarlo.",
     },
     {
       q: "¿Hay app móvil además del workspace web?",
@@ -1026,11 +930,11 @@ function FAQSection() {
     },
     {
       q: "¿Por qué no hay notificaciones agresivas?",
-      a: "Porque el éxito de gast.ar no se mide en cuántas veces lo abrís. Mandamos una sola notificación por semana — los lunes a la mañana, con tu resumen de los últimos 7 días. Si querés alertas adicionales (presupuesto excedido, cuotas próximas), las activás vos desde Ajustes.",
+      a: "Porque el éxito de gast.ar no se mide en cuántas veces lo abrís. Por ahora la app es silenciosa por diseño — no mandamos notificaciones. Las alertas opcionales (presupuesto excedido, cuotas próximas) son roadmap.",
     },
     {
-      q: "¿Puedo cancelar cuando quiera?",
-      a: "Cuando quieras, sin penalidades. Si cancelás, mantenés acceso al plan Apunte gratis para siempre y podés exportar todos tus datos a CSV en cualquier momento. Sin retenciones, sin formularios oscuros.",
+      q: "¿Puedo exportar mis datos?",
+      a: "Sí, siempre. Podés exportar todos tus movimientos a CSV desde Configuración en cualquier momento. Tu historial financiero es tuyo — no hay lock-in.",
     },
   ];
 
@@ -1046,12 +950,8 @@ function FAQSection() {
         >
           <motion.div variants={fadeUp}>
             <span className="eyebrow">
-              <motion.span
-                className="dot"
-                animate={{ scale: [1, 1.25, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-              04 · Preguntas
+              <span className="dot anim-dot-pulse-fast" />
+              03 · Preguntas
             </span>
           </motion.div>
           <motion.h2 className="sec-title" variants={fadeUp}>
@@ -1087,7 +987,7 @@ function FAQSection() {
 
 function FooterSection() {
   const links = {
-    Producto: ["Workspace", "App móvil", "Precios", "Preguntas"],
+    Producto: ["Workspace", "App móvil", "Preguntas"],
     Empresa: ["Manifiesto", "Notas", "Trabajá con nosotros", "Prensa"],
     Legal: ["Privacidad", "Términos", "Seguridad", "Cookies"],
   };
@@ -1104,15 +1004,11 @@ function FooterSection() {
         >
           <motion.div variants={fadeUp}>
             <span className="eyebrow">
-              <motion.span
-                className="dot"
-                animate={{ scale: [1, 1.25, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
+              <span className="dot anim-dot-pulse-fast" />
               gast.ar · Buenos Aires
             </span>
             <p className="pitch" style={{ marginTop: "18px" }}>
-              Una herramienta calma para tu dinero. Local primero, cifrada, sin notificaciones urgentes.
+              Una herramienta calma para tu dinero. Sin publicidad, sin rastreo, sin notificaciones urgentes.
               Hecha en Buenos Aires por dos personas que querían dejar de mirar dashboards.
             </p>
           </motion.div>
@@ -1158,6 +1054,14 @@ function FooterSection() {
           <span>v0.2 · MAY 2026</span>
         </motion.div>
       </div>
+      <p style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 9, textTransform: "uppercase", letterSpacing: "0.22em",
+        color: "var(--whisper)", textAlign: "center", margin: "0 0 20px",
+        userSelect: "none",
+      }}>
+        Hecho en Argentina
+      </p>
     </footer>
   );
 }
@@ -1196,7 +1100,6 @@ export default function LandingPage() {
         <ProductSection />
         <FeaturesSection />
         <QuoteSection />
-        <PricingSection />
         <FAQSection />
         <FooterSection />
       </main>

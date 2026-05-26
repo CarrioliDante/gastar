@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../../..";
 
 /* ─── Design tokens ─── */
 :root {
@@ -51,6 +52,43 @@ body {
 ::-webkit-scrollbar { width: 0; height: 0; }
 * { scrollbar-width: none; }
 a { color: inherit; text-decoration: none; }
+
+/* ─── Infinite loop animations — CSS-only (compositor thread) ─── */
+@keyframes dot-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.28); }
+}
+@keyframes arrow-nudge {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(3px); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes traffic-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
+}
+
+.anim-dot-pulse {
+  animation: dot-pulse 2.8s ease-in-out infinite;
+  display: inline-block;
+}
+.anim-dot-pulse-fast {
+  animation: dot-pulse 2s ease-in-out infinite;
+  display: inline-block;
+}
+.anim-arrow-nudge {
+  animation: arrow-nudge 2.2s ease-in-out infinite;
+  display: inline-block;
+}
+.anim-float-y {
+  animation: float-y 4.5s ease-in-out infinite;
+}
+.anim-traffic-1 { animation: traffic-pulse 2.5s ease-in-out 1s infinite; }
+.anim-traffic-2 { animation: traffic-pulse 2.5s ease-in-out 1.3s infinite; }
+.anim-traffic-3 { animation: traffic-pulse 2.5s ease-in-out 1.6s infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -364,11 +402,10 @@ body[data-theme="dark"] .iphone .home-bar { background: rgba(255,255,255,0.6); }
   box-shadow: inset 0 0 0 1px var(--hair), 0 6px 18px -8px rgba(0,0,0,0.18);
   display: flex; align-items: center; justify-content: space-between;
 }
-.iphone .tabbar button { flex: 1; padding: 5px 2px; background: none; border: none; cursor: default; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink); opacity: 0.42; }
+.iphone .tabbar button { flex: 1; padding: 4px 2px; background: none; border: none; cursor: default; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink); opacity: 0.4; }
 .iphone .tabbar button.active { opacity: 1; }
-.iphone .tabbar .fab-pair { display: flex; gap: 4px; margin: 0 2px; flex-shrink: 0; }
-.iphone .tabbar .fab { width: 36px; height: 36px; border-radius: 99px; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); box-shadow: 0 3px 10px rgba(0,0,0,0.16); }
-.iphone .tabbar .fab.alt { background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.iphone .tabbar .tab-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; letter-spacing: 0.04em; color: currentColor; }
+.iphone .tabbar .fab { width: 38px; height: 38px; border-radius: 99px; flex-shrink: 0; margin: 0 2px; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); box-shadow: 0 3px 10px rgba(0,0,0,0.16); }
 
 /* ─── Section ─── */
 section { padding: 96px 0; position: relative; }

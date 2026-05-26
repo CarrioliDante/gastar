@@ -213,7 +213,7 @@ export function RevealWords({
         <motion.span
           key={i}
           variants={wordVariant}
-          style={{ display: "inline-block", marginRight: "0.25em" }}
+          style={{ display: "inline-block", marginRight: "0.25em", willChange: "filter, transform, opacity" }}
         >
           {word}
         </motion.span>
