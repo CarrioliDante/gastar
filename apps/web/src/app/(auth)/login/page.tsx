@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { OAuthDivider, GoogleButton } from "../oauth-buttons";
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 320 };
 
@@ -111,6 +112,11 @@ export default function LoginPage() {
           {isPending ? "Entrando…" : "Continuar →"}
         </motion.button>
       </form>
+
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        <OAuthDivider />
+        <GoogleButton />
+      </div>
 
       <p style={{ marginTop: 28, textAlign: "center", color: "var(--faint)", fontSize: 12 }}>
         ¿No tenés cuenta?{" "}

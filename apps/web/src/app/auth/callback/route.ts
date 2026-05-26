@@ -8,9 +8,11 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const isNew = !data.user?.user_metadata?.onboarding_completed;
+      const destination = isNew ? "/onboarding" : next;
+      return NextResponse.redirect(`${origin}${destination}`);
     }
   }
 
