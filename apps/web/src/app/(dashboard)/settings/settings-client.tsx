@@ -13,6 +13,7 @@ import { useNumberInput } from "@/hooks/use-number-input";
 import { BlockGlyph, type GlyphKind } from "@/components/ui/primitives";
 import { qk } from "@/hooks/query-keys";
 import type { CustomCategory } from "@/lib/custom-categories";
+import { CsvImporter } from "@/components/dashboard/csv-importer";
 
 const GLYPHS: GlyphKind[] = [
   "Home", "Building", "Key", "Bulb", "Flame", "Droplet",
@@ -673,6 +674,16 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           ),
         },
       ]} />
+
+      {/* Importar CSV — full-width below the section */}
+      <div style={{ marginTop: 0 }}>
+        <div style={{ padding: "16px 0", borderBottom: "1px solid var(--hairline)" }}>
+          <span style={{ fontSize: 13, color: "var(--ink)", letterSpacing: "-0.005em" }}>
+            Importar extracto bancario
+          </span>
+          <CsvImporter categories={categories} />
+        </div>
+      </div>
 
       {/* Reset data row — outside Section to allow full-width confirm state */}
       <div style={{
