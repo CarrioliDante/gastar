@@ -3,7 +3,10 @@ import type { ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text, Pressable, Platform } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAppStore } from '../store/app';
@@ -82,10 +85,13 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   );
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 0,
+      gcTime: DAY_MS,
       retry: (failureCount, error: unknown) => {
         if ((error as { status?: number })?.status === 401) return false;
         return failureCount < 2;
@@ -94,13 +100,21 @@ const queryClient = new QueryClient({
   },
 });
 
+const persister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: 'gastar-query-cache',
+});
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{ persister, maxAge: DAY_MS }}
+        >
           <Inner />
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
