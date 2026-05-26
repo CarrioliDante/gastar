@@ -61,7 +61,7 @@ export async function updateInstallment(
   const user = await requireUser();
   const inst = await db.installment.findFirst({
     where: { id, userId: user.id },
-    select: { totalInstallments: true },
+    select: { totalInstallments: true, paidInstallments: true },
   });
   if (!inst) throw new Error("Cuota no encontrada");
 
@@ -70,15 +70,39 @@ export async function updateInstallment(
   if (data.monthlyAmount <= 0) throw new Error("El importe mensual debe ser mayor a cero");
 
   try {
-    await db.installment.update({
-      where: { id },
-      data: {
-        name: data.name,
-        monthlyAmount: data.monthlyAmount,
-        paidInstallments: paid,
-        ...(data.category !== undefined && { category: data.category }),
-      },
-    });
+    const ops: Promise<unknown>[] = [
+      db.installment.update({
+        where: { id },
+        data: {
+          name: data.name,
+          monthlyAmount: data.monthlyAmount,
+          paidInstallments: paid,
+          ...(data.category !== undefined && { category: data.category }),
+        },
+      }),
+    ];
+
+    // When the paid count increases, sync the linked transaction name to reflect
+    // the actual cuota number — avoids showing "1/12" when the user is at 7/12
+    if (paid > inst.paidInstallments) {
+      const linkedTx = await db.transaction.findFirst({
+        where: { installmentId: id },
+        orderBy: { date: "desc" },
+      });
+      if (linkedTx) {
+        ops.push(
+          db.transaction.update({
+            where: { id: linkedTx.id },
+            data: {
+              name: `${data.name} · cuota ${paid}/${inst.totalInstallments}`,
+              note: `Cuota ${paid} de ${inst.totalInstallments}`,
+            },
+          }),
+        );
+      }
+    }
+
+    await Promise.all(ops);
     revalidateTag(`user:${user.id}`, "default");
   } catch (err) {
     console.error("updateInstallment failed:", err);
@@ -114,6 +138,7 @@ export async function payInstallment(id: string) {
           amount: -Number(inst.monthlyAmount),
           category: "Cuotas",
           note: `Cuota ${newPaid} de ${inst.totalInstallments}`,
+          installmentId: id,
         },
       }),
     ]);

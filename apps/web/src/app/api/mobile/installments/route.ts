@@ -85,16 +85,40 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Cuota no encontrada' }, { status: 404 });
   }
 
-  await db.installment.update({
-    where: { id: body.id },
-    data: {
-      ...(body.name !== undefined && { name: body.name }),
-      ...(body.category !== undefined && { category: body.category }),
-      ...(body.monthlyAmount !== undefined && { monthlyAmount: body.monthlyAmount }),
-      ...(body.paidInstallments !== undefined && { paidInstallments: body.paidInstallments }),
-      ...(body.nextDueDate !== undefined && { nextDueDate: new Date(body.nextDueDate) }),
-    },
-  });
+  const ops: Promise<unknown>[] = [
+    db.installment.update({
+      where: { id: body.id },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.category !== undefined && { category: body.category }),
+        ...(body.monthlyAmount !== undefined && { monthlyAmount: body.monthlyAmount }),
+        ...(body.paidInstallments !== undefined && { paidInstallments: body.paidInstallments }),
+        ...(body.nextDueDate !== undefined && { nextDueDate: new Date(body.nextDueDate) }),
+      },
+    }),
+  ];
+
+  if (body.paidInstallments !== undefined && body.paidInstallments > existing.paidInstallments) {
+    const linkedTx = await db.transaction.findFirst({
+      where: { installmentId: body.id },
+      orderBy: { date: 'desc' },
+    });
+    if (linkedTx) {
+      const instName = body.name ?? existing.name;
+      const total = existing.totalInstallments;
+      ops.push(
+        db.transaction.update({
+          where: { id: linkedTx.id },
+          data: {
+            name: `${instName} · cuota ${body.paidInstallments}/${total}`,
+            note: `Cuota ${body.paidInstallments} de ${total}`,
+          },
+        }),
+      );
+    }
+  }
+
+  await Promise.all(ops);
 
   return NextResponse.json({ ok: true });
 }
