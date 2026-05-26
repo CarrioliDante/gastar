@@ -27,7 +27,7 @@ function fmtCompact(n: number): string {
   const abs = Math.abs(n);
   if (abs >= 1_000_000) return (abs / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
   if (abs >= 1_000)     return (abs / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
-  return abs.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return abs.toLocaleString("es-AR", { maximumFractionDigits: 0 });
 }
 
 const navBtn: React.CSSProperties = {
@@ -142,7 +142,7 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
               <div className="display tnum" style={{
                 fontSize: 28, fontWeight: 500, letterSpacing: "-0.04em", color: "var(--ink)", lineHeight: 1,
               }}>
-                {totalAmt.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                {totalAmt.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
               </div>
               <div className="mono" style={{
                 fontSize: 9, color: "var(--mute)", letterSpacing: "0.16em",
@@ -276,7 +276,7 @@ export function CalendarClient({ events }: { events: CalendarEvent[] }) {
                     <span className="display tnum" style={{
                       fontSize: 14, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.015em",
                     }}>
-                      {Math.abs(e.amount).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                      {Math.abs(e.amount).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 );

@@ -39,7 +39,7 @@ function fmtCompact(n: number): string {
   const abs = Math.abs(n);
   if (abs >= 1_000_000) return (abs / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
   if (abs >= 1_000)     return (abs / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
-  return abs.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return abs.toLocaleString("es-AR", { maximumFractionDigits: 0 });
 }
 
 export function BlocksClient({

@@ -73,7 +73,7 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
         <div style={{ display: "grid", gridTemplateColumns: budget > 0 ? "1fr 1fr 1fr" : "1fr 1fr", gap: 32, flexShrink: 0 }}>
           <div style={{ textAlign: "right" }}>
             <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
-              ${spent.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              ${spent.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
             </div>
             <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
               Total gastado
@@ -83,7 +83,7 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
             <>
               <div style={{ textAlign: "right" }}>
                 <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
-                  ${Math.max(0, budget - spent).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  ${Math.max(0, budget - spent).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
                 </div>
                 <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
                   Disponible
@@ -91,7 +91,7 @@ export default async function BlockDetailPage({ params }: { params: Promise<{ id
               </div>
               <div style={{ textAlign: "right" }}>
                 <div className="display tnum" style={{ fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.035em" }}>
-                  ${budget.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  ${budget.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
                 </div>
                 <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
                   Techo mensual

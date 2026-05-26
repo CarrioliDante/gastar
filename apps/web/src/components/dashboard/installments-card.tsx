@@ -49,7 +49,7 @@ export function InstallmentsCard({ installments }: { installments: Installment[]
         </p>
         {totalMonthly > 0 && (
           <p style={{ color: "#111111", fontSize: 18, fontWeight: 300, letterSpacing: "-0.6px" }}>
-            ${totalMonthly.toLocaleString("en-US")}/mo
+            ${totalMonthly.toLocaleString("es-AR")}/mo
           </p>
         )}
       </div>
@@ -89,7 +89,7 @@ export function InstallmentsCard({ installments }: { installments: Installment[]
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <p style={{ color: "#111111", fontSize: 15, fontWeight: 400, letterSpacing: "-0.4px" }}>
-                    ${item.monthly.toLocaleString("en-US")}
+                    ${item.monthly.toLocaleString("es-AR")}
                   </p>
                   <p style={{ color: "rgba(0,0,0,0.3)", fontSize: 10, marginTop: 2 }}>/ month</p>
                 </div>
