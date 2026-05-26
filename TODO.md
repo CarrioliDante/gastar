@@ -1,6 +1,6 @@
 # Gastar — Roadmap
 
-> Actualizado 2026-05-24. Orden: primero frontend, luego funcionalidad.
+> Actualizado 2026-05-26. Orden: primero frontend, luego funcionalidad.
 
 ---
 
@@ -145,7 +145,7 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ### 6.1 Anotar ingreso desde header
 - [x] Shortcut `⌘⇧N` en web
-- [ ] Tooltip visible en el botón del header
+- [x] Tooltip visible en el botón del header — componente `Tooltip` reusable en `src/components/ui/tooltip.tsx`
 
 ### 6.2 Editar cuota existente ✅
 - [x] Server action `updateInstallment(id, { name, monthlyAmount, paidInstallments })`
@@ -299,22 +299,23 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ## Fase 13 — Auth OAuth
 
-### 13.1 Google
-- [ ] Habilitar provider en Supabase Dashboard
-- [ ] Botón "Continuar con Google" en `/login` y `/signup`
+### 13.1 Google ✅
+- [x] Habilitar provider en Supabase Dashboard
+- [x] Botón "Continuar con Google" en `/login` y `/signup` — `src/app/(auth)/oauth-buttons.tsx`
+- [x] Callback detecta nuevos usuarios (`onboarding_completed`) → redirige a `/onboarding`
 
 ### 13.2 Apple
-- [ ] Requiere Apple Developer account + Service ID
+- [ ] Requiere Apple Developer account ($99/año) + Service ID
 - [ ] Botón "Continuar con Apple" en iOS
 
 ---
 
 ## Fase 14 — Infraestructura
 
-- [ ] **RLS en Supabase** — capa extra sobre filtrado `userId`
-- [ ] **Connection pooler** — configurar en Supabase Dashboard
+- [x] **RLS en Supabase** — `UserSetting` y `DollarOperation` habilitados + policy `own_*`. Resto ya tenía RLS.
+- [x] **Connection pooler** — ya configurado: `pg.Pool` puerto 6543 (transaction pooler). `DIRECT_URL` port 5432 para migraciones.
+- [x] **`.env.example`** — creados en `apps/web/.env.example` y `apps/mobile/.env.example`
 - [ ] **Revalidación granular** — tags por entidad en lugar de `user:${id}`
-- [ ] **`.env.example`** — documentar variables requeridas
 - [ ] **Tipos `@gastar/shared`** — sincronizar con Prisma models
 - [ ] **`useCurrency`** — extender a transactions-client y calendar-client
 
@@ -398,6 +399,17 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ---
 
+## Fase 20 — 2026-05-26 OAuth + CSV Import + Infraestructura ✅
+
+- [x] Tooltip "Anotar" — componente `Tooltip` reusable (hover, posicionable top/bottom)
+- [x] Google OAuth — `oauth-buttons.tsx` en login + signup. Callback con detección new user → onboarding.
+- [x] Import CSV — `CsvImporter` con detección Mercado Pago/BBVA/Galicia/genérico, preview, dedup, bulk insert via server action. `papaparse` añadido.
+- [x] `.env.example` — web y mobile documentados
+- [x] RLS Supabase — `UserSetting` y `DollarOperation` cerrados con policy `own_*`
+- [x] Connection pooler — confirmado operativo, documentado en `.env.example`
+
+---
+
 ## Fase 19 — 2026-05-24 Bugs + Migración categoría cuotas ✅
 
 - [x] Bloques sin techo — `budget >= 0` en canSave (CreateBlockModal + EditBlockModal). Stat "Disponible" oculto cuando budget=0. subText solo movimientos cuando budget=0.
@@ -414,7 +426,7 @@ Cada card: donut ring 52px, nombre, current/target, deadline, progreso
 
 ## Backlog
 
-- [ ] **Import CSV** — extracto de banco (Mercado Pago, BBVA, Galicia)
+- [x] **Import CSV** — `src/components/dashboard/csv-importer.tsx`. Detección automática Mercado Pago/BBVA/Galicia/genérico. Preview con checkboxes + selector de categoría por fila. Deduplicación 1 año. Integrado en Settings.
 - [ ] **Quincena mode** — ciclos de 15 días para salario quincenal (LATAM)
 - [x] **Historial de cuotas pagadas** — calendario muestra todas las cuotas (pagadas + pendientes)
 - [x] **Editar recurrentes** — EditRecurringForm inline + updateRecurring server action
