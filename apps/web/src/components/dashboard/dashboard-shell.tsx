@@ -24,6 +24,7 @@ import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { RevealWords } from "@/components/motion/text-reveal";
 import { springGentle } from "@/components/motion/presets";
+import { Tooltip } from "@/components/ui/tooltip";
 
 import type { BalanceData, MonthlyStats, Category } from "@gastar/shared";
 import type { DolarRates } from "@/lib/dolar";
@@ -341,23 +342,24 @@ export function DashboardShell({
           transition={{ ...springGentle, delay: 0.3 }}
           style={{ display: "flex", alignItems: "center", gap: 10 }}
         >
-          <motion.button
-            onClick={() => openCapture("expense")}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.95 }}
-            title="Anotar gasto (⌘N)"
-            style={{
-              width: 32, height: 32, borderRadius: "50%",
-              background: "var(--ink)", color: "var(--inverse)", border: "none",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12">
-              <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
-          </motion.button>
+          <Tooltip label="Anotar gasto (⌘N)">
+            <motion.button
+              onClick={() => openCapture("expense")}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "var(--ink)", color: "var(--inverse)", border: "none",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12">
+                <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </motion.button>
+          </Tooltip>
         </motion.div>
       </header>
 
