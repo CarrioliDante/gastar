@@ -48,4 +48,6 @@ yarn-error.log*
 
 # Claude Code
 .claude/
+AGENTS.md
 CLAUDE.md
+docs/
