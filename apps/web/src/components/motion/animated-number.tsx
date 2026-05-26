@@ -20,7 +20,7 @@ export function AnimatedNumber({
   const count = useMotionValue(0);
   const display = useTransform(count, (v) => {
     const fixed = v.toFixed(decimals);
-    return `${prefix}${Number(fixed).toLocaleString("en-US")}${suffix}`;
+    return `${prefix}${Number(fixed).toLocaleString("es-AR")}${suffix}`;
   });
   const [visible, setVisible] = useState(false);
   const prevValue = useRef(value);

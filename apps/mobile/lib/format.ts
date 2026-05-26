@@ -11,7 +11,7 @@ export function fmt(
     if (abs >= 1_000_000) body = (abs / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
     else body = (abs / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
   } else {
-    body = abs.toLocaleString('en-US', {
+    body = abs.toLocaleString('es-AR', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });

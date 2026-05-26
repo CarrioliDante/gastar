@@ -54,7 +54,7 @@ export function BlocksMini({ blocks }: { blocks: Block[] }) {
                   {block.name}
                 </p>
                 <p style={{ color: "rgba(0,0,0,0.35)", fontSize: 10, marginBottom: 12 }}>
-                  ${block.spent.toLocaleString("en-US")} spent
+                  ${block.spent.toLocaleString("es-AR")} spent
                 </p>
                 <div style={{ height: 2, background: "rgba(0,0,0,0.06)", borderRadius: 2, overflow: "hidden" }}>
                   <motion.div

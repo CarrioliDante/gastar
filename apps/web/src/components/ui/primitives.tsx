@@ -304,7 +304,7 @@ export function Amount({
   signMark?: boolean;
 }) {
   const neg = value < 0;
-  const formatted = Math.abs(value).toLocaleString("en-US", {
+  const formatted = Math.abs(value).toLocaleString("es-AR", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -370,7 +370,7 @@ export function Stat({
   const absVal = typeof value === "number" ? Math.abs(value) : value;
 
   const formatted = typeof absVal === "number"
-    ? absVal.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    ? absVal.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
     : absVal;
 
   return (

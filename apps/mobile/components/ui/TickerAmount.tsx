@@ -132,7 +132,7 @@ export function TickerAmount({
 
   const neg = value < 0;
   const abs = Math.abs(value);
-  const formatted = abs.toLocaleString('en-US', {
+  const formatted = abs.toLocaleString('es-AR', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });

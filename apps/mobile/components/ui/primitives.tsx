@@ -107,7 +107,7 @@ export function Amount({
   const { C, fontDisplay } = useTheme();
   const neg = value < 0;
   const abs = Math.abs(value);
-  const parts = abs.toLocaleString('en-US', {
+  const parts = abs.toLocaleString('es-AR', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).split('.');
