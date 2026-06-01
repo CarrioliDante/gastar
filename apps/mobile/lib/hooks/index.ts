@@ -172,7 +172,7 @@ export function useCreateTransaction() {
   return useMutation({
     mutationFn: (body: {
       name: string; amount: number; category: string;
-      blockId?: string; note?: string; date?: string;
+      currency?: string; blockId?: string; note?: string; date?: string;
     }) => apiFetch('/transactions', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
       // Delay until after the sheet close animation completes (~1050ms total)
@@ -242,8 +242,27 @@ export function useCreateGoal() {
       name: string;
       targetAmount: number;
       currentAmount?: number;
+      currency?: string;
       deadline?: string;
     }) => apiFetch('/goals', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['goals'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useUpdateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      id: string;
+      name?: string;
+      targetAmount?: number;
+      currentAmount?: number;
+      currency?: string;
+      deadline?: string | null;
+    }) => apiFetch('/goals', { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['goals'] });
       qc.invalidateQueries({ queryKey: ['stats'] });
@@ -282,6 +301,7 @@ export function useCreateInstallment() {
     mutationFn: (body: {
       name: string;
       category?: string;
+      currency?: string;
       monthlyAmount: number;
       totalInstallments: number;
       paidInstallments?: number;
@@ -351,6 +371,7 @@ export function useCreateRecurring() {
       icon?: string;
       amount: number;
       category: string;
+      currency?: string;
       frequency: string;
       dayOfMonth?: number;
       blockId?: string;

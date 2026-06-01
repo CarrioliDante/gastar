@@ -28,6 +28,7 @@ export default function GoalsScreen() {
   const [formName, setFormName] = useState('');
   const [formTarget, setFormTarget] = useState('');
   const [formCurrent, setFormCurrent] = useState('');
+  const [formCurrency, setFormCurrency] = useState<'ARS' | 'USD'>('ARS');
   const [formDeadline, setFormDeadline] = useState<string | null>(null);
   const [showDeadlineCalendar, setShowDeadlineCalendar] = useState(false);
 
@@ -47,12 +48,14 @@ export default function GoalsScreen() {
         name,
         targetAmount: target,
         currentAmount: formCurrent ? parseFloat(formCurrent) : undefined,
+        currency: formCurrency,
         deadline: formDeadline ?? undefined,
       });
       setShowForm(false);
       setFormName('');
       setFormTarget('');
       setFormCurrent('');
+      setFormCurrency('ARS');
       setFormDeadline(null);
       setShowDeadlineCalendar(false);
     } catch (e) {
@@ -179,6 +182,27 @@ export default function GoalsScreen() {
               style={{ flex: 1, fontFamily: fontMono, fontSize: 14, color: C.ink, backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: C.hairline }}
             />
           </View>
+          {/* Currency toggle */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['ARS', 'USD'] as const).map(c => (
+              <Pressable
+                key={c}
+                onPress={() => setFormCurrency(c)}
+                style={{
+                  flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+                  backgroundColor: formCurrency === c ? C.ink : C.surface,
+                  borderWidth: 1, borderColor: formCurrency === c ? C.ink : C.hairline,
+                }}
+              >
+                <Text style={{
+                  fontFamily: fontBody, fontSize: 12, fontWeight: '500',
+                  color: formCurrency === c ? C.bg : C.mute,
+                }}>
+                  {c === 'ARS' ? '$ ARS' : '$ USD'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <Pressable
             onPress={() => setShowDeadlineCalendar(v => !v)}
             style={{
@@ -289,6 +313,9 @@ export default function GoalsScreen() {
                       {fmt(g.current, { decimals: 0, compact: true })}
                       <Text style={{ fontSize: 12, color: C.faint, fontWeight: '400' }}>
                         {' '}/ {fmt(g.target, { decimals: 0, compact: true })}
+                        {g.currency && g.currency !== 'ARS' && (
+                          <Text style={{ fontSize: 9, letterSpacing: 0.6 }}>  USD</Text>
+                        )}
                       </Text>
                     </Text>
                     {g.deadline && (

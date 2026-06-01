@@ -41,6 +41,8 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 
 export interface StatsResponse {
   balance: number;
+  balanceArs?: number;
+  balanceUsd?: number;
   monthly: { income: number; spending: number; budget: number; available: number };
   previousMonth?: { spending: number; income: number };
   dailySeries: number[];
@@ -55,7 +57,7 @@ export interface TxGroup {
   isoDate: string;
   total: number;
   txs: {
-    id: string; name: string; category: string;
+    id: string; name: string; category: string; currency?: string;
     amount: number; time: string; note?: string; blockId?: string;
   }[];
 }
@@ -71,14 +73,14 @@ export interface Block {
 }
 
 export interface Installment {
-  id: string; name: string; category: string;
+  id: string; name: string; category: string; currency?: string;
   paid: number; total: number; monthly: number; nextDue: string; nextDueIso?: string;
   completedAt?: string | null;
 }
 
 export interface Recurring {
   id: string; name: string; icon?: string; amount: number;
-  category: string; freq: string; nextDue: string; nextDueIso?: string; blockId?: string;
+  category: string; currency?: string; freq: string; nextDue: string; nextDueIso?: string; blockId?: string;
   paid: boolean;
 }
 
@@ -89,6 +91,7 @@ export interface UserProfile {
 export interface Goal {
   id: string; name: string;
   target: number; current: number;
+  currency?: string;
   deadline: string | null;
 }
 
@@ -130,6 +133,17 @@ export async function fetchCategories(): Promise<{ expenses: CategoryItem[]; inc
 
 export async function saveCategories(categories: CategoryItem[]) {
   return apiFetch('/categories', { method: 'PUT', body: JSON.stringify({ categories }) });
+}
+
+export async function updateGoal(body: {
+  id: string;
+  name?: string;
+  targetAmount?: number;
+  currentAmount?: number;
+  currency?: string;
+  deadline?: string | null;
+}) {
+  return apiFetch<Goal>('/goals', { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 export async function fetchDolar(): Promise<DolarResponse> {
