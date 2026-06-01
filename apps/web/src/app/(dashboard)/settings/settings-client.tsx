@@ -180,7 +180,6 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
     ...initialCats.expenses, ...initialCats.incomes,
   ]);
   const qc = useQueryClient();
-  const [savingCats, setSavingCats] = useState(false);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [catEditLabel, setCatEditLabel] = useState("");
   const [catEditGlyph, setCatEditGlyph] = useState<GlyphKind>("Home");
@@ -240,16 +239,22 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
     setCatEditGlyph(cat.glyph as GlyphKind);
   };
 
-  const commitCatEdit = () => {
+  const commitCatEdit = async () => {
     if (!editingCat) return;
-    setCategories(prev => prev.map(c =>
+    const updated = categories.map(c =>
       c.id === editingCat ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
-    ));
+    );
+    setCategories(updated);
     setEditingCat(null);
+    await updateCustomCategories(updated);
+    qc.invalidateQueries({ queryKey: qk.categories });
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
+  const deleteCategory = async (id: string) => {
+    const updated = categories.filter(c => c.id !== id);
+    setCategories(updated);
+    await updateCustomCategories(updated);
+    qc.invalidateQueries({ queryKey: qk.categories });
   };
 
   const startNewCat = (type: "expense" | "income") => {
@@ -258,31 +263,26 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
     setNewCatGlyph("Home");
   };
 
-  const commitNewCat = () => {
+  const commitNewCat = async () => {
     if (!addingType || !newCatLabel.trim()) return;
     const id = newCatLabel.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-    setCategories(prev => [...prev, {
+    const newCat: CustomCategory = {
       id: id || `cat-${Date.now()}`,
       label: newCatLabel.trim(),
       glyph: newCatGlyph,
       type: addingType,
-    }]);
+    };
+    const updated = [...categories, newCat];
+    setCategories(updated);
     setAddingType(null);
+    await updateCustomCategories(updated);
+    qc.invalidateQueries({ queryKey: qk.categories });
   };
 
-  const resetCategories = () => {
-    // Reset confirm is implicit
+  const resetCategories = async () => {
     setCategories(DEFAULTS);
-  };
-
-  const saveCategoriesAction = async () => {
-    setSavingCats(true);
-    try {
-      await updateCustomCategories(categories);
-      qc.invalidateQueries({ queryKey: qk.categories });
-    } finally {
-      setSavingCats(false);
-    }
+    await updateCustomCategories(DEFAULTS);
+    qc.invalidateQueries({ queryKey: qk.categories });
   };
 
   return (
@@ -628,19 +628,13 @@ export function SettingsClient({ email, name, monthlyBudget: initialBudget, cust
           ))}
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: 8, paddingTop: 14, paddingBottom: 4 }}>
-            <button onClick={saveCategoriesAction} disabled={savingCats} style={{
-              padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer",
-              background: savingCats ? "var(--surface)" : "var(--ink)",
-              color: savingCats ? "var(--faint)" : "var(--inverse)",
-              fontFamily: "inherit", fontSize: 12, fontWeight: 500,
-            }}>
-              {savingCats ? "..." : "Guardar cambios"}
-            </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 14, paddingBottom: 4 }}>
+            <span className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Cambios guardados automáticamente
+            </span>
             <button onClick={resetCategories} style={{
-              padding: "7px 14px", background: "none", border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12, color: "var(--mute)",
-              borderBottom: "1px solid transparent",
+              padding: "5px 12px", background: "none", border: "1px solid var(--hairline)", borderRadius: 6,
+              cursor: "pointer", fontFamily: "inherit", fontSize: 11, color: "var(--mute)",
             }}>
               Restaurar defaults
             </button>

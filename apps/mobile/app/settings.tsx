@@ -95,8 +95,10 @@ export default function SettingsScreen() {
     setRefreshing(false);
   }, [qc]);
 
-  const deleteCategory = (id: string) => {
-    setCategories(prev => (prev ?? effectiveCategories).filter(c => c.id !== id));
+  const deleteCategory = async (id: string) => {
+    const updated = (categories ?? effectiveCategories).filter(c => c.id !== id);
+    setCategories(updated);
+    await saveCats.mutateAsync(updated);
   };
 
   const startNewCat = (type: 'expense' | 'income') => {
@@ -105,16 +107,19 @@ export default function SettingsScreen() {
     setNewCatGlyph('Home');
   };
 
-  const commitNewCat = () => {
+  const commitNewCat = async () => {
     if (!addingType || !newCatLabel.trim()) return;
     const id = newCatLabel.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    setCategories(prev => [...(prev ?? effectiveCategories), {
+    const newCat: CategoryItem = {
       id: id || `cat-${Date.now()}`,
       label: newCatLabel.trim(),
       glyph: newCatGlyph,
       type: addingType,
-    }]);
+    };
+    const updated = [...(categories ?? effectiveCategories), newCat];
+    setCategories(updated);
     setAddingType(null);
+    await saveCats.mutateAsync(updated);
   };
 
   const handleLogout = async () => {
@@ -403,11 +408,13 @@ export default function SettingsScreen() {
                   }}
                 />
                 <Pressable
-                  onPress={() => {
-                    setCategories(prev => prev!.map(c =>
+                  onPress={async () => {
+                    const updated = (categories ?? effectiveCategories).map(c =>
                       c.id === editingCatId ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
-                    ));
+                    );
+                    setCategories(updated);
                     setEditingCatId(null);
+                    await saveCats.mutateAsync(updated);
                   }}
                   style={{ padding: 6 }}
                 >
@@ -516,11 +523,13 @@ export default function SettingsScreen() {
                   }}
                 />
                 <Pressable
-                  onPress={() => {
-                    setCategories(prev => prev!.map(c =>
+                  onPress={async () => {
+                    const updated = (categories ?? effectiveCategories).map(c =>
                       c.id === editingCatId ? { ...c, label: catEditLabel || c.label, glyph: catEditGlyph } : c,
-                    ));
+                    );
+                    setCategories(updated);
                     setEditingCatId(null);
+                    await saveCats.mutateAsync(updated);
                   }}
                   style={{ padding: 6 }}
                 >
@@ -555,28 +564,21 @@ export default function SettingsScreen() {
         ))}
 
         {/* Actions */}
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 }}>
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.6, textTransform: 'uppercase', flex: 1 }}>
+            Cambios guardados automáticamente
+          </Text>
           <Pressable
-            onPress={() => saveCats.mutate(effectiveCategories)}
-            disabled={saveCats.isPending}
-            style={{
-              flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
-              backgroundColor: saveCats.isPending ? C.surfaceAlt : C.ink,
-              borderWidth: 1, borderColor: saveCats.isPending ? C.hairline : C.ink,
+            onPress={async () => {
+              setCategories(DEFAULT_CATEGORIES);
+              await saveCats.mutateAsync(DEFAULT_CATEGORIES);
             }}
-          >
-            <Text style={{ fontFamily: fontBody, fontSize: 13, fontWeight: '500', color: saveCats.isPending ? C.mute : C.bg }}>
-              {saveCats.isPending ? '...' : 'Guardar cambios'}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setCategories(DEFAULT_CATEGORIES)}
             style={{
-              flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+              paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center',
               backgroundColor: C.surface, borderWidth: 1, borderColor: C.hairline,
             }}
           >
-            <Text style={{ fontFamily: fontBody, fontSize: 13, color: C.mute }}>Restaurar defaults</Text>
+            <Text style={{ fontFamily: fontBody, fontSize: 12, color: C.mute }}>Restaurar defaults</Text>
           </Pressable>
         </View>
       </Section>
