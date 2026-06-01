@@ -41,7 +41,9 @@ export function useCreateTransaction() {
       const now = new Date();
       const opt: TransactionRow = {
         id: `opt-${Date.now()}`,
-        name, category, amount,
+        name, category,
+        currency: (fd.get("currency") as string) || "ARS",
+        amount,
         date: "Hoy",
         time: now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
         isoDate: now.toISOString().slice(0, 10),
@@ -129,6 +131,7 @@ export function useCreateInstallment() {
         id: `opt-${Date.now()}`,
         name: fd.get("name") as string,
         category: (fd.get("category") as string) || "Cuotas",
+        currency: (fd.get("currency") as string) || "ARS",
         total: totalAmount,
         paid: paidInstallments * monthlyAmount,
         remaining: totalInstallments - paidInstallments,
@@ -210,8 +213,8 @@ export function useDeleteInstallment() {
 export function useUpdateInstallment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; name: string; monthlyAmount: number; paidInstallments: number; category?: string }) =>
-      updateInstallment(vars.id, { name: vars.name, monthlyAmount: vars.monthlyAmount, paidInstallments: vars.paidInstallments, category: vars.category }),
+    mutationFn: (vars: { id: string; name: string; monthlyAmount: number; paidInstallments: number; category?: string; currency?: string }) =>
+      updateInstallment(vars.id, { name: vars.name, monthlyAmount: vars.monthlyAmount, paidInstallments: vars.paidInstallments, category: vars.category, currency: vars.currency }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["installments"] });
       const prev = snapshot<InstallmentRow[]>(qc, qk.installments);
@@ -226,6 +229,7 @@ export function useUpdateInstallment() {
             remaining: newRemaining,
             paid: vars.paidInstallments * vars.monthlyAmount,
             ...(vars.category !== undefined && { category: vars.category }),
+            ...(vars.currency !== undefined && { currency: vars.currency }),
           };
         })
       );
@@ -272,6 +276,7 @@ export function useCreateRecurring() {
         name: fd.get("name") as string,
         icon: (fd.get("icon") as string) || "CreditCard",
         amount: parseFloat(fd.get("amount") as string) || 0,
+        currency: (fd.get("currency") as string) || "ARS",
         category: fd.get("category") as string,
         frequency: frequency as RecurringRow["frequency"],
         dayOfMonth,
@@ -384,7 +389,7 @@ export function usePauseRecurring() {
 export function useUpdateRecurring() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; data: { name: string; amount: number; category: string; icon?: string; frequency: string; dayOfMonth: number | null; note: string | null } }) =>
+    mutationFn: (vars: { id: string; data: { name: string; amount: number; category: string; icon?: string; frequency: string; dayOfMonth: number | null; note: string | null; currency?: string } }) =>
       updateRecurring(vars.id, vars.data),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["recurring"] });
@@ -412,6 +417,7 @@ export function useUpdateRecurring() {
             note: vars.data.note ?? undefined,
             nextDueDateMs: nextMs,
             nextDueDate: new Date(nextMs).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+            ...(vars.data.currency !== undefined && { currency: vars.data.currency }),
           };
         })
       );
@@ -596,19 +602,45 @@ export function useDeleteGoal() {
 export function useUpdateGoal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; name: string; targetAmount: number; deadline: string | null }) =>
-      updateSavingsGoal(vars.id, { name: vars.name, targetAmount: vars.targetAmount, deadline: vars.deadline }),
+    mutationFn: (vars: {
+      id: string;
+      name: string;
+      targetAmount: number;
+      currentAmount?: number;
+      currency?: string;
+      linkedToBalance?: boolean;
+      deadline: string | null;
+    }) =>
+      updateSavingsGoal(vars.id, {
+        name: vars.name,
+        targetAmount: vars.targetAmount,
+        currentAmount: vars.currentAmount,
+        currency: vars.currency,
+        linkedToBalance: vars.linkedToBalance,
+        deadline: vars.deadline,
+      }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["goals"] });
       const prev = snapshot<GoalRow[]>(qc, qk.goals);
       qc.setQueryData<GoalRow[]>(qk.goals, (old) =>
         old?.map(g => {
           if (g.id !== vars.id) return g;
-          const remaining = Math.max(0, vars.targetAmount - g.currentAmount);
+          const current = vars.currentAmount ?? g.currentAmount;
+          const remaining = Math.max(0, vars.targetAmount - current);
           const pct = vars.targetAmount > 0
-            ? Math.min(100, Math.round((g.currentAmount / vars.targetAmount) * 100))
+            ? Math.min(100, Math.round((current / vars.targetAmount) * 100))
             : 0;
-          return { ...g, name: vars.name, targetAmount: vars.targetAmount, remaining, pct, deadlineISO: vars.deadline };
+          return {
+            ...g,
+            name: vars.name,
+            targetAmount: vars.targetAmount,
+            currentAmount: current,
+            remaining,
+            pct,
+            deadlineISO: vars.deadline,
+            ...(vars.currency !== undefined && { currency: vars.currency } as any),
+            ...(vars.linkedToBalance !== undefined && { linkedToBalance: vars.linkedToBalance }),
+          };
         })
       );
       return { prev };

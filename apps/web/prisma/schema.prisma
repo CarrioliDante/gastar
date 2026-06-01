@@ -12,6 +12,7 @@ model Transaction {
   userId        String
   name          String
   amount        Decimal
+  currency      String   @default("ARS")
   category      String
   date          DateTime @default(now())
   note          String?
@@ -51,6 +52,7 @@ model Installment {
   userId            String
   name              String
   category          String    @default("Cuotas")
+  currency          String    @default("ARS")
   totalAmount       Decimal
   monthlyAmount     Decimal
   totalInstallments Int
@@ -67,15 +69,17 @@ model Installment {
 }
 
 model SavingsGoal {
-  id            String    @id @default(cuid())
-  userId        String
-  name          String
-  targetAmount  Decimal
-  currentAmount Decimal   @default(0)
-  deadline      DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  userId          String
+  name            String
+  targetAmount    Decimal
+  currentAmount   Decimal   @default(0)
+  currency        String    @default("ARS")
+  linkedToBalance Boolean   @default(false)
+  deadline        DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([userId])
 }
@@ -99,6 +103,7 @@ model RecurringExpense {
   name        String
   icon        String    @default("CreditCard")
   amount      Decimal
+  currency    String    @default("ARS")
   category    String
   frequency   String    // "monthly" | "weekly" | "bimonthly" | "yearly"
   dayOfMonth  Int?      // día fijo de débito (1-31), solo relevante cuando frequency = "monthly"

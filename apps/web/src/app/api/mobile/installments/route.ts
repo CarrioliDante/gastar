@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     id:          inst.id,
     name:        inst.name,
     category:    inst.category,
+    currency:    inst.currency,
     paid:        inst.paidInstallments,
     total:       inst.totalInstallments,
     monthly:     Number(inst.monthlyAmount),
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as {
     name: string;
     category?: string;
+    currency?: string;
     monthlyAmount: number;
     totalInstallments: number;
     paidInstallments?: number;
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
       userId: auth.userId,
       name: body.name,
       category: body.category ?? 'Cuotas',
+      currency: body.currency === "USD" ? "USD" : "ARS",
       totalAmount: body.monthlyAmount * body.totalInstallments,
       monthlyAmount: body.monthlyAmount,
       totalInstallments: body.totalInstallments,
@@ -69,6 +72,7 @@ export async function PUT(req: NextRequest) {
     id: string;
     name?: string;
     category?: string;
+    currency?: string;
     monthlyAmount?: number;
     paidInstallments?: number;
     nextDueDate?: string;
@@ -91,6 +95,7 @@ export async function PUT(req: NextRequest) {
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.category !== undefined && { category: body.category }),
+        ...(body.currency !== undefined && { currency: body.currency }),
         ...(body.monthlyAmount !== undefined && { monthlyAmount: body.monthlyAmount }),
         ...(body.paidInstallments !== undefined && { paidInstallments: body.paidInstallments }),
         ...(body.nextDueDate !== undefined && { nextDueDate: new Date(body.nextDueDate) }),

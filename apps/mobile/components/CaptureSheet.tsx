@@ -64,6 +64,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   const [showCalendar, setShowCalendar] = useState(false);
 
   const [type, setType] = useState<'expense' | 'income'>(initialType);
+  const [currency, setCurrency] = useState<'ARS' | 'USD'>('ARS');
   const [amount, setAmount] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('comida');
@@ -126,6 +127,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
   useEffect(() => {
     if (open) {
       setType(initialType);
+      setCurrency('ARS');
       setAmount('');
       setName('');
       setDate(getTodayDate());
@@ -176,6 +178,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
       name: txName,
       amount: txAmount,
       category,
+      currency,
       blockId: isExp && block ? block : undefined,
       date,
     }, {
@@ -308,7 +311,7 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
             {/* Type toggle */}
             <View style={{
               flexDirection: 'row', backgroundColor: C.surface,
-              borderRadius: 14, padding: 4, marginBottom: 16,
+              borderRadius: 14, padding: 4, marginBottom: 10,
               borderWidth: 1, borderColor: C.hairline,
             }}>
               <View style={{
@@ -328,10 +331,34 @@ export function CaptureSheet({ open, initialType = 'expense', onClose, onSave }:
               ))}
             </View>
 
+            {/* Currency toggle */}
+            <View style={{
+              flexDirection: 'row', backgroundColor: C.surface,
+              borderRadius: 14, padding: 4, marginBottom: 16,
+              borderWidth: 1, borderColor: C.hairline,
+            }}>
+              <View style={{
+                position: 'absolute',
+                top: 4, bottom: 4,
+                left: currency === 'ARS' ? 4 : '50%',
+                width: '50%',
+                marginLeft: currency === 'ARS' ? 0 : -4,
+                backgroundColor: C.ink,
+                borderRadius: 10,
+              }} />
+              {(['ARS', 'USD'] as const).map(c => (
+                <Pressable key={c} onPress={() => setCurrency(c)} style={{ flex: 1, padding: 10, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontFamily: fontMono, fontSize: 11, fontWeight: '600', letterSpacing: 1, color: currency === c ? C.bg : C.ink }}>
+                    {c}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
             {/* Amount input */}
             <Pressable onPress={() => amountRef.current?.focus()} style={{ alignItems: 'center', paddingVertical: 6, marginBottom: 12 }}>
               <Text style={{ fontFamily: fontMono, fontSize: 10, color: C.faint, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 }}>
-                {currencyCode}
+                {currency}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                 <Text style={{ fontFamily: fontDisplay, fontSize: 38, color: C.faint, fontWeight: '400', letterSpacing: -1 }}>

@@ -33,6 +33,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
   const [blockId, setBlockId]   = useState<string | null>(null);
   const [saved, setSaved]       = useState(false);
   const [inputW, setInputW]     = useState(260);
+  const [txCurrency, setTxCurrency] = useState<"ARS"|"USD">("ARS");
   const { symbol, format, currency } = useCurrency();
   const createTx                = useCreateTransaction();
   const { data: blocks }        = useBlocks();
@@ -53,6 +54,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
       setSaved(false); setAmount(""); setLabel("");
       setBlockId(initialBlockId ?? null);
       setType(initialType);
+      setTxCurrency("ARS");
       const cats = buildCatList(customCategories, initialType);
       setCategory(cats[0] ?? "Otros");
       setCatSource("default");
@@ -94,6 +96,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
     fd.set("name", name);
     fd.set("amount", String(finalAmount));
     fd.set("category", category);
+    fd.set("currency", txCurrency);
     if (label.trim()) fd.set("note", label.trim());
     if (blockId) fd.set("blockId", blockId);
 
@@ -165,7 +168,7 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
                 {isExp ? "Anotado" : "Recibido"}
               </div>
               <div className="mono" style={{ fontSize: 10, color: "var(--mute)", letterSpacing: "0.14em" }}>
-                {isExp ? "−" : "+"} {format(num.numericValue)} · {category}
+                {isExp ? "−" : "+"} {txCurrency === "USD" ? `us$ ${num.numericValue.toFixed(2)}` : format(num.numericValue)} · {category}
               </div>
             </motion.div>
           ) : (
@@ -226,8 +229,23 @@ export function QuickExpense({ open, onClose, initialType = "expense", initialBl
 
               {/* Amount */}
               <div style={{ padding: "22px 22px 14px", textAlign: "center" }}>
-                <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 8 }}>
-                  {symbol}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+                  <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                    {symbol}
+                  </div>
+                  <div style={{ display: "flex", gap: 3 }}>
+                    {(["ARS", "USD"] as const).map(c => (
+                      <button key={c} type="button" onClick={() => setTxCurrency(c)} style={{
+                        padding: "2px 8px", borderRadius: 5,
+                        border: `1px solid ${txCurrency === c ? "transparent" : "var(--hairline)"}`,
+                        background: txCurrency === c ? "var(--ink)" : "transparent",
+                        color: txCurrency === c ? "var(--inverse)" : "var(--faint)",
+                        fontSize: 9, fontFamily: "inherit", cursor: "pointer",
+                        letterSpacing: "0.12em", textTransform: "uppercase" as const,
+                        transition: "all 140ms ease",
+                      }}>{c}</button>
+                    ))}
+                  </div>
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4, position: "relative" }}>
                   <motion.span

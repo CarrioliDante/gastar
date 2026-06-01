@@ -123,6 +123,7 @@ export default function RecurringScreen() {
   const [formIcon, setFormIcon] = useState<GlyphKind>('CreditCard');
   const [formFreq, setFormFreq] = useState('monthly');
   const [formDay, setFormDay] = useState<number | null>(null);
+  const [formCurrency, setFormCurrency] = useState<'ARS' | 'USD'>('ARS');
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -164,6 +165,7 @@ export default function RecurringScreen() {
         icon: formIcon,
         amount,
         category: formCategory.trim() || 'Otros',
+        currency: formCurrency,
         frequency: formFreq,
         dayOfMonth: formDay ?? undefined,
       });
@@ -174,6 +176,7 @@ export default function RecurringScreen() {
       setFormIcon('CreditCard');
       setFormFreq('monthly');
       setFormDay(null);
+      setFormCurrency('ARS');
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }
@@ -352,6 +355,27 @@ export default function RecurringScreen() {
             </View>
           )}
 
+          {/* Currency selector */}
+          <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.mute, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>Moneda</Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {(['ARS', 'USD'] as const).map(c => (
+              <Pressable
+                key={c}
+                onPress={() => setFormCurrency(c)}
+                style={{
+                  flex: 1, paddingVertical: 8, borderRadius: 8,
+                  backgroundColor: formCurrency === c ? C.ink : C.bg,
+                  borderWidth: 1, borderColor: formCurrency === c ? C.ink : C.hairline,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontFamily: fontMono, fontSize: 9, color: formCurrency === c ? C.inverse : C.mute, letterSpacing: 0.5 }}>
+                  {c}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <Pressable
             onPress={handleCreate}
             disabled={saving}
@@ -439,9 +463,16 @@ export default function RecurringScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                       <BlockGlyph kind={r.glyph} size={18} color={C.ink} />
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink }}>
-                          {r.label}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink }}>
+                            {r.label}
+                          </Text>
+                          {r.currency === 'USD' && (
+                            <Text style={{ fontFamily: fontMono, fontSize: 8, color: C.faint, letterSpacing: 1, paddingHorizontal: 4, paddingVertical: 1, borderWidth: 1, borderColor: C.hairline, borderRadius: 3 }}>
+                              USD
+                            </Text>
+                          )}
+                        </View>
                         <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, marginTop: 3 }}>
                           {r.paid ? (
                             <Text style={{ color: C.ink }}>Pagado</Text>

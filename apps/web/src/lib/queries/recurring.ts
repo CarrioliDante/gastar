@@ -14,6 +14,7 @@ export const getRecurringExpenses = cache(async (userId: string) => {
     id: r.id, name: r.name,
     icon: r.icon,
     amount: Number(r.amount),
+    currency: r.currency,
     category: r.category,
     frequency: r.frequency as "monthly" | "weekly" | "bimonthly" | "yearly",
     dayOfMonth: r.dayOfMonth ?? null,
