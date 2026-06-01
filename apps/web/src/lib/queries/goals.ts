@@ -12,6 +12,8 @@ export const getSavingsGoals = cache(async (userId: string) => {
     id: g.id, name: g.name,
     targetAmount: Number(g.targetAmount),
     currentAmount: Number(g.currentAmount),
+    currency: g.currency,
+    linkedToBalance: g.linkedToBalance,
     deadline: g.deadline?.toLocaleDateString("es-AR", { month: "short", year: "numeric" }) ?? null,
     deadlineISO: g.deadline ? g.deadline.toISOString().slice(0, 10) : null,
     pct: Number(g.targetAmount) > 0
@@ -31,6 +33,8 @@ export const getCompletedGoals = cache(async (userId: string) => {
     id: g.id, name: g.name,
     targetAmount: Number(g.targetAmount),
     currentAmount: Number(g.currentAmount),
+    currency: g.currency,
+    linkedToBalance: g.linkedToBalance,
     deadline: g.deadline?.toLocaleDateString("es-AR", { month: "short", year: "numeric" }) ?? null,
     deadlineISO: g.deadline ? g.deadline.toISOString().slice(0, 10) : null,
     pct: 100,

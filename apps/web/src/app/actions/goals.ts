@@ -10,7 +10,9 @@ export async function createGoal(formData: FormData) {
   const name          = formData.get("name") as string;
   const targetAmount  = parseNumeric(formData.get("targetAmount"));
   const currentAmount = parseNumeric(formData.get("currentAmount")) || 0;
-  const deadlineStr   = formData.get("deadline") as string;
+  const currency          = (formData.get("currency") as string) === "USD" ? "USD" : "ARS";
+  const linkedToBalance   = formData.get("linkedToBalance") === "true" && currency === "USD";
+  const deadlineStr       = formData.get("deadline") as string;
 
   if (!name || isNaN(targetAmount)) return;
 
@@ -19,6 +21,7 @@ export async function createGoal(formData: FormData) {
       data: {
         userId: user.id, name, targetAmount,
         currentAmount: isNaN(currentAmount) ? 0 : currentAmount,
+        currency, linkedToBalance,
         deadline: deadlineStr ? new Date(deadlineStr) : null,
       },
     });
@@ -31,7 +34,14 @@ export async function createGoal(formData: FormData) {
 
 export async function updateSavingsGoal(
   id: string,
-  data: { name: string; targetAmount: number; deadline: string | null },
+  data: {
+    name: string;
+    targetAmount: number;
+    currentAmount?: number;
+    currency?: string;
+    linkedToBalance?: boolean;
+    deadline: string | null;
+  },
 ) {
   const user = await requireUser();
   const goal = await db.savingsGoal.findFirst({ where: { id, userId: user.id }, select: { id: true } });
@@ -45,6 +55,9 @@ export async function updateSavingsGoal(
       data: {
         name: data.name.trim(),
         targetAmount: data.targetAmount,
+        ...(data.currentAmount !== undefined && { currentAmount: data.currentAmount }),
+        ...(data.currency !== undefined && { currency: data.currency }),
+        ...(data.linkedToBalance !== undefined && { linkedToBalance: data.linkedToBalance }),
         deadline: data.deadline ? new Date(data.deadline) : null,
       },
     });

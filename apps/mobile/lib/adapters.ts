@@ -17,6 +17,7 @@ export interface TransactionUI {
   amount: number;
   glyph: GlyphKind;
   category: string;
+  currency?: string;
   installment?: string;
   blockId?: string;
 }
@@ -35,6 +36,7 @@ export interface InstallmentUI {
   id: string;
   label: string;
   category: string;
+  currency?: string;
   monthly: number;
   paid: number;
   total: number;
@@ -51,6 +53,7 @@ export interface RecurringUI {
   nextDue: string;
   glyph: GlyphKind;
   category: string;
+  currency?: string;
   paid: boolean;
 }
 
@@ -67,6 +70,7 @@ export interface GoalUI {
   target: number;
   current: number;
   pct: number;
+  currency?: string;
   deadline: string | null;
 }
 
@@ -156,6 +160,7 @@ export function adaptInstallment(i: ApiInstallment): InstallmentUI {
     id:          i.id,
     label:       i.name,
     category:    i.category,
+    currency:    i.currency,
     monthly:     i.monthly,
     paid:        i.paid,
     total:       i.total,
@@ -175,6 +180,7 @@ export function adaptRecurring(r: ApiRecurring): RecurringUI {
     nextDue:  r.nextDue,
     glyph:    r.icon ? (r.icon as GlyphKind) : deriveGlyph(r.category),
     category: r.category,
+    currency: r.currency,
     paid:     r.paid,
   };
 }
@@ -191,6 +197,7 @@ export function adaptTxGroup(g: TxGroup): TxGroupUI {
       amount:      t.amount,
       glyph:       deriveGlyph(t.category),
       category:    t.category,
+      currency:    t.currency,
       installment: t.note?.includes('cuota') || t.note?.includes('Cuota') ? t.note : undefined,
       blockId:     t.blockId,
     })),
@@ -213,6 +220,7 @@ export function adaptGoal(g: ApiGoal): GoalUI {
     target:   g.target,
     current:  g.current,
     pct:      g.target > 0 ? Math.min(1, g.current / g.target) : 0,
+    currency: g.currency,
     deadline: g.deadline,
   };
 }

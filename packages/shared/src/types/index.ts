@@ -2,6 +2,7 @@ export interface Transaction {
   id: string;
   name: string;
   category: string;
+  currency?: string;
   amount: number;
   date: string;
   time: string;
@@ -12,6 +13,7 @@ export interface Transaction {
 export interface Installment {
   id: string;
   name: string;
+  currency?: string;
   total: number;
   paid: number;
   remaining: number;
@@ -58,6 +60,7 @@ export interface MonthlyStats {
 export interface SavingsGoal {
   id: string;
   name: string;
+  currency?: string;
   targetAmount: number;
   currentAmount: number;
   deadline?: string;
