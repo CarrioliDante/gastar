@@ -2,6 +2,7 @@ import { cache } from "react";
 import "server-only";
 import { db } from "@/lib/db";
 import type { SpendingPoint, Category, BalanceData, MonthlyStats, TodayStats, WeekStats, MonthDay, PreviousMonth } from "@gastar/shared";
+import { getDollarBalance } from "./dolar";
 
 export const getDashboardStats = cache(async (userId: string) => {
   const now = new Date();
@@ -14,19 +15,23 @@ export const getDashboardStats = cache(async (userId: string) => {
   const monday = new Date(startOfToday);
   monday.setDate(monday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
 
-  const [balanceAgg, monthlyTransactions, trendTransactions, allTransactions24mo, budgetSetting, todayTransactions, weekTransactions] = await Promise.all([
-    db.transaction.aggregate({ where: { userId }, _sum: { amount: true } }),
+  // Only ARS transactions contribute to stats (income, spending, categories, trends).
+  // USD transactions only contribute to balanceUsd.
+  const [balanceArsAgg, balanceUsdAgg, usdBalance, monthlyTransactions, trendTransactions, allTransactions24mo, budgetSetting, todayTransactions, weekTransactions] = await Promise.all([
+    db.transaction.aggregate({ where: { userId, currency: "ARS" }, _sum: { amount: true } }),
+    db.transaction.aggregate({ where: { userId, currency: "USD" }, _sum: { amount: true } }),
+    getDollarBalance(userId),
     db.transaction.findMany({
-      where: { userId, date: { gte: startOfMonth } },
+      where: { userId, currency: "ARS", date: { gte: startOfMonth } },
       select: { amount: true, category: true, date: true },
     }),
     db.transaction.findMany({
-      where: { userId, date: { gte: sixMonthsAgo } },
+      where: { userId, currency: "ARS", date: { gte: sixMonthsAgo } },
       select: { amount: true, date: true },
       orderBy: { date: "asc" },
     }),
     db.transaction.findMany({
-      where: { userId, date: { gte: twentyFourMonthsAgo } },
+      where: { userId, currency: "ARS", date: { gte: twentyFourMonthsAgo } },
       select: { amount: true, date: true },
       orderBy: { date: "asc" },
     }),
@@ -35,18 +40,20 @@ export const getDashboardStats = cache(async (userId: string) => {
       select: { value: true },
     }),
     db.transaction.findMany({
-      where: { userId, date: { gte: startOfToday }, amount: { lt: 0 } },
+      where: { userId, currency: "ARS", date: { gte: startOfToday }, amount: { lt: 0 } },
       select: { amount: true, date: true },
     }),
     db.transaction.findMany({
-      where: { userId, date: { gte: monday }, amount: { lt: 0 } },
+      where: { userId, currency: "ARS", date: { gte: monday }, amount: { lt: 0 } },
       select: { amount: true, date: true },
     }),
   ]);
 
   const monthlyBudget = budgetSetting ? parseInt(budgetSetting.value, 10) || 5000 : 5000;
 
-  const totalBalance = Number(balanceAgg._sum.amount ?? 0);
+  const balanceArs = Number(balanceArsAgg._sum.amount ?? 0);
+  const balanceUsdTx = Number(balanceUsdAgg._sum.amount ?? 0);
+  const balanceUsd = balanceUsdTx + usdBalance;
   const monthIncome   = monthlyTransactions.filter(t => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
   const monthSpending = monthlyTransactions.filter(t => Number(t.amount) < 0).reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
@@ -160,7 +167,10 @@ export const getDashboardStats = cache(async (userId: string) => {
   };
 
   return {
-    balance: { total: totalBalance, currency: "USD", change: 0 } as BalanceData,
+    balance: { total: balanceArs, currency: "ARS", change: 0 } as BalanceData,
+    balanceArs,
+    balanceUsd,
+    usdBalance,
     monthly: {
       income:      Math.round(monthIncome),
       spending:    Math.round(monthSpending),

@@ -10,6 +10,7 @@ export async function createTransaction(formData: FormData) {
 
   const name     = (formData.get("name") as string) || "Expense";
   const amount   = parseNumeric(formData.get("amount"));
+  const currency = (formData.get("currency") as string) === "USD" ? "USD" : "ARS";
   const category = formData.get("category") as string;
   const note     = (formData.get("note") as string) || null;
   const blockId  = (formData.get("blockId") as string) || null;
@@ -25,7 +26,7 @@ export async function createTransaction(formData: FormData) {
 
   try {
     await db.transaction.create({
-      data: { userId: user.id, name, amount, category, note, blockId: resolvedBlockId },
+      data: { userId: user.id, name, amount, currency, category, note, blockId: resolvedBlockId },
     });
     revalidateTag(`user:${user.id}`, "default");
   } catch (err) {

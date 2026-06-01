@@ -9,6 +9,7 @@ export async function createInstallment(formData: FormData) {
   const user = await requireUser();
   const name              = formData.get("name") as string;
   const category          = (formData.get("category") as string | null) || "Cuotas";
+  const currency          = (formData.get("currency") as string) === "USD" ? "USD" : "ARS";
   const totalAmount       = parseNumeric(formData.get("totalAmount"));
   const monthlyAmount     = parseNumeric(formData.get("monthlyAmount"));
   const totalInstallments = parseInt(formData.get("totalInstallments") as string);
@@ -40,7 +41,7 @@ export async function createInstallment(formData: FormData) {
   try {
     await db.installment.create({
       data: {
-        userId: user.id, name, category,
+        userId: user.id, name, category, currency,
         totalAmount, monthlyAmount, totalInstallments,
         paidInstallments,
         nextDueDate,
@@ -56,7 +57,7 @@ export async function createInstallment(formData: FormData) {
 
 export async function updateInstallment(
   id: string,
-  data: { name: string; monthlyAmount: number; paidInstallments: number; category?: string },
+  data: { name: string; monthlyAmount: number; paidInstallments: number; category?: string; currency?: string },
 ) {
   const user = await requireUser();
   const inst = await db.installment.findFirst({
@@ -78,6 +79,7 @@ export async function updateInstallment(
           monthlyAmount: data.monthlyAmount,
           paidInstallments: paid,
           ...(data.category !== undefined && { category: data.category }),
+          ...(data.currency !== undefined && { currency: data.currency }),
         },
       }),
     ];

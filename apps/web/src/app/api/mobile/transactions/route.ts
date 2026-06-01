@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   // Group by ISO date
   const groups: {
     date: string; isoDate: string; total: number;
-    txs: { id: string; name: string; category: string; amount: number; time: string; note?: string; blockId?: string }[];
+    txs: { id: string; name: string; category: string; currency: string; amount: number; time: string; note?: string; blockId?: string }[];
   }[] = [];
   const seen = new Map<string, (typeof groups)[0]>();
 
@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
       id:       row.id,
       name:     row.name,
       category: row.category,
+      currency: row.currency,
       amount,
       time:     row.date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }),
       note:     row.note ?? undefined,
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const body = await req.json() as {
-    name: string; amount: number; category: string;
+    name: string; amount: number; category: string; currency?: string;
     blockId?: string; note?: string; date?: string;
   };
 
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
       name:     body.name,
       amount:   body.amount,
       category: body.category,
+      currency: body.currency === "USD" ? "USD" : "ARS",
       blockId,
       note:     body.note ?? null,
       date:     body.date ? new Date(body.date) : new Date(),

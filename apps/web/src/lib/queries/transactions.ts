@@ -2,11 +2,12 @@ import { cache } from "react";
 import "server-only";
 import { db } from "@/lib/db";
 
-function mapTx(t: { id: string; name: string; category: string; amount: object; date: Date; note: string | null; blockId: string | null }) {
+function mapTx(t: { id: string; name: string; category: string; currency: string; amount: object; date: Date; note: string | null; blockId: string | null }) {
   return {
     id: t.id,
     name: t.name,
     category: t.category,
+    currency: t.currency,
     amount: Number(t.amount),
     date: formatRelativeDate(t.date),
     isoDate: t.date.toISOString().slice(0, 10),

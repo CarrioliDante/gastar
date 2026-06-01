@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   // pre24moTx: aggregate of transactions older than the 24-month window (typically zero rows for new users)
   // netWorthTx: all transactions in the last 24 months (already needed for net-worth chart)
   // balance = pre24mo sum + sum(netWorthTx) — avoids a full-table aggregate with no date filter
-  const [pre24moTx, monthTx, netWorthTx, budgetSetting] = await Promise.all([
+  const [pre24moTx, monthTx, netWorthTx, budgetSetting, balanceArsAgg, balanceUsdAgg] = await Promise.all([
     db.transaction.aggregate({
       where: { userId, date: { lt: twentyFourAgo } },
       _sum: { amount: true },
@@ -33,11 +33,15 @@ export async function GET(req: NextRequest) {
       where: { userId_key: { userId, key: 'monthlyBudget' } },
       select: { value: true },
     }),
+    db.transaction.aggregate({ where: { userId, currency: 'ARS' }, _sum: { amount: true } }),
+    db.transaction.aggregate({ where: { userId, currency: 'USD' }, _sum: { amount: true } }),
   ]);
 
   const monthlyBudget = budgetSetting ? parseInt(budgetSetting.value, 10) || 0 : 0;
   const recentTotal   = netWorthTx.reduce((s, t) => s + Number(t.amount), 0);
   const balance       = Number(pre24moTx._sum.amount ?? 0) + recentTotal;
+  const balanceArs    = Number(balanceArsAgg._sum.amount ?? 0);
+  const balanceUsd    = Number(balanceUsdAgg._sum.amount ?? 0);
   const monthIncome   = monthTx.filter(t => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
   const monthSpend    = monthTx.filter(t => Number(t.amount) < 0).reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
 
@@ -141,6 +145,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     balance,
+    balanceArs,
+    balanceUsd,
     monthly: {
       income:      Math.round(monthIncome),
       spending:    Math.round(monthSpend),

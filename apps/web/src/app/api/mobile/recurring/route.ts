@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       icon:     r.icon,
       amount:   Number(r.amount),
       category: r.category,
+      currency: r.currency,
       freq:     FREQ_ES[r.frequency] ?? r.frequency,
       nextDue:     r.nextDueDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
       nextDueIso:  r.nextDueDate.toISOString().slice(0, 10),
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
     icon?: string;
     amount: number;
     category: string;
+    currency?: string;
     frequency: string;
     dayOfMonth?: number;
     blockId?: string;
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest) {
       icon: body.icon ?? 'CreditCard',
       amount: body.amount,
       category: body.category,
+      currency: body.currency === "USD" ? "USD" : "ARS",
       frequency: body.frequency,
       dayOfMonth: body.dayOfMonth ?? null,
       blockId: body.blockId ?? null,

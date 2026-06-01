@@ -376,7 +376,7 @@ export function DashboardShell({
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <Eyebrow>Balance total</Eyebrow>
-              {((usdBalance ?? 0) > 0) && (
+              {((stats?.balanceUsd ?? usdBalance ?? 0) > 0) && (
                 <button
                   onClick={() => setShowUsd(s => !s)}
                   className="mono"
@@ -395,11 +395,12 @@ export function DashboardShell({
               )}
             </div>
             <div style={{ marginTop: 20 }}>
-              {showUsd && (usdBalance ?? 0) > 0 ? (
+              {showUsd && (stats?.balanceUsd ?? usdBalance ?? 0) > 0 ? (
                 <span className="display tnum" style={{
                   fontSize: 96, fontWeight: 500, letterSpacing: "-0.05em", lineHeight: 0.92, color: "var(--ink)",
                 }}>
-                  <AnimatedNumber value={usdBalance ?? 0} decimals={2} />
+                  <span className="mono" style={{ fontSize: 32, letterSpacing: "0.02em", verticalAlign: "baseline", marginRight: 4, opacity: 0.45 }}>us$</span>
+                  <AnimatedNumber value={stats?.balanceUsd ?? usdBalance ?? 0} decimals={2} />
                 </span>
               ) : (
                 <span className="display tnum" style={{
@@ -411,15 +412,15 @@ export function DashboardShell({
             </div>
             {dolarRate && dolarRate.blue.venta > 0 && (
               <div className="mono" style={{ fontSize: 12, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 12, display: "flex", gap: 16 }}>
-                {showUsd && (usdBalance ?? 0) > 0 ? (
+                {showUsd && (stats?.balanceUsd ?? usdBalance ?? 0) > 0 ? (
                   <>
                     <span>
-                      ≈ $ {Math.round((usdBalance ?? 0) * dolarRate.blue.venta).toLocaleString("es-AR")}
+                      ≈ $ {Math.round((stats?.balanceUsd ?? usdBalance ?? 0) * dolarRate.blue.venta).toLocaleString("es-AR")}
                       <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.45 }}>ARS (Blue)</span>
                     </span>
                     {dolarRate.oficial.venta > 0 && (
                       <span>
-                        ≈ $ {Math.round((usdBalance ?? 0) * dolarRate.oficial.venta).toLocaleString("es-AR")}
+                        ≈ $ {Math.round((stats?.balanceUsd ?? usdBalance ?? 0) * dolarRate.oficial.venta).toLocaleString("es-AR")}
                         <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.45 }}>ARS (Oficial)</span>
                       </span>
                     )}

@@ -70,6 +70,7 @@ export default function InstallmentsScreen() {
   const [formStart, setFormStart] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [formAmountMode, setFormAmountMode] = useState<'cuota' | 'total'>('cuota');
+  const [formCurrency, setFormCurrency] = useState<'ARS' | 'USD'>('ARS');
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -113,6 +114,7 @@ export default function InstallmentsScreen() {
       await createInstallment.mutateAsync({
         name,
         category: formCategory,
+        currency: formCurrency,
         monthlyAmount: monthly,
         totalInstallments: count,
         startedAt: formStart || undefined,
@@ -125,6 +127,7 @@ export default function InstallmentsScreen() {
       setFormStart(null);
       setShowCalendar(false);
       setFormAmountMode('cuota');
+      setFormCurrency('ARS');
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }
@@ -296,6 +299,27 @@ export default function InstallmentsScreen() {
               {amountHint}
             </Text>
           )}
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {(['ARS', 'USD'] as const).map(c => {
+              const active = formCurrency === c;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => setFormCurrency(c)}
+                  style={{
+                    flex: 1, paddingVertical: 7, borderRadius: 8,
+                    backgroundColor: active ? C.ink : C.bg,
+                    borderWidth: 1, borderColor: active ? C.ink : C.hairline,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontFamily: fontMono, fontSize: 9, color: active ? C.inverse : C.mute, letterSpacing: 0.5 }}>
+                    {c}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {categoryLabels.map(c => {
               const active = formCategory === c;
@@ -393,9 +417,16 @@ export default function InstallmentsScreen() {
                         style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', color: C.ink, backgroundColor: C.bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: C.hairline }}
                       />
                     ) : (
-                      <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink }}>
-                        {it.label}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontFamily: fontBody, fontSize: 15, fontWeight: '500', letterSpacing: -0.3, color: C.ink }}>
+                          {it.label}
+                        </Text>
+                        {it.currency === 'USD' && (
+                          <Text style={{ fontFamily: fontMono, fontSize: 8, color: C.faint, letterSpacing: 1, paddingHorizontal: 4, paddingVertical: 1, borderWidth: 1, borderColor: C.hairline, borderRadius: 3 }}>
+                            USD
+                          </Text>
+                        )}
+                      </View>
                     )}
                     <Text style={{ fontFamily: fontMono, fontSize: 9, color: C.faint, letterSpacing: 0.5, marginTop: 3 }}>
                       {it.paid}/{it.total} pagadas · próx {it.nextDue}

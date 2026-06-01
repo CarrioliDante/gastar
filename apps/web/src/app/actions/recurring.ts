@@ -25,6 +25,7 @@ export async function createRecurring(formData: FormData) {
   const name       = formData.get("name") as string;
   const icon       = (formData.get("icon") as string) || "CreditCard";
   const amount     = parseNumeric(formData.get("amount"));
+  const currency   = (formData.get("currency") as string) === "USD" ? "USD" : "ARS";
   const category   = formData.get("category") as string;
   const frequency  = (formData.get("frequency") as string) || "monthly";
   const note       = (formData.get("note") as string) || null;
@@ -43,7 +44,7 @@ export async function createRecurring(formData: FormData) {
 
   try {
     await db.recurringExpense.create({
-      data: { userId: user.id, name, icon, amount, category, frequency, dayOfMonth, nextDueDate, note },
+      data: { userId: user.id, name, icon, amount, currency, category, frequency, dayOfMonth, nextDueDate, note },
     });
     revalidateTag(`user:${user.id}`, "default");
   } catch (err) {
@@ -105,7 +106,7 @@ export async function toggleRecurringPause(id: string) {
 
 export async function updateRecurring(id: string, data: {
   name: string; amount: number; category: string; icon?: string;
-  frequency: string; dayOfMonth: number | null; note: string | null;
+  frequency: string; dayOfMonth: number | null; note: string | null; currency?: string;
 }) {
   const user = await requireUser();
   const existing = await db.recurringExpense.findFirst({ where: { id, userId: user.id } });
@@ -132,6 +133,7 @@ export async function updateRecurring(id: string, data: {
         dayOfMonth: data.dayOfMonth,
         note: data.note,
         nextDueDate,
+        ...(data.currency !== undefined && { currency: data.currency }),
       },
     });
     revalidateTag(`user:${user.id}`, "default");

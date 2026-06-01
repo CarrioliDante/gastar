@@ -12,6 +12,7 @@ export const getActiveInstallments = cache(async (userId: string) => {
     id: inst.id,
     name: inst.name,
     category: inst.category,
+    currency: inst.currency,
     total: Number(inst.totalAmount),
     paid: inst.paidInstallments * Number(inst.monthlyAmount),
     remaining: inst.totalInstallments - inst.paidInstallments,

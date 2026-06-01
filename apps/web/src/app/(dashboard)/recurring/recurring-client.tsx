@@ -61,6 +61,7 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
   const [freq, setFreq] = useState("monthly");
   const [category, setCategory] = useState(categories[0] ?? DEFAULT_CATS[0]);
   const [icon, setIcon] = useState<GlyphKind>("CreditCard");
+  const [currency, setCurrency] = useState<"ARS"|"USD">("ARS");
   const createRec = useCreateRecurring();
 
   useEffect(() => {
@@ -70,6 +71,7 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    fd.set("currency", currency);
     createRec.mutate(fd, { onSuccess: () => onDone() });
   };
 
@@ -136,18 +138,36 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
         </div>
       </div>
 
-      <div>
-        <div className="mono" style={labelStyle}>Categoría</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {categories.map(c => (
-            <button key={c} type="button" onClick={() => setCategory(c)} style={{
-              padding: "4px 10px", borderRadius: 6,
-              border: "1px solid var(--hairline)",
-              background: category === c ? "var(--ink)" : "transparent",
-              color: category === c ? "var(--inverse)" : "var(--mute)",
-              fontSize: 11, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.04em",
-            }}>{c}</button>
-          ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div>
+          <div className="mono" style={labelStyle}>Moneda</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["ARS", "USD"] as const).map(c => (
+              <button key={c} type="button" onClick={() => setCurrency(c)} style={{
+                padding: "4px 10px", borderRadius: 6,
+                border: `1px solid ${currency === c ? "transparent" : "var(--hairline)"}`,
+                background: currency === c ? "var(--ink)" : "transparent",
+                color: currency === c ? "var(--inverse)" : "var(--mute)",
+                fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+                letterSpacing: "0.08em", textTransform: "uppercase" as const,
+                transition: "all 140ms ease",
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="mono" style={labelStyle}>Categoría</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {categories.map(c => (
+              <button key={c} type="button" onClick={() => setCategory(c)} style={{
+                padding: "4px 10px", borderRadius: 6,
+                border: "1px solid var(--hairline)",
+                background: category === c ? "var(--ink)" : "transparent",
+                color: category === c ? "var(--inverse)" : "var(--mute)",
+                fontSize: 11, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.04em",
+              }}>{c}</button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -372,7 +392,12 @@ function RecurringRowItem({ item, categories }: { item: RecurringRow; categories
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>{item.name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>{item.name}</div>
+                {item.currency === "USD" && (
+                  <span className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.12em", padding: "1px 5px", border: "1px solid var(--hairline)", borderRadius: 4 }}>USD</span>
+                )}
+              </div>
               <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em", marginTop: 3 }}>
                 {item.category} ·{" "}
                 {showPaid ? (

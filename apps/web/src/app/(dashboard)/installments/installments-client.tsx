@@ -36,6 +36,7 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
   const [nextDueDate, setNextDueDate] = useState("");
   const [mode, setMode] = useState<'total' | 'cuota'>('total');
   const [category, setCategory] = useState(categories[0] ?? DEFAULT_INST_CATS[0]);
+  const [currency, setCurrency] = useState<"ARS"|"USD">("ARS");
   const { format } = useCurrency();
   const createInst = useCreateInstallment();
 
@@ -54,6 +55,7 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
     if (mode === 'cuota') fd.set("totalAmount", String(inputVal * totalN));
     fd.set("paidInstallments", String(paidN));
     fd.set("category", category);
+    fd.set("currency", currency);
 
     createInst.mutate(fd, { onSuccess: () => onDone() });
   };
@@ -132,19 +134,37 @@ function AddForm({ onDone, categories }: { onDone: () => void; categories: strin
         </div>
       </div>
 
-      <div>
-        <div className="mono" style={labelStyle}>Categoría</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {categories.map(c => (
-            <button key={c} type="button" onClick={() => setCategory(c)} style={{
-              padding: "4px 10px", borderRadius: 6,
-              border: "1px solid var(--hairline)",
-              background: category === c ? "var(--ink)" : "transparent",
-              color: category === c ? "var(--inverse)" : "var(--mute)",
-              fontSize: 11, fontFamily: "inherit", cursor: "pointer",
-              letterSpacing: "0.04em",
-            }}>{c}</button>
-          ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div>
+          <div className="mono" style={labelStyle}>Moneda</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["ARS", "USD"] as const).map(c => (
+              <button key={c} type="button" onClick={() => setCurrency(c)} style={{
+                padding: "4px 10px", borderRadius: 6,
+                border: `1px solid ${currency === c ? "transparent" : "var(--hairline)"}`,
+                background: currency === c ? "var(--ink)" : "transparent",
+                color: currency === c ? "var(--inverse)" : "var(--mute)",
+                fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+                letterSpacing: "0.08em", textTransform: "uppercase" as const,
+                transition: "all 140ms ease",
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="mono" style={labelStyle}>Categoría</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {categories.map(c => (
+              <button key={c} type="button" onClick={() => setCategory(c)} style={{
+                padding: "4px 10px", borderRadius: 6,
+                border: "1px solid var(--hairline)",
+                background: category === c ? "var(--ink)" : "transparent",
+                color: category === c ? "var(--inverse)" : "var(--mute)",
+                fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+                letterSpacing: "0.04em",
+              }}>{c}</button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -214,9 +234,9 @@ function InstRowItem({ item, categories }: { item: InstRow; categories: string[]
             item={item}
             paidCount={paidCount}
             categories={categories}
-            onSave={(name, monthlyAmount, paidInstallments, category) => {
+            onSave={(name, monthlyAmount, paidInstallments, category, currency) => {
               upd.mutate(
-                { id: item.id, name, monthlyAmount, paidInstallments, category },
+                { id: item.id, name, monthlyAmount, paidInstallments, category, currency },
                 { onSuccess: () => setEditing(false) },
               );
             }}
@@ -241,8 +261,13 @@ function InstRowItem({ item, categories }: { item: InstRow; categories: string[]
             }}>
               {/* Info */}
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em", marginBottom: 4 }}>
-                  {item.name}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.005em" }}>
+                    {item.name}
+                  </div>
+                  {item.currency === "USD" && (
+                    <span className="mono" style={{ fontSize: 8, color: "var(--faint)", letterSpacing: "0.12em", padding: "1px 5px", border: "1px solid var(--hairline)", borderRadius: 4 }}>USD</span>
+                  )}
                 </div>
                 <div className="mono" style={{ fontSize: 9, color: "var(--faint)", letterSpacing: "0.06em" }}>
                   {paidCount}/{item.total_installments} pagadas · vence {item.next_due}
@@ -324,7 +349,7 @@ function EditInstallmentForm({
 }: {
   item: InstRow;
   paidCount: number;
-  onSave: (name: string, monthlyAmount: number, paidInstallments: number, category: string) => void;
+  onSave: (name: string, monthlyAmount: number, paidInstallments: number, category: string, currency: string) => void;
   onCancel: () => void;
   isPending: boolean;
   error?: string;
@@ -334,13 +359,14 @@ function EditInstallmentForm({
   const [monthly, setMonthly] = useState(String(item.monthly));
   const [paid, setPaid] = useState(String(paidCount));
   const [category, setCategory] = useState(item.category ?? "Cuotas");
+  const [currency, setCurrency] = useState<"ARS"|"USD">((item.currency as "ARS"|"USD") ?? "ARS");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const monthlyAmt = parseNumeric(monthly);
     const paidN = Math.max(0, parseInt(paid) || 0);
     if (!name.trim() || monthlyAmt <= 0) return;
-    onSave(name.trim(), monthlyAmt, paidN, category);
+    onSave(name.trim(), monthlyAmt, paidN, category, currency);
   };
 
   return (
@@ -372,19 +398,37 @@ function EditInstallmentForm({
         </div>
       </div>
 
-      <div>
-        <div className="mono" style={labelStyle}>Categoría</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {categories.map(c => (
-            <button key={c} type="button" onClick={() => setCategory(c)} style={{
-              padding: "4px 10px", borderRadius: 6,
-              border: "1px solid var(--hairline)",
-              background: category === c ? "var(--ink)" : "transparent",
-              color: category === c ? "var(--inverse)" : "var(--mute)",
-              fontSize: 11, fontFamily: "inherit", cursor: "pointer",
-              letterSpacing: "0.04em",
-            }}>{c}</button>
-          ))}
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        <div>
+          <div className="mono" style={labelStyle}>Moneda</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["ARS", "USD"] as const).map(c => (
+              <button key={c} type="button" onClick={() => setCurrency(c)} style={{
+                padding: "4px 10px", borderRadius: 6,
+                border: `1px solid ${currency === c ? "transparent" : "var(--hairline)"}`,
+                background: currency === c ? "var(--ink)" : "transparent",
+                color: currency === c ? "var(--inverse)" : "var(--mute)",
+                fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+                letterSpacing: "0.08em", textTransform: "uppercase" as const,
+                transition: "all 140ms ease",
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="mono" style={labelStyle}>Categoría</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {categories.map(c => (
+              <button key={c} type="button" onClick={() => setCategory(c)} style={{
+                padding: "4px 10px", borderRadius: 6,
+                border: "1px solid var(--hairline)",
+                background: category === c ? "var(--ink)" : "transparent",
+                color: category === c ? "var(--inverse)" : "var(--mute)",
+                fontSize: 11, fontFamily: "inherit", cursor: "pointer",
+                letterSpacing: "0.04em",
+              }}>{c}</button>
+            ))}
+          </div>
         </div>
       </div>
 
